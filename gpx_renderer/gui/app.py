@@ -232,18 +232,18 @@ def launch_gui():
     help_button(profile_field, root, "profile").grid(row=0, column=1, padx=(5, 0))
 
     RESOLUTION_PRESETS = [
-        ("📱 1080p 直式 9:16 (1080×1920) - IG Reels / TikTok / Shorts", 1080, 1920),
-        ("📱 720p  直式 9:16 (720×1280)  - IG Reels / TikTok / Shorts", 720, 1280),
-        ("📷 IG 貼文直式 4:5 (1080×1350)", 1080, 1350),
-        ("⏹️ 1440p 正方形 1:1 (1440×1440) - 高畫質方形", 1440, 1440),
-        ("⏹️ 1080p 正方形 1:1 (1080×1080) - 標準方形", 1080, 1080),
-        ("🖥️ 2K 橫式 16:9 (2560×1440)", 2560, 1440),
-        ("🖥️ 1080p 橫式 16:9 (1920×1080) - YouTube / 電腦", 1920, 1080),
-        ("🖥️ 720p  橫式 16:9 (1280×720)", 1280, 720),
-        ("⚡ 640×360  超低 16:9 測試 (極速)", 640, 360),
-        ("⚡ 480×480  超低 1:1  測試 (極速)", 480, 480),
-        ("⚡ 360×640  超低 直式 測試 (極速)", 360, 640),
-        ("✏️ 自訂解析度...", None, None),
+        ("1080p 直式 9:16 (1080×1920) - IG Reels / TikTok / Shorts", 1080, 1920),
+        ("720p  直式 9:16 (720×1280)  - IG Reels / TikTok / Shorts", 720, 1280),
+        ("IG 貼文直式 4:5 (1080×1350)", 1080, 1350),
+        ("1440p 正方形 1:1 (1440×1440) - 高畫質方形", 1440, 1440),
+        ("1080p 正方形 1:1 (1080×1080) - 標準方形", 1080, 1080),
+        ("2K 橫式 16:9 (2560×1440)", 2560, 1440),
+        ("1080p 橫式 16:9 (1920×1080) - YouTube / 電腦", 1920, 1080),
+        ("720p  橫式 16:9 (1280×720)", 1280, 720),
+        ("640×360  超低 16:9 測試 (極速)", 640, 360),
+        ("480×480  超低 1:1  測試 (極速)", 480, 480),
+        ("360×640  超低 直式 測試 (極速)", 360, 640),
+        ("自訂解析度...", None, None),
     ]
 
     res_combo_labels = [p[0] for p in RESOLUTION_PRESETS]
@@ -256,11 +256,11 @@ def launch_gui():
 
     res_combo_var = tk.StringVar(value=_find_matching_preset(width_var.get(), height_var.get()))
 
-    ttk.Label(settings, text="解析度").grid(row=1, column=0, sticky="w", pady=4)
+    ttk.Label(settings, text="解析度預設").grid(row=1, column=0, sticky="w", pady=4)
     res_field = ttk.Frame(settings)
     res_field.grid(row=1, column=1, sticky="ew", pady=4)
 
-    res_combo = ttk.Combobox(res_field, textvariable=res_combo_var, values=res_combo_labels, state="readonly", width=28)
+    res_combo = ttk.Combobox(res_field, textvariable=res_combo_var, values=res_combo_labels, state="readonly", width=26)
     res_combo.pack(side="left", fill="x", expand=True)
 
     def on_res_preset_change(_=None):
@@ -293,21 +293,21 @@ def launch_gui():
     width_var.trace_add("write", on_custom_dim_change)
     height_var.trace_add("write", on_custom_dim_change)
 
-    ttk.Label(settings, text="FPS").grid(row=1, column=2, sticky="e", padx=(12, 6))
+    ttk.Label(settings, text="FPS").grid(row=1, column=4, sticky="e", padx=(12, 6))
     fps_field = ttk.Frame(settings)
-    fps_field.grid(row=1, column=3, sticky="w")
+    fps_field.grid(row=1, column=5, sticky="w")
     ttk.Spinbox(fps_field, from_=24, to=120, textvariable=fps_var, width=8).pack(side="left")
     help_button(fps_field, root, "fps").pack(side="left", padx=(5, 0))
 
-    ttk.Label(settings, text="主動畫秒數").grid(row=1, column=4, sticky="e", padx=(12, 6))
+    ttk.Label(settings, text="主動畫秒數").grid(row=2, column=0, sticky="w", pady=4)
     duration_field = ttk.Frame(settings)
-    duration_field.grid(row=1, column=5, sticky="ew")
+    duration_field.grid(row=2, column=1, sticky="ew")
     duration_entry = ttk.Entry(duration_field, textvariable=duration_var, width=10)
     duration_entry.pack(side="left", fill="x", expand=True)
     help_button(duration_field, root, "duration").pack(side="left", padx=(5, 0))
 
     auto_row = ttk.Frame(settings)
-    auto_row.grid(row=2, column=0, columnspan=6, sticky="ew", pady=(3, 5))
+    auto_row.grid(row=2, column=2, columnspan=4, sticky="ew", pady=(3, 5))
     auto_row.columnconfigure(5, weight=1)
     auto_toggle_box = ttk.Frame(auto_row)
     auto_toggle_box.grid(row=0, column=0, sticky="w", padx=(0, 12))
