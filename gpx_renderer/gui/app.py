@@ -231,13 +231,67 @@ def launch_gui():
     profile_combo.grid(row=0, column=0, sticky="ew")
     help_button(profile_field, root, "profile").grid(row=0, column=1, padx=(5, 0))
 
+    RESOLUTION_PRESETS = [
+        ("📱 1080p 直式 9:16 (1080×1920) - IG Reels / TikTok / Shorts", 1080, 1920),
+        ("📱 720p  直式 9:16 (720×1280)  - IG Reels / TikTok / Shorts", 720, 1280),
+        ("📷 IG 貼文直式 4:5 (1080×1350)", 1080, 1350),
+        ("⏹️ 1440p 正方形 1:1 (1440×1440) - 高畫質方形", 1440, 1440),
+        ("⏹️ 1080p 正方形 1:1 (1080×1080) - 標準方形", 1080, 1080),
+        ("🖥️ 2K 橫式 16:9 (2560×1440)", 2560, 1440),
+        ("🖥️ 1080p 橫式 16:9 (1920×1080) - YouTube / 電腦", 1920, 1080),
+        ("🖥️ 720p  橫式 16:9 (1280×720)", 1280, 720),
+        ("⚡ 640×360  超低 16:9 測試 (極速)", 640, 360),
+        ("⚡ 480×480  超低 1:1  測試 (極速)", 480, 480),
+        ("⚡ 360×640  超低 直式 測試 (極速)", 360, 640),
+        ("✏️ 自訂解析度...", None, None),
+    ]
+
+    res_combo_labels = [p[0] for p in RESOLUTION_PRESETS]
+
+    def _find_matching_preset(w, h):
+        for label, pw, ph in RESOLUTION_PRESETS:
+            if pw == w and ph == h:
+                return label
+        return "✏️ 自訂解析度..."
+
+    res_combo_var = tk.StringVar(value=_find_matching_preset(width_var.get(), height_var.get()))
+
     ttk.Label(settings, text="解析度").grid(row=1, column=0, sticky="w", pady=4)
-    res_frame = ttk.Frame(settings)
-    res_frame.grid(row=1, column=1, sticky="ew")
-    ttk.Entry(res_frame, textvariable=width_var, width=7).pack(side="left")
-    ttk.Label(res_frame, text=" × ").pack(side="left")
-    ttk.Entry(res_frame, textvariable=height_var, width=7).pack(side="left")
-    help_button(res_frame, root, "resolution").pack(side="left", padx=(5, 0))
+    res_field = ttk.Frame(settings)
+    res_field.grid(row=1, column=1, sticky="ew", pady=4)
+
+    res_combo = ttk.Combobox(res_field, textvariable=res_combo_var, values=res_combo_labels, state="readonly", width=28)
+    res_combo.pack(side="left", fill="x", expand=True)
+
+    def on_res_preset_change(_=None):
+        sel = res_combo_var.get()
+        for label, pw, ph in RESOLUTION_PRESETS:
+            if label == sel and pw is not None and ph is not None:
+                width_var.set(pw)
+                height_var.set(ph)
+                break
+
+    res_combo.bind("<<ComboboxSelected>>", on_res_preset_change)
+
+    ttk.Label(settings, text="自訂(寬×高)").grid(row=1, column=2, sticky="e", padx=(12, 6))
+    res_custom_frame = ttk.Frame(settings)
+    res_custom_frame.grid(row=1, column=3, sticky="w")
+    ttk.Entry(res_custom_frame, textvariable=width_var, width=5).pack(side="left")
+    ttk.Label(res_custom_frame, text="×").pack(side="left")
+    ttk.Entry(res_custom_frame, textvariable=height_var, width=5).pack(side="left")
+    help_button(res_custom_frame, root, "resolution").pack(side="left", padx=(5, 0))
+
+    def on_custom_dim_change(*args):
+        try:
+            w, h = int(width_var.get()), int(height_var.get())
+            matched = _find_matching_preset(w, h)
+            if res_combo_var.get() != matched:
+                res_combo_var.set(matched)
+        except Exception:
+            pass
+
+    width_var.trace_add("write", on_custom_dim_change)
+    height_var.trace_add("write", on_custom_dim_change)
 
     ttk.Label(settings, text="FPS").grid(row=1, column=2, sticky="e", padx=(12, 6))
     fps_field = ttk.Frame(settings)
