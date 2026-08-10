@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Environment, platform compatibility, and font helpers.
+執行環境設定、系統平台相容性 (UTF-8 stdio/Win32 Console) 及字型載入工具。
 """
 
 import os

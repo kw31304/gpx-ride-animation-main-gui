@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Utilities module package initialization.
+共用工具模組套件初始化。
 """
 
 from gpx_renderer.utils.env import (

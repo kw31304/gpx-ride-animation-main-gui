@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Core data structures and GPX parsing logic.
+核心資料結構 (RideData)、GPX 軌跡解析與地理座標數學計算。
 """
 
 from __future__ import annotations

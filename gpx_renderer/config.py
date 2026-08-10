@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Global configuration variables and dynamic config application/snapshot.
+全域渲染與畫質效能設定參數、動態設定套用與快照管理。
 """
 
 from __future__ import annotations

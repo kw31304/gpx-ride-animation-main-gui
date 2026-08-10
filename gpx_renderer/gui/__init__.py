@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-GUI module package initialization.
+圖形介面 (GUI) 套件初始化。
 """
 
 from gpx_renderer.gui.app import launch_gui

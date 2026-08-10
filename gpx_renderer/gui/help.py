@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tkinter help dialogs and setting help descriptions.
+Tkinter 設定說明字典 (SETTING_HELP) 與幫助說明對話框視窗。
 """
 
 import tkinter as tk

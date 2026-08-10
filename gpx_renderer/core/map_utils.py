@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Map tile fetching, raster creation, overview map rendering, and local basemap caching.
+地圖 Tile 下載 (contextily)、Raster 地圖處理、Overview 全程圖組裝與區域底圖增量快取 (LocalBasemapCache)。
 """
 
 from __future__ import annotations

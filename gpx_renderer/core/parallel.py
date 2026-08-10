@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Multiprocessing parallel renderer, Auto Tune worker benchmarks, and high-level render jobs.
+多程序平行渲染引擎 (Multiprocessing Workers)、Auto Tune 效能測試與高階渲染任務執行入口。
 """
 
 from __future__ import annotations

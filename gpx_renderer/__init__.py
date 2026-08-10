@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-GPX Ride Renderer package.
+GPX Ride Renderer 核心套件初始化。
 """
 
 from gpx_renderer.utils import _force_utf8_stdio

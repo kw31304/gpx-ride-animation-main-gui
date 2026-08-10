@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Pillow/OpenCV-accelerated RideRenderer engine.
+Pillow / OpenCV 加速 RideRenderer 動畫畫格繪製引擎（包含 HUD 速度錶、小地圖、海拔圖與結尾統計卡片）。
 """
 
 from __future__ import annotations

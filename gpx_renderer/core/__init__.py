@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Core module package initialization.
+核心業務邏輯與渲染引擎套件初始化。
 """
 
 from gpx_renderer.core.data import (

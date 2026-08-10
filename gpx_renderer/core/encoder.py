@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-FFmpeg discovery, encoder testing, command building, single-process video encoding, and segment concatenating.
+FFmpeg 搜尋、NVENC/CPU 編碼器檢測、轉碼指令建立、單程序渲染與 MP4 片段合併。
 """
 
 from __future__ import annotations

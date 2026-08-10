@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tkinter custom component helpers.
+Tkinter 介面輔助元件與帶說明按鈕的複用 UI 元件。
 """
 
 from tkinter import ttk

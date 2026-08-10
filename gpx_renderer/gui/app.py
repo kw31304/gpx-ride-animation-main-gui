@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tkinter GUI application window and subprocess reader thread.
+Tkinter GUI 主應用程式視窗、設定輸入監控與子程序即時 Log 讀取線程。
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-JSON configuration file loading and subprocess command utilities.
+JSON 設定檔讀寫與子程序執行命令生成工具。
 """
 
 import sys
