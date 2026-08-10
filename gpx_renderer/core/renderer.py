@@ -88,7 +88,8 @@ class RideRenderer:
                     clusters.append(curr_cluster)
 
             base_ride_frames = max(1, int(round(self.video_duration * self.fps)))
-            thumb_size = max(int(config.MEDIA_THUMB_SIZE), int(min(config.FRAME_WIDTH, config.FRAME_HEIGHT) * 0.38))
+            max_thumb_w = int(config.FRAME_WIDTH * 0.65)
+            max_thumb_h = int(config.FRAME_HEIGHT * 0.60)
             fade_frames = max(1, int(round(0.35 * self.fps)))
 
             # 建立單調遞增無倒退之時間軸 (Segment-based monotonic timeline)
@@ -136,7 +137,7 @@ class RideRenderer:
                             end_f = start_f + item_dur_frames
 
                             if item.thumbnail is None:
-                                item.thumbnail = prepare_thumbnail(item.file_path, size=thumb_size)
+                                item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h)
 
                             if item.thumbnail is not None:
                                 self.media_popups.append({
@@ -188,7 +189,7 @@ class RideRenderer:
         )
         self.cached_hold_frame: Image.Image | None = None
 
-        ui_scale = max(0.78, min(1.8, min(config.FRAME_WIDTH, config.FRAME_HEIGHT) / 1000.0))
+        ui_scale = min(config.FRAME_WIDTH, config.FRAME_HEIGHT) / 1000.0
         self.ui_scale = ui_scale
         self.font_hud_kicker = load_font(max(10, int(round(11 * ui_scale))), bold=True)
         self.font_hud_speed = load_font(max(28, int(round(43 * ui_scale))), bold=True)
@@ -648,36 +649,23 @@ class RideRenderer:
                 continue
 
             item = popup["item"]
-            if item.mercator_x is not None and item.mercator_y is not None:
-                px, py = self._world_to_frame_px(item.mercator_x, item.mercator_y, view_x, view_y, margin)
-            else:
-                idx = item.matched_index
-                px, py = self._world_to_frame_px(float(self.d.xs[idx]), float(self.d.ys[idx]), view_x, view_y, margin)
-
-            if not (-200 <= px <= config.FRAME_WIDTH + 200 and -200 <= py <= config.FRAME_HEIGHT + 200):
+            thumb = item.thumbnail
+            if thumb is None:
                 continue
 
-            thumb = item.thumbnail
             tw, th = thumb.size
 
-            cx = max(20, min(config.FRAME_WIDTH - tw - 20, px - tw // 2))
-            if py - th - 40 < int(config.FRAME_HEIGHT * 0.12):
-                cy = min(config.FRAME_HEIGHT - th - 20, py + 30)
-                pin_target_y = cy
-            else:
-                cy = max(20, py - th - 35)
-                pin_target_y = cy + th
-
-            pin_target_x = cx + tw // 2
+            # 將媒體縮圖卡片固定置於動畫畫面正中央
+            cx = (config.FRAME_WIDTH - tw) // 2
+            cy = (config.FRAME_HEIGHT - th) // 2
 
             base = frame.convert("RGBA")
             overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-            odraw = ImageDraw.Draw(overlay)
 
-            line_alpha = int(230 * alpha)
-            odraw.line([(px, py), (pin_target_x, pin_target_y)], fill=(255, 255, 255, line_alpha), width=3)
-            odraw.ellipse((px - 7, py - 7, px + 7, py + 7), fill=config.ORANGE + (line_alpha,))
-            odraw.ellipse((px - 3, py - 3, px + 3, py + 3), fill=(255, 255, 255, line_alpha))
+            # 劇院級中央背景遮罩暗化 (Backdrop Overlay)
+            shade_alpha = int(140 * alpha)
+            shade = Image.new("RGBA", base.size, (7, 11, 16, shade_alpha))
+            base.alpha_composite(shade)
 
             if alpha >= 0.99:
                 overlay.paste(thumb, (cx, cy), thumb)
