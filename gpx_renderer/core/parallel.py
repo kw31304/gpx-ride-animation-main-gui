@@ -494,7 +494,18 @@ def encode_video_parallel(
     output: str,
     media_items: list | None = None,
 ):
-    main_frames = max(1, int(round(duration * fps)))
+    temp_renderer = RideRenderer(
+        data=data,
+        overview_map=None,
+        map_style=map_style,
+        fps=fps,
+        video_duration=duration,
+        zoom_out_duration=0.0,
+        end_hold_duration=0.0,
+        tile_cache_enabled=False,
+        media_items=media_items,
+    )
+    main_frames = temp_renderer.main_frames
     workers = max(1, min(int(config.RENDER_WORKERS), main_frames))
     chunk_count = _choose_dynamic_chunk_count(main_frames, fps, workers)
     ranges = _split_frame_ranges(main_frames, chunk_count)
@@ -682,8 +693,19 @@ def render_job(config_dict: dict | None = None):
         matched_media = match_media_to_ride(raw_media, data, data.gpx_times)
         print(f"[OK] 掃描到 {len(raw_media)} 個媒體檔案，成功與路線對齊 {len(matched_media)} 個時間點/座標")
 
-    main_frames = max(1, int(round(duration * fps)))
-    total_frames = main_frames + int(round(config.ZOOM_OUT_DURATION * fps)) + int(round(config.END_HOLD_DURATION * fps))
+    temp_info_renderer = RideRenderer(
+        data=data,
+        overview_map=None,
+        map_style=config.MAP_STYLE_OPTIONS[map_style_key][1],
+        fps=fps,
+        video_duration=duration,
+        zoom_out_duration=config.ZOOM_OUT_DURATION,
+        end_hold_duration=config.END_HOLD_DURATION,
+        tile_cache_enabled=False,
+        media_items=matched_media,
+    )
+    main_frames = temp_info_renderer.main_frames
+    total_frames = temp_info_renderer.total_frames
     print(
         f"[INFO] V1.0.0 renderer：{config.FRAME_WIDTH}x{config.FRAME_HEIGHT} @ {fps} FPS | "
         f"{total_frames} frames | {total_frames / fps:.1f}s"
