@@ -36,7 +36,7 @@ for package in (
     except Exception as exc:
         print(f"[SPEC] collect_all({package}) skipped: {exc}")
 
-for package in ("gpxpy", "contextily"):
+for package in ("gpxpy", "contextily", "gpx_renderer"):
     try:
         hiddenimports += collect_submodules(package)
     except Exception as exc:

@@ -1,0 +1,733 @@
+# -*- coding: utf-8 -*-
+"""
+Multiprocessing parallel renderer, Auto Tune worker benchmarks, and high-level render jobs.
+"""
+
+from __future__ import annotations
+import os
+import sys
+import time
+import math
+import json
+import shutil
+import tempfile
+import subprocess
+import multiprocessing as mp
+from dataclasses import dataclass
+from pathlib import Path
+
+try:
+    import cv2
+    HAVE_CV2 = True
+except Exception:
+    cv2 = None
+    HAVE_CV2 = False
+
+from gpx_renderer import config
+from gpx_renderer.utils import _background_subprocess_kwargs
+from gpx_renderer.core.data import RideData, load_gpx, format_seconds_human
+from gpx_renderer.core.map_utils import build_overview_raster_map
+from gpx_renderer.core.encoder import (
+    find_ffmpeg, choose_encoder, build_ffmpeg_command, encode_video,
+    _concat_mp4_segments, _encode_end_segment,
+)
+from gpx_renderer.core.renderer import RideRenderer
+
+
+@dataclass
+class SegmentTask:
+    segment_index: int
+    start_frame: int
+    end_frame: int
+    output_path: str
+
+
+@dataclass
+class DynamicWorkerConfig:
+    gpx_path: str
+    map_style_key: str
+    fps: int
+    video_duration: float
+    ffmpeg: str
+    encoder: str
+    settings: dict
+
+
+@dataclass
+class BenchmarkWorkerConfig:
+    gpx_path: str
+    map_style_key: str
+    fps: int
+    video_duration: float
+    ffmpeg: str
+    encoder: str
+    settings: dict
+
+
+def _build_benchmark_ffmpeg_command(ffmpeg: str, encoder: str, fps: int):
+    """與正式輸出相同的 raw RGB -> encoder 路徑，但丟到 FFmpeg null muxer。"""
+    cmd = [
+        ffmpeg, "-hide_banner", "-loglevel", "error",
+        "-f", "rawvideo", "-vcodec", "rawvideo",
+        "-pix_fmt", "rgb24", "-s:v", f"{config.FRAME_WIDTH}x{config.FRAME_HEIGHT}",
+        "-r", str(fps), "-i", "-", "-an",
+    ]
+    if encoder == "h264_nvenc":
+        cmd += [
+            "-c:v", "h264_nvenc", "-preset", config.NVENC_PRESET,
+            "-tune", "hq", "-rc", "vbr",
+            "-b:v", config.NVENC_BITRATE, "-maxrate", config.NVENC_BITRATE, "-bufsize", "24M",
+        ]
+    else:
+        cmd += [
+            "-c:v", "libx264", "-preset", config.CPU_PRESET,
+            "-crf", str(config.CPU_CRF), "-threads", "1",
+        ]
+    cmd += ["-pix_fmt", "yuv420p", "-f", "null", "-"]
+    return cmd
+
+
+def _benchmark_worker_entry(
+    worker_id: int,
+    worker_cfg: BenchmarkWorkerConfig,
+    start_frame: int,
+    end_frame: int,
+    start_event,
+    ready_queue,
+    result_queue,
+):
+    """Benchmark worker。先 warm-up renderer，再由 parent 同步開始計時。"""
+    ffmpeg_proc = None
+    ready_sent = False
+    try:
+        config.apply_render_config(worker_cfg.settings)
+        if HAVE_CV2:
+            try:
+                cv2.setNumThreads(max(1, int(config.CV2_THREADS_PER_WORKER)))
+            except Exception:
+                pass
+
+        data = load_gpx(worker_cfg.gpx_path)
+        map_style = config.MAP_STYLE_OPTIONS[worker_cfg.map_style_key][1]
+        renderer = RideRenderer(
+            data=data, overview_map=None, map_style=map_style, fps=worker_cfg.fps,
+            video_duration=worker_cfg.video_duration, zoom_out_duration=0.0, end_hold_duration=0.0,
+            tile_cache_enabled=False,
+        )
+
+        warm_frame = max(0, min(int(start_frame), renderer.main_frames - 1))
+        renderer.render_main_frame(warm_frame)
+
+        cmd = _build_benchmark_ffmpeg_command(worker_cfg.ffmpeg, worker_cfg.encoder, worker_cfg.fps)
+        ffmpeg_proc = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            bufsize=16 * 1024 * 1024,
+            **_background_subprocess_kwargs(),
+        )
+        if ffmpeg_proc.stdin is None:
+            raise RuntimeError("Benchmark FFmpeg stdin 無法開啟。")
+
+        ready_queue.put(("ready", worker_id, ""))
+        ready_sent = True
+        if not start_event.wait(timeout=120.0):
+            raise TimeoutError("Benchmark 等待同步開始逾時。")
+
+        t0 = time.perf_counter()
+        frames = 0
+        for frame_idx in range(start_frame + 1, end_frame):
+            frame = renderer.render_main_frame(frame_idx)
+            ffmpeg_proc.stdin.write(frame.tobytes("raw", "RGB"))
+            frames += 1
+
+        ffmpeg_proc.stdin.close()
+        stderr = ffmpeg_proc.stderr.read().decode("utf-8", errors="replace") if ffmpeg_proc.stderr else ""
+        rc = ffmpeg_proc.wait()
+        elapsed = time.perf_counter() - t0
+        if rc != 0:
+            raise RuntimeError(f"Benchmark FFmpeg exit={rc}: {stderr.strip()}")
+        result_queue.put(("done", worker_id, frames, elapsed, ""))
+    except Exception as exc:
+        target = result_queue if ready_sent else ready_queue
+        try:
+            target.put(("error", worker_id, 0, 0.0, repr(exc)) if ready_sent else ("error", worker_id, repr(exc)))
+        except Exception:
+            pass
+    finally:
+        if ffmpeg_proc is not None and ffmpeg_proc.poll() is None:
+            try:
+                if ffmpeg_proc.stdin:
+                    ffmpeg_proc.stdin.close()
+            except Exception:
+                pass
+            try:
+                ffmpeg_proc.terminate(); ffmpeg_proc.wait(timeout=3)
+            except Exception:
+                pass
+
+
+def _run_worker_benchmark(
+    gpx_path: str, map_style_key: str, fps: int, duration: float,
+    ffmpeg: str, encoder: str, workers: int, benchmark_frames: int, start_frame: int, settings: dict,
+):
+    """回傳 (aggregate_fps, timed_frames, wall_seconds)。"""
+    main_frames = max(1, int(round(duration * fps)))
+    workers = max(1, min(int(workers), main_frames))
+    window = min(main_frames - start_frame, max(workers * 4, int(benchmark_frames) + workers))
+    if window < workers * 2:
+        start_frame = 0
+        window = min(main_frames, max(workers * 4, int(benchmark_frames) + workers))
+    ranges0 = _split_frame_ranges(window, workers)
+    ranges = [(start_frame + a, start_frame + b) for a, b in ranges0 if b - a >= 2]
+    if not ranges:
+        raise RuntimeError("影片太短，無法執行 worker benchmark。")
+    workers = len(ranges)
+
+    bench_settings = dict(settings)
+    bench_settings.update({
+        "ENABLE_BASEMAP": False,
+        "MAP_USE_CACHE": False,
+        "PARALLEL_DISABLE_TILE_CACHE": True,
+        "LOCAL_CACHE_CHUNKS": min(3, max(1, int(bench_settings.get("LOCAL_CACHE_CHUNKS", 3)))),
+        "PREVIEW_MODE": False,
+    })
+    worker_cfg = BenchmarkWorkerConfig(
+        gpx_path=gpx_path, map_style_key=map_style_key, fps=fps, video_duration=duration,
+        ffmpeg=ffmpeg, encoder=encoder, settings=bench_settings,
+    )
+
+    ctx = mp.get_context("spawn")
+    start_event = ctx.Event()
+    ready_queue = ctx.Queue()
+    result_queue = ctx.Queue()
+    processes = []
+    try:
+        for worker_id, (a, b) in enumerate(ranges):
+            p = ctx.Process(
+                target=_benchmark_worker_entry,
+                args=(worker_id, worker_cfg, a, b, start_event, ready_queue, result_queue),
+                name=f"benchmark_{workers}w_{worker_id}",
+            )
+            p.start(); processes.append(p)
+
+        ready = 0
+        ready_deadline = time.perf_counter() + 120.0
+        while ready < workers:
+            if time.perf_counter() > ready_deadline:
+                raise TimeoutError(f"{workers} workers benchmark 初始化逾時。")
+            try:
+                msg = ready_queue.get(timeout=0.25)
+            except Exception:
+                msg = None
+            if msg:
+                if msg[0] == "ready":
+                    ready += 1
+                elif msg[0] == "error":
+                    raise RuntimeError(f"Benchmark worker {msg[1] + 1} 初始化失敗：{msg[2]}")
+            for i, proc in enumerate(processes):
+                if proc.exitcode not in (None, 0):
+                    raise RuntimeError(f"Benchmark worker {i + 1} 提前退出，exitcode={proc.exitcode}")
+
+        wall_start = time.perf_counter()
+        start_event.set()
+        done = 0
+        timed_frames = 0
+        run_deadline = wall_start + 180.0
+        while done < workers:
+            if time.perf_counter() > run_deadline:
+                raise TimeoutError(f"{workers} workers benchmark 執行逾時。")
+            try:
+                msg = result_queue.get(timeout=0.25)
+            except Exception:
+                msg = None
+            if msg:
+                kind, worker_id, frames, elapsed, payload = msg
+                if kind == "done":
+                    done += 1
+                    timed_frames += int(frames)
+                elif kind == "error":
+                    raise RuntimeError(f"Benchmark worker {worker_id + 1} 失敗：{payload}")
+            for i, proc in enumerate(processes):
+                if proc.exitcode not in (None, 0):
+                    raise RuntimeError(f"Benchmark worker {i + 1} 異常退出，exitcode={proc.exitcode}")
+
+        wall = time.perf_counter() - wall_start
+        aggregate_fps = timed_frames / wall if wall > 0 else 0.0
+        return aggregate_fps, timed_frames, wall
+    finally:
+        try:
+            start_event.set()
+        except Exception:
+            pass
+        for proc in processes:
+            try:
+                proc.join(timeout=1.5)
+                if proc.is_alive():
+                    proc.terminate(); proc.join(timeout=3.0)
+            except Exception:
+                pass
+        for q in (ready_queue, result_queue):
+            try:
+                q.close(); q.cancel_join_thread()
+            except Exception:
+                pass
+
+
+def _default_benchmark_candidates(current_workers: int | None = None):
+    logical = max(1, int(os.cpu_count() or 1))
+    cap = min(logical, 16)
+    if cap <= 1:
+        return [1]
+    candidates = [x for x in (2, 4, 6, 8, 10, 12, 14, 16) if x <= cap]
+    if current_workers is not None:
+        cw = max(1, min(int(current_workers), cap))
+        candidates.append(cw)
+    if cap not in candidates:
+        candidates.append(cap)
+    return sorted(set(candidates))
+
+
+def performance_benchmark_job(config_dict: dict | None = None):
+    """GUI Auto Tune 子程序入口。只做短 benchmark，不輸出影片。"""
+    config_dict = dict(config_dict or {})
+    config.apply_render_config(config_dict)
+    gpx_path = str(Path(config_dict.get("gpx_filename", config.gpx_filename)).expanduser().resolve())
+    map_style_key = str(config_dict.get("map_style_key", "1"))
+    if map_style_key not in config.MAP_STYLE_OPTIONS:
+        map_style_key = "1"
+    if not Path(gpx_path).is_file():
+        raise FileNotFoundError(f"找不到 GPX：{gpx_path}")
+
+    fps = max(1, int(config.FPS))
+    duration = max(1.0, float(config.VIDEO_DURATION))
+    logical = max(1, int(os.cpu_count() or 1))
+    candidates = config_dict.get("BENCHMARK_CANDIDATES")
+    if not candidates:
+        candidates = _default_benchmark_candidates(config_dict.get("RENDER_WORKERS", config.RENDER_WORKERS))
+    candidates = sorted(set(max(1, min(int(x), logical, 16)) for x in candidates))
+
+    default_frames = max(240, min(360, int(round(fps * 5.0))))
+    benchmark_frames = max(120, int(config_dict.get("BENCHMARK_FRAMES", default_frames)))
+    main_frames = max(1, int(round(duration * fps)))
+    max_workers = max(candidates) if candidates else 1
+    usable = min(main_frames, benchmark_frames + max_workers)
+    benchmark_frames = max(1, usable - max_workers)
+    start_frame = max(0, int((main_frames - usable) * 0.20))
+
+    print("=" * 72)
+    print("[TEST] Workers Auto Tune")
+    print(f"   CPU logical processors：{logical}")
+    print(f"   測試解析度：{config.FRAME_WIDTH}x{config.FRAME_HEIGHT} | FPS={fps} | 約 {benchmark_frames} timed frames / 組")
+    print("   Benchmark 不下載底圖，避免 CDN / 網速污染結果。")
+    print("   會測 GPX camera + route + HUD/minimap/elevation + RGB pipe + FFmpeg/NVENC。")
+
+    ffmpeg = find_ffmpeg()
+    encoder = choose_encoder(ffmpeg, fps)
+    if encoder != "h264_nvenc":
+        result = {
+            "recommended_workers": 1, "peak_fps": 0.0, "threshold_ratio": 0.97,
+            "results": [], "note": "NVENC 不可用；正式 renderer 會回退單 process，因此建議 Workers=1。",
+        }
+        print("[WARN] NVENC 不可用，Auto Tune 不進行多程序測試。")
+        print("AUTO_TUNE_RESULT:" + json.dumps(result, ensure_ascii=False))
+        return result
+
+    settings = config.snapshot_render_config()
+    results = []
+    prev_fps = None
+    for idx, workers in enumerate(candidates, start=1):
+        print(f"[TEST] 效能測試 [{idx}/{len(candidates)}] Workers={workers} ...", flush=True)
+        try:
+            agg_fps, frames_done, wall = _run_worker_benchmark(
+                gpx_path=gpx_path, map_style_key=map_style_key, fps=fps, duration=duration,
+                ffmpeg=ffmpeg, encoder=encoder, workers=workers, benchmark_frames=benchmark_frames,
+                start_frame=start_frame, settings=settings,
+            )
+        except Exception as exc:
+            print(f"[WARN] Workers={workers} 測試失敗：{exc}")
+            print("   將以目前已成功的測試結果決定建議值，並停止測更高 Workers。")
+            break
+        gain = None if prev_fps is None or prev_fps <= 0 else (agg_fps / prev_fps - 1.0) * 100.0
+        gain_text = "baseline" if gain is None else f"{gain:+.1f}% vs previous"
+        print(f"[RESULT] Workers={workers}: {agg_fps:.1f} frame/s | {frames_done} frames / {wall:.2f}s | {gain_text}")
+        results.append({"workers": workers, "fps": round(agg_fps, 3), "wall_seconds": round(wall, 3)})
+        prev_fps = agg_fps
+
+    if not results:
+        raise RuntimeError("所有 Workers benchmark 都失敗，無法產生 Auto Tune 建議。")
+
+    peak = max(r["fps"] for r in results) if results else 0.0
+    threshold_ratio = 0.97
+    threshold = peak * threshold_ratio
+    eligible = [r for r in results if r["fps"] >= threshold]
+    recommended = min(eligible, key=lambda r: r["workers"])["workers"] if eligible else (results[-1]["workers"] if results else 1)
+    rec_row = next((r for r in results if r["workers"] == recommended), None)
+    rec_fps = rec_row["fps"] if rec_row else 0.0
+
+    note = (
+        f"選擇達到峰值 {threshold_ratio*100:.0f}% 以上的最少 workers，"
+        f"避免只為幾個百分點增加 RAM / 排程競爭。"
+    )
+    result = {
+        "recommended_workers": int(recommended),
+        "recommended_fps": round(float(rec_fps), 3),
+        "peak_fps": round(float(peak), 3),
+        "threshold_ratio": threshold_ratio,
+        "results": results,
+        "note": note,
+    }
+    print(f"[RESULT] 建議 Workers={recommended} | 約 {rec_fps:.1f} fps | 峰值 {peak:.1f} fps")
+    print("   " + note)
+    print("AUTO_TUNE_RESULT:" + json.dumps(result, ensure_ascii=False), flush=True)
+    return result
+
+
+def _split_frame_ranges(total_frames: int, segments: int):
+    segments = max(1, min(int(segments), int(total_frames)))
+    edges = np.linspace(0, total_frames, segments + 1, dtype=np.int64)
+    out = []
+    for i in range(segments):
+        a, b = int(edges[i]), int(edges[i + 1])
+        if b > a:
+            out.append((a, b))
+    return out
+
+
+def _choose_dynamic_chunk_count(total_frames: int, fps: int, workers: int) -> int:
+    desired = max(workers, workers * max(1, int(config.CHUNKS_PER_WORKER)))
+    min_frames = max(1, int(round(max(0.25, float(config.MIN_CHUNK_SECONDS)) * max(1, int(fps)))))
+    max_by_size = max(1, total_frames // min_frames)
+    lower = min(workers, total_frames)
+    return max(lower, min(desired, max_by_size, total_frames))
+
+
+def _encode_chunk_with_renderer(renderer: RideRenderer, task: SegmentTask, ffmpeg: str, encoder: str, worker_id: int, result_queue):
+    cmd = build_ffmpeg_command(ffmpeg, encoder, task.output_path, renderer.fps)
+    process = subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        bufsize=16 * 1024 * 1024,
+        **_background_subprocess_kwargs(),
+    )
+    if process.stdin is None:
+        raise RuntimeError(f"Chunk {task.segment_index}: 無法開啟 FFmpeg stdin。")
+
+    start_t = time.perf_counter()
+    last_progress_t = start_t
+    total = task.end_frame - task.start_frame
+    result_queue.put(("start", worker_id, task.segment_index, 0, total, ""))
+    try:
+        for frame_idx in range(task.start_frame, task.end_frame):
+            frame = renderer.render_main_frame(frame_idx)
+            process.stdin.write(frame.tobytes("raw", "RGB"))
+            now = time.perf_counter()
+            if now - last_progress_t >= 0.45:
+                done_local = frame_idx - task.start_frame + 1
+                result_queue.put(("progress", worker_id, task.segment_index, done_local, total, ""))
+                last_progress_t = now
+        process.stdin.close()
+        stderr = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
+        rc = process.wait()
+        if rc != 0:
+            raise RuntimeError(f"Chunk {task.segment_index} FFmpeg exit={rc}\n{stderr.strip()}")
+    except Exception:
+        try:
+            process.stdin.close()
+        except Exception:
+            pass
+        try:
+            process.terminate(); process.wait(timeout=5)
+        except Exception:
+            pass
+        raise
+
+    elapsed = time.perf_counter() - start_t
+    result_queue.put(("done", worker_id, task.segment_index, total, total, f"{elapsed:.9f}"))
+
+
+def _dynamic_worker_loop(worker_id: int, worker_cfg: DynamicWorkerConfig, task_queue, result_queue):
+    try:
+        config.apply_render_config(worker_cfg.settings)
+        if HAVE_CV2:
+            try:
+                cv2.setNumThreads(max(1, int(config.CV2_THREADS_PER_WORKER)))
+            except Exception:
+                pass
+        data = load_gpx(worker_cfg.gpx_path)
+        map_style = config.MAP_STYLE_OPTIONS[worker_cfg.map_style_key][1]
+        renderer = RideRenderer(
+            data=data, overview_map=None, map_style=map_style, fps=worker_cfg.fps,
+            video_duration=worker_cfg.video_duration, zoom_out_duration=0.0, end_hold_duration=0.0,
+            tile_cache_enabled=not config.PARALLEL_DISABLE_TILE_CACHE,
+        )
+        result_queue.put(("ready", worker_id, -1, 0, 0, ""))
+        while True:
+            task = task_queue.get()
+            if task is None:
+                break
+            try:
+                _encode_chunk_with_renderer(renderer, task, worker_cfg.ffmpeg, worker_cfg.encoder, worker_id, result_queue)
+            except Exception as exc:
+                result_queue.put(("error", worker_id, task.segment_index, 0, 0, repr(exc)))
+                return
+        result_queue.put(("exit", worker_id, -1, 0, 0, ""))
+    except Exception as exc:
+        result_queue.put(("error", worker_id, -1, 0, 0, repr(exc)))
+
+
+def encode_video_parallel(
+    data: RideData,
+    gpx_path: str,
+    map_style_key: str,
+    map_style,
+    fps: int,
+    duration: float,
+    ffmpeg: str,
+    encoder: str,
+    output: str,
+):
+    main_frames = max(1, int(round(duration * fps)))
+    workers = max(1, min(int(config.RENDER_WORKERS), main_frames))
+    chunk_count = _choose_dynamic_chunk_count(main_frames, fps, workers)
+    ranges = _split_frame_ranges(main_frames, chunk_count)
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="gpx_render_v7_2_"))
+    print(f"[INFO] 動態排程：{workers} persistent workers / {len(ranges)} chunks / {main_frames} frames")
+    print(f"   平均 chunk：約 {main_frames / max(len(ranges), 1) / max(fps, 1):.1f}s；誰先做完就立即拿下一塊。")
+    print(f"   暫存 segments：{temp_dir}")
+    if config.PARALLEL_DISABLE_TILE_CACHE:
+        print("   並行 worker 已停用 contextily/joblib 磁碟 cache，避免多程序 contention。")
+
+    tasks = [
+        SegmentTask(i, a, b, str(temp_dir / f"main_{i:04d}.mp4"))
+        for i, (a, b) in enumerate(ranges)
+    ]
+    worker_cfg = DynamicWorkerConfig(
+        gpx_path=gpx_path, map_style_key=map_style_key, fps=fps, video_duration=duration,
+        ffmpeg=ffmpeg, encoder=encoder, settings=config.snapshot_render_config(),
+    )
+
+    wall_start = time.perf_counter()
+    processes = []
+    task_queue = None
+    result_queue = None
+    chunk_progress = {t.segment_index: 0 for t in tasks}
+    chunk_totals = {t.segment_index: t.end_frame - t.start_frame for t in tasks}
+    completed_paths = {}
+    worker_status = {i: "啟動中" for i in range(workers)}
+    finished_chunks = 0
+
+    try:
+        ctx = mp.get_context("spawn")
+        task_queue = ctx.Queue()
+        result_queue = ctx.Queue()
+        for task in tasks:
+            task_queue.put(task)
+        for _ in range(workers):
+            task_queue.put(None)
+
+        for worker_id in range(workers):
+            p = ctx.Process(
+                target=_dynamic_worker_loop, args=(worker_id, worker_cfg, task_queue, result_queue),
+                name=f"dynamic_render_{worker_id}",
+            )
+            p.start(); processes.append(p)
+
+        last_progress_print = 0.0
+        while finished_chunks < len(tasks):
+            try:
+                kind, worker_id, chunk_idx, done_local, total, payload = result_queue.get(timeout=0.25)
+            except Exception:
+                kind = None
+
+            if kind == "ready":
+                worker_status[worker_id] = "待命"
+            elif kind == "start":
+                worker_status[worker_id] = f"C{chunk_idx + 1}/{len(tasks)} 0%"
+            elif kind == "progress":
+                chunk_progress[chunk_idx] = max(chunk_progress.get(chunk_idx, 0), int(done_local))
+                worker_status[worker_id] = f"C{chunk_idx + 1}/{len(tasks)} {100.0 * done_local / max(total,1):.0f}%"
+            elif kind == "done":
+                chunk_progress[chunk_idx] = int(total)
+                completed_paths[chunk_idx] = tasks[chunk_idx].output_path
+                finished_chunks = len(completed_paths)
+                elapsed = float(payload) if payload else 0.0
+                fps_done = total / elapsed if elapsed > 0 else 0.0
+                worker_status[worker_id] = "拿下一塊…" if finished_chunks < len(tasks) else "完成"
+                print(f"\n[OK] Chunk {chunk_idx + 1}/{len(tasks)} 完成：{total} frames | {fps_done:.1f} frame/s | Worker {worker_id + 1}")
+            elif kind == "exit":
+                worker_status[worker_id] = "完成"
+            elif kind == "error":
+                raise RuntimeError(f"Worker {worker_id + 1} / chunk {chunk_idx + 1 if chunk_idx >= 0 else '?'} 失敗：\n{payload}")
+
+            now = time.perf_counter()
+            if now - last_progress_print >= 0.45 or finished_chunks == len(tasks):
+                rendered = sum(min(chunk_progress[i], chunk_totals[i]) for i in chunk_progress)
+                wall_elapsed = now - wall_start
+                live_fps = rendered / wall_elapsed if wall_elapsed > 0 else 0.0
+                pct = rendered * 100.0 / max(main_frames, 1)
+                eta = (main_frames - rendered) / live_fps if live_fps > 0 else math.inf
+                eta_text = f"{eta:.0f}s" if math.isfinite(eta) else "--"
+                parts = [f"W{i+1}:{worker_status[i]}" for i in range(workers)]
+                print(
+                    f"\r[PROGRESS] 主動畫 {pct:6.2f}% | {rendered:>6}/{main_frames} frames | "
+                    f"等效 {live_fps:6.1f} frame/s | ETA {eta_text} | " + " ".join(parts),
+                    end="", flush=True,
+                )
+                last_progress_print = now
+
+            for idx, proc in enumerate(processes):
+                if proc.exitcode not in (None, 0):
+                    raise RuntimeError(f"Worker {idx + 1} 異常退出，exitcode={proc.exitcode}")
+
+        print()
+        for idx, proc in enumerate(processes):
+            proc.join(timeout=3.0)
+            if proc.is_alive():
+                print(f"[WARN] Worker {idx + 1} 收尾逾時，強制結束（所有 chunk 已完成）。")
+                proc.terminate(); proc.join(timeout=5.0)
+
+        main_paths = [completed_paths[i] for i in range(len(tasks))]
+        print("[MAP] 準備結尾 overview...")
+        overview_map = build_overview_raster_map(data, map_style)
+        end_renderer = RideRenderer(
+            data=data, overview_map=overview_map, map_style=map_style, fps=fps,
+            video_duration=duration, zoom_out_duration=config.ZOOM_OUT_DURATION, end_hold_duration=config.END_HOLD_DURATION,
+            tile_cache_enabled=True,
+        )
+        end_path = temp_dir / "end.mp4"
+        if _encode_end_segment(end_renderer, ffmpeg, encoder, str(end_path)):
+            main_paths.append(str(end_path))
+
+        print("[INFO] 合併 chunks（stream copy，不重新編碼）...")
+        _concat_mp4_segments(ffmpeg, main_paths, output, temp_dir)
+        wall = time.perf_counter() - wall_start
+        total_frames = main_frames + end_renderer.zoom_frames + end_renderer.hold_frames
+        print(f"[RESULT] V1.0.0 wall-clock：{wall:.1f}s | 等效 {total_frames / wall if wall > 0 else 0.0:.1f} frame/s")
+    finally:
+        for proc in processes:
+            try:
+                if proc.is_alive(): proc.terminate()
+                proc.join(timeout=1.0)
+            except Exception:
+                pass
+        for q in (task_queue, result_queue):
+            if q is not None:
+                try: q.close()
+                except Exception: pass
+                try: q.cancel_join_thread()
+                except Exception: pass
+        if config.KEEP_TEMP_SEGMENTS:
+            print(f"[INFO] 保留暫存 chunks：{temp_dir}")
+        else:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def render_job(config_dict: dict | None = None):
+    """實際渲染入口。可由 CLI 或 Tkinter 啟動的子程序呼叫。"""
+    config_dict = dict(config_dict or {})
+    config.apply_render_config(config_dict)
+
+    if config_dict.get("gpx_filename"):
+        config.gpx_filename = str(config_dict["gpx_filename"])
+    if config_dict.get("output_filename"):
+        config.output_filename = str(config_dict["output_filename"])
+
+    map_style_key = str(config_dict.get("map_style_key", "1"))
+    if map_style_key not in config.MAP_STYLE_OPTIONS:
+        map_style_key = "1"
+    map_label, map_style = config.MAP_STYLE_OPTIONS[map_style_key]
+    print(f"[INFO] 地圖風格：{map_label}")
+
+    fps = config.PREVIEW_FPS if config.PREVIEW_MODE else config.FPS
+    duration = min(config.VIDEO_DURATION, config.PREVIEW_DURATION) if config.PREVIEW_MODE else config.VIDEO_DURATION
+    gpx_path = str(Path(config.gpx_filename).expanduser().resolve())
+    output_path = str(Path(config.output_filename).expanduser().resolve())
+
+    if not Path(gpx_path).is_file():
+        raise FileNotFoundError(f"找不到 GPX：{gpx_path}")
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"[INFO] 讀取 GPX：{gpx_path}")
+    data = load_gpx(gpx_path)
+    print(
+        f"[OK] {data.total_points} points | "
+        f"{data.distances[-1]:.2f} km | "
+        f"+{data.elevation_gain[-1]:.0f} m"
+    )
+    if config_dict.get("AUTO_DURATION_ENABLED"):
+        rate = float(config_dict.get("AUTO_SECONDS_PER_100KM", config.AUTO_SECONDS_PER_100KM))
+        print(
+            f"[INFO] 自動主動畫時長：{data.distances[-1]:.2f} km × {rate:g}s/100km "
+            f"→ {config.VIDEO_DURATION:.1f}s ({format_seconds_human(config.VIDEO_DURATION)})"
+        )
+
+    ffmpeg = find_ffmpeg()
+    print(f"[INFO] FFmpeg：{ffmpeg}")
+    encoder = choose_encoder(ffmpeg, fps)
+
+    main_frames = max(1, int(round(duration * fps)))
+    total_frames = main_frames + int(round(config.ZOOM_OUT_DURATION * fps)) + int(round(config.END_HOLD_DURATION * fps))
+    print(
+        f"[INFO] V1.0.0 renderer：{config.FRAME_WIDTH}x{config.FRAME_HEIGHT} @ {fps} FPS | "
+        f"{total_frames} frames | {total_frames / fps:.1f}s"
+    )
+    print("   Local chunk 會增量記住已畫軌跡；主動畫不再每幀重畫全部歷史 segments。")
+    if config.PREVIEW_MODE:
+        print(f"[INFO] Preview：{config.PREVIEW_DURATION:.1f}s 主動畫，但仍允許 {config.RENDER_WORKERS} workers 多程序渲染。")
+
+    use_parallel = bool(
+        config.PARALLEL_RENDER
+        and config.RENDER_WORKERS > 1
+        and encoder == "h264_nvenc"
+    )
+
+    parallel_ok = False
+    if use_parallel:
+        print(
+            f"[INFO] Parallel render ON：{config.RENDER_WORKERS} process(es), "
+            f"OpenCV {config.CV2_THREADS_PER_WORKER} thread(s)/process"
+        )
+        try:
+            encode_video_parallel(
+                data=data,
+                gpx_path=gpx_path,
+                map_style_key=map_style_key,
+                map_style=map_style,
+                fps=fps,
+                duration=duration,
+                ffmpeg=ffmpeg,
+                encoder=encoder,
+                output=output_path,
+            )
+            parallel_ok = True
+        except Exception as exc:
+            print(f"[WARN] Parallel render 失敗，將自動回退單 process：{exc}")
+
+    if not parallel_ok:
+        reasons = []
+        if not config.PARALLEL_RENDER:
+            reasons.append("多程序未啟用")
+        if config.RENDER_WORKERS <= 1:
+            reasons.append(f"Workers={config.RENDER_WORKERS}")
+        if encoder != "h264_nvenc":
+            reasons.append(f"encoder={encoder}")
+        if reasons:
+            print("[INFO] 單 process 原因：" + "；".join(reasons))
+        if HAVE_CV2:
+            try:
+                cv2.setNumThreads(max(1, min(os.cpu_count() or 1, 6)))
+            except Exception:
+                pass
+        overview_map = build_overview_raster_map(data, map_style)
+        renderer = RideRenderer(
+            data=data,
+            overview_map=overview_map,
+            map_style=map_style,
+            fps=fps,
+            video_duration=duration,
+            zoom_out_duration=config.ZOOM_OUT_DURATION,
+            end_hold_duration=config.END_HOLD_DURATION,
+        )
+        print("[INFO] 使用單 process fallback。")
+        encode_video(renderer, ffmpeg, encoder, output_path)
+
+    print(f"[DONE] 完成：{output_path}")
