@@ -16,6 +16,8 @@ import multiprocessing as mp
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+
 try:
     import cv2
     HAVE_CV2 = True

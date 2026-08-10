@@ -133,11 +133,17 @@ class RideRenderer:
                             pts_sub = np.arange(s0, s1 + 1)
                             seg_indices = np.interp(t_targets, elapsed_sub, pts_sub).astype(np.int32)
                         else:
-                            seg_indices = np.linspace(s0, s1, seg_frames, endpoint=endpoint_flag).astype(np.int32)
+                            d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
+                            target_dists = np.linspace(d0, d1, seg_frames, endpoint=endpoint_flag)
+                            seg_indices = np.interp(target_dists, self.d.distances[s0:s1 + 1], np.arange(s0, s1 + 1)).astype(np.int32)
                     except Exception:
-                        seg_indices = np.linspace(s0, s1, seg_frames, endpoint=endpoint_flag).astype(np.int32)
+                        d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
+                        target_dists = np.linspace(d0, d1, seg_frames, endpoint=endpoint_flag)
+                        seg_indices = np.interp(target_dists, self.d.distances[s0:s1 + 1], np.arange(s0, s1 + 1)).astype(np.int32)
                 else:
-                    seg_indices = np.linspace(s0, s1, seg_frames, endpoint=endpoint_flag).astype(np.int32)
+                    d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
+                    target_dists = np.linspace(d0, d1, seg_frames, endpoint=endpoint_flag)
+                    seg_indices = np.interp(target_dists, self.d.distances[s0:s1 + 1], np.arange(s0, s1 + 1)).astype(np.int32)
 
                 if main_idx_list and len(seg_indices) > 0 and seg_indices[0] == main_idx_list[-1]:
                     seg_indices = seg_indices[1:]
@@ -185,15 +191,17 @@ class RideRenderer:
                         t_targets = np.linspace(0, tot_t, self.main_frames)
                         self.main_indices = np.interp(t_targets, elapsed, np.arange(self.d.total_points)).astype(np.int32)
                     else:
-                        self.main_indices = np.linspace(0, self.d.total_points - 1, self.main_frames).astype(np.int32)
+                        d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
+                        target_dists = np.linspace(d0, d1, self.main_frames)
+                        self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
                 except Exception:
-                    self.main_indices = np.linspace(0, self.d.total_points - 1, self.main_frames).astype(np.int32)
+                    d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
+                    target_dists = np.linspace(d0, d1, self.main_frames)
+                    self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
             else:
-                self.main_indices = np.linspace(
-                    0,
-                    self.d.total_points - 1,
-                    self.main_frames,
-                ).astype(np.int32)
+                d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
+                target_dists = np.linspace(d0, d1, self.main_frames)
+                self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
 
         self.zoom_frames = max(0, int(round(self.zoom_out_duration * self.fps)))
         self.hold_frames = max(0, int(round(self.end_hold_duration * self.fps)))
