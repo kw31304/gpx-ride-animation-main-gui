@@ -46,6 +46,13 @@ from gpx_renderer.core.parallel import (
     render_job,
 )
 
+from gpx_renderer.core.media import (
+    MediaItem,
+    scan_media_files,
+    match_media_to_ride,
+    prepare_thumbnail,
+)
+
 __all__ = [
     "RideData",
     "latlon_to_mercator",

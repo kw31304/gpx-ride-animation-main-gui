@@ -34,6 +34,7 @@ class RideRenderer:
         zoom_out_duration: float,
         end_hold_duration: float,
         tile_cache_enabled: bool = True,
+        media_items: list | None = None,
     ):
         self.d = data
         self.rm = overview_map
@@ -65,6 +66,25 @@ class RideRenderer:
             print("[INFO] Renderer fast path：OpenCV warpAffine + local high-res tile chunks")
         elif config.USE_OPENCV_FAST_PATH:
             print("[INFO] 未安裝 OpenCV，鏡頭裁切改用 Pillow fallback。可執行：pip install opencv-python")
+
+        self.media_popups = []
+        if config.ENABLE_MEDIA and media_items:
+            from gpx_renderer.core.media import prepare_thumbnail
+            popup_duration_frames = max(1, int(round(config.MEDIA_POPUP_DURATION * self.fps)))
+            fade_frames = max(1, int(round(0.3 * self.fps)))
+            for item in media_items:
+                if item.matched_index < 0:
+                    continue
+                f_idx = int(np.argmin(np.abs(self.main_indices - item.matched_index)))
+                if item.thumbnail is None:
+                    item.thumbnail = prepare_thumbnail(item.file_path, config.MEDIA_THUMB_SIZE)
+                if item.thumbnail is not None:
+                    self.media_popups.append({
+                        "item": item,
+                        "start_frame": f_idx,
+                        "end_frame": f_idx + popup_duration_frames,
+                        "fade_frames": fade_frames,
+                    })
 
         self.track_colors = self._build_track_colors()
         self.seg_x0 = self.d.xs[:-1]
@@ -528,6 +548,67 @@ class RideRenderer:
 
         frame.paste(base.convert("RGB"))
 
+    def _draw_media_popups(self, frame: Image.Image, frame_idx: int, view_x: float, view_y: float, margin: float):
+        if not self.media_popups:
+            return
+
+        for popup in self.media_popups:
+            sf = popup["start_frame"]
+            ef = popup["end_frame"]
+            if not (sf <= frame_idx <= ef):
+                continue
+
+            ff = popup["fade_frames"]
+            if frame_idx - sf < ff:
+                raw_a = (frame_idx - sf) / float(ff)
+            elif ef - frame_idx < ff:
+                raw_a = (ef - frame_idx) / float(ff)
+            else:
+                raw_a = 1.0
+
+            alpha = ease_smoothstep(raw_a)
+            if alpha <= 0.01:
+                continue
+
+            item = popup["item"]
+            if item.mercator_x is not None and item.mercator_y is not None:
+                px, py = self._world_to_frame_px(item.mercator_x, item.mercator_y, view_x, view_y, margin)
+            else:
+                idx = item.matched_index
+                px, py = self._world_to_frame_px(float(self.d.xs[idx]), float(self.d.ys[idx]), view_x, view_y, margin)
+
+            if not (-150 <= px <= config.FRAME_WIDTH + 150 and -150 <= py <= config.FRAME_HEIGHT + 150):
+                continue
+
+            thumb = item.thumbnail
+            tw, th = thumb.size
+
+            cx = max(20, min(config.FRAME_WIDTH - tw - 20, px - tw // 2))
+            cy = max(20, min(config.FRAME_HEIGHT - th - 20, py - th - 35))
+
+            pin_target_x = cx + tw // 2
+            pin_target_y = cy + th
+
+            base = frame.convert("RGBA")
+            overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            odraw = ImageDraw.Draw(overlay)
+
+            line_alpha = int(220 * alpha)
+            odraw.line([(px, py), (pin_target_x, pin_target_y)], fill=(255, 255, 255, line_alpha), width=2)
+            odraw.ellipse((px - 5, py - 5, px + 5, py + 5), fill=config.ORANGE + (line_alpha,))
+
+            if alpha >= 0.99:
+                overlay.paste(thumb, (cx, cy), thumb)
+            else:
+                thumb_alpha = thumb.copy()
+                r, g, b, a = thumb_alpha.split()
+                a = a.point(lambda p: int(p * alpha))
+                thumb_alpha.putalpha(a)
+                overlay.paste(thumb_alpha, (cx, cy), thumb_alpha)
+
+            base.alpha_composite(overlay)
+            frame.paste(base.convert("RGB"))
+
     # ---------- frame render ----------
     def render_main_frame(self, frame_idx: int) -> Image.Image:
         i = min(max(int(frame_idx), 0), self.main_frames - 1)
@@ -543,6 +624,8 @@ class RideRenderer:
         draw = ImageDraw.Draw(frame)
         px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN)
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
+
+        self._draw_media_popups(frame, frame_idx, view_x, view_y, config.VIEW_MARGIN)
 
         hud = self._get_hud(i, idx)
         frame.paste(hud, (int(config.FRAME_WIDTH * 0.05), int(config.FRAME_HEIGHT * 0.08)), hud)

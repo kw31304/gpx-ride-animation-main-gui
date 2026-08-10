@@ -69,6 +69,10 @@ def launch_gui():
     preview_var = tk.BooleanVar(value=config.PREVIEW_MODE)
     cache_var = tk.BooleanVar(value=config.MAP_USE_CACHE)
     disable_parallel_cache_var = tk.BooleanVar(value=config.PARALLEL_DISABLE_TILE_CACHE)
+    media_var = tk.StringVar(value=config.MEDIA_PATH)
+    enable_media_var = tk.BooleanVar(value=config.ENABLE_MEDIA)
+    media_duration_var = tk.DoubleVar(value=config.MEDIA_POPUP_DURATION)
+    media_offset_var = tk.DoubleVar(value=config.MEDIA_TIME_OFFSET_SEC)
     progress_var = tk.DoubleVar(value=0.0)
     status_var = tk.StringVar(value="就緒")
     benchmark_result_var = tk.StringVar(value="Auto Tune：尚未測試")
@@ -184,6 +188,20 @@ def launch_gui():
         if p:
             out_var.set(p)
     ttk.Button(files_box, text="瀏覽…", command=browse_out).grid(row=1, column=2, padx=(8, 0), pady=4)
+
+    ttk.Label(files_box, text="媒體檔/資料夾").grid(row=2, column=0, sticky="w", padx=(0, 8), pady=4)
+    ttk.Entry(files_box, textvariable=media_var).grid(row=2, column=1, sticky="ew", pady=4)
+    def browse_media():
+        p = filedialog.askdirectory(title="選擇照片/影片資料夾")
+        if not p:
+            p = filedialog.askopenfilename(title="選擇照片或影片", filetypes=[("媒體檔案", "*.jpg;*.jpeg;*.png;*.webp;*.mp4;*.mov"), ("所有檔案", "*.*")])
+        if p:
+            media_var.set(p)
+            enable_media_var.set(True)
+    media_btn_box = ttk.Frame(files_box)
+    media_btn_box.grid(row=2, column=2, padx=(8, 0), pady=4)
+    ttk.Button(media_btn_box, text="瀏覽…", command=browse_media).pack(side="left")
+    help_button(media_btn_box, root, "media_path").pack(side="left", padx=(5, 0))
 
     # ---------- settings ----------
     settings = ttk.LabelFrame(outer, text="渲染設定", padding=10)
@@ -307,17 +325,30 @@ def launch_gui():
     ttk.Spinbox(chunks_field, from_=1, to=12, textvariable=chunks_var, width=8).pack(side="left")
     help_button(chunks_field, root, "chunks").pack(side="left", padx=(5, 0))
 
+    ttk.Label(settings, text="媒體停留秒").grid(row=6, column=0, sticky="w", pady=4)
+    media_dur_field = ttk.Frame(settings)
+    media_dur_field.grid(row=6, column=1, sticky="w")
+    ttk.Spinbox(media_dur_field, from_=1.0, to=30.0, increment=0.5, textvariable=media_duration_var, width=8).pack(side="left")
+    help_button(media_dur_field, root, "media_duration").pack(side="left", padx=(5, 0))
+
+    ttk.Label(settings, text="相機時間校正(秒)").grid(row=6, column=2, sticky="e", padx=(12, 6))
+    media_offset_field = ttk.Frame(settings)
+    media_offset_field.grid(row=6, column=3, sticky="w")
+    ttk.Entry(media_offset_field, textvariable=media_offset_var, width=8).pack(side="left")
+    help_button(media_offset_field, root, "media_offset").pack(side="left", padx=(5, 0))
+
     checks = ttk.Frame(settings)
-    checks.grid(row=6, column=0, columnspan=6, sticky="w", pady=(6, 0))
+    checks.grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
     add_check_with_help(checks, root, "多程序", parallel_var, "parallel")
     add_check_with_help(checks, root, "底圖", basemap_var, "basemap")
+    add_check_with_help(checks, root, "路線媒體卡片", enable_media_var, "enable_media")
     add_check_with_help(checks, root, "Preview（仍使用多程序）", preview_var, "preview")
     add_check_with_help(checks, root, "Contextily cache", cache_var, "contextily_cache")
     add_check_with_help(checks, root, "並行時停用 joblib cache", disable_parallel_cache_var, "parallel_cache")
 
     tune_row = ttk.Frame(settings)
-    tune_row.grid(row=7, column=0, columnspan=6, sticky="ew", pady=(8, 0))
+    tune_row.grid(row=8, column=0, columnspan=6, sticky="ew", pady=(8, 0))
     tune_row.columnconfigure(2, weight=1)
     benchmark_btn = ttk.Button(tune_row, text="效能測試 / Auto Tune", command=lambda: start_benchmark())
     benchmark_btn.grid(row=0, column=0, sticky="w")
@@ -445,6 +476,10 @@ def launch_gui():
             "PREVIEW_MODE": bool(preview_var.get()),
             "MAP_USE_CACHE": bool(cache_var.get()),
             "PARALLEL_DISABLE_TILE_CACHE": bool(disable_parallel_cache_var.get()),
+            "ENABLE_MEDIA": bool(enable_media_var.get()),
+            "MEDIA_PATH": str(Path(media_var.get().strip()).expanduser().resolve()) if media_var.get().strip() else "",
+            "MEDIA_POPUP_DURATION": float(media_duration_var.get()),
+            "MEDIA_TIME_OFFSET_SEC": float(media_offset_var.get()),
         }
 
     def set_running(running: bool):

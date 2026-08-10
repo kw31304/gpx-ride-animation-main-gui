@@ -453,10 +453,17 @@ def _dynamic_worker_loop(worker_id: int, worker_cfg: DynamicWorkerConfig, task_q
                 pass
         data = load_gpx(worker_cfg.gpx_path)
         map_style = config.MAP_STYLE_OPTIONS[worker_cfg.map_style_key][1]
+        media_items = None
+        if config.ENABLE_MEDIA and config.MEDIA_PATH:
+            from gpx_renderer.core.media import scan_media_files, match_media_to_ride
+            raw_media = scan_media_files(config.MEDIA_PATH, time_offset_sec=config.MEDIA_TIME_OFFSET_SEC, ffmpeg_exe=worker_cfg.ffmpeg)
+            media_items = match_media_to_ride(raw_media, data, data.gpx_times)
+
         renderer = RideRenderer(
             data=data, overview_map=None, map_style=map_style, fps=worker_cfg.fps,
             video_duration=worker_cfg.video_duration, zoom_out_duration=0.0, end_hold_duration=0.0,
             tile_cache_enabled=not config.PARALLEL_DISABLE_TILE_CACHE,
+            media_items=media_items,
         )
         result_queue.put(("ready", worker_id, -1, 0, 0, ""))
         while True:
@@ -483,6 +490,7 @@ def encode_video_parallel(
     ffmpeg: str,
     encoder: str,
     output: str,
+    media_items: list | None = None,
 ):
     main_frames = max(1, int(round(duration * fps)))
     workers = max(1, min(int(config.RENDER_WORKERS), main_frames))
@@ -664,6 +672,14 @@ def render_job(config_dict: dict | None = None):
     print(f"[INFO] FFmpeg：{ffmpeg}")
     encoder = choose_encoder(ffmpeg, fps)
 
+    matched_media = []
+    if config.ENABLE_MEDIA and config.MEDIA_PATH:
+        from gpx_renderer.core.media import scan_media_files, match_media_to_ride
+        print(f"[INFO] 掃描路線媒體：{config.MEDIA_PATH}")
+        raw_media = scan_media_files(config.MEDIA_PATH, time_offset_sec=config.MEDIA_TIME_OFFSET_SEC, ffmpeg_exe=ffmpeg)
+        matched_media = match_media_to_ride(raw_media, data, data.gpx_times)
+        print(f"[OK] 掃描到 {len(raw_media)} 個媒體檔案，成功與路線對齊 {len(matched_media)} 個時間點/座標")
+
     main_frames = max(1, int(round(duration * fps)))
     total_frames = main_frames + int(round(config.ZOOM_OUT_DURATION * fps)) + int(round(config.END_HOLD_DURATION * fps))
     print(
@@ -697,6 +713,7 @@ def render_job(config_dict: dict | None = None):
                 ffmpeg=ffmpeg,
                 encoder=encoder,
                 output=output_path,
+                media_items=matched_media,
             )
             parallel_ok = True
         except Exception as exc:
@@ -726,6 +743,7 @@ def render_job(config_dict: dict | None = None):
             video_duration=duration,
             zoom_out_duration=config.ZOOM_OUT_DURATION,
             end_hold_duration=config.END_HOLD_DURATION,
+            media_items=matched_media,
         )
         print("[INFO] 使用單 process fallback。")
         encode_video(renderer, ffmpeg, encoder, output_path)

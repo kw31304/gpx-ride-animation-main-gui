@@ -27,6 +27,7 @@ class RideData:
     route_center_y: float
     fit_margin: float
     speed_norm: Normalize
+    gpx_times: list | None = None
 
     @property
     def total_points(self) -> int:
@@ -186,6 +187,7 @@ def load_gpx(path: str | Path) -> RideData:
         route_center_y=route_center_y,
         fit_margin=fit_margin,
         speed_norm=Normalize(vmin=vmin, vmax=vmax, clip=True),
+        gpx_times=times,
     )
 
 

@@ -26,6 +26,7 @@
 - 依 GPX 距離自動計算影片長度
 - 多程序動態分塊渲染，支援 Workers Auto Tune
 - NVIDIA NVENC 硬體編碼，無法使用時回退至 libx264
+- 路線媒體相片/影片 EXIF 自動解析 (拍攝時間對齊與 GPS 座標匹配)
 - 局部高解析度底圖、即時軌跡、速度 HUD、小地圖與海拔圖
 - 結尾 zoom-out、完整路線總覽與騎乘統計
 - Windows 可攜式 ZIP，不必另外安裝 FFmpeg
@@ -54,8 +55,9 @@ gpx_renderer/                        核心模組套件資料夾
 │   ├── data.py                      GPX 數據解析與數學輔助
 │   ├── encoder.py                   FFmpeg/NVENC 編碼與影片合併
 │   ├── map_utils.py                 地圖下載與增量快取
+│   ├── media.py                     相片/影片 EXIF 時間/GPS 解析與縮圖快取
 │   ├── parallel.py                  多程序動態分塊與 Auto Tune
-│   └── renderer.py                  RideRenderer 畫格繪製引擎
+│   └── renderer.py                  RideRenderer 畫格繪製引擎 (含媒體卡片)
 ├── gui/                             Tkinter 圖形介面
 │   ├── app.py                       主介面與進度監控
 │   ├── components.py                UI 輔助元件
