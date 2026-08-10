@@ -88,28 +88,47 @@ class RideRenderer:
                     clusters.append(curr_cluster)
 
             base_ride_frames = max(1, int(round(self.video_duration * self.fps)))
-            base_indices = np.linspace(0, self.d.total_points - 1, base_ride_frames).astype(np.int32)
             thumb_size = max(int(config.MEDIA_THUMB_SIZE), int(min(config.FRAME_WIDTH, config.FRAME_HEIGHT) * 0.38))
-
-            main_idx_list = []
-            cluster_spot_map = {}
-            for clus in clusters:
-                spot_idx = clus[0].matched_index
-                cluster_spot_map[spot_idx] = clus
-
-            processed_spots = set()
             fade_frames = max(1, int(round(0.35 * self.fps)))
 
-            for bf_idx, gpx_pt_idx in enumerate(base_indices):
-                main_idx_list.append(gpx_pt_idx)
+            # 建立單調遞增無倒退之時間軸 (Segment-based monotonic timeline)
+            spots = [0] + [clus[0].matched_index for clus in clusters] + [self.d.total_points - 1]
+            spots = sorted(list(dict.fromkeys(spots)))
 
-                for spot_idx, clus in cluster_spot_map.items():
-                    if spot_idx not in processed_spots and abs(gpx_pt_idx - spot_idx) <= max(2, int(self.d.total_points * 0.015)):
-                        processed_spots.add(spot_idx)
+            dist_diffs = []
+            for k_idx in range(len(spots) - 1):
+                s0 = spots[k_idx]
+                s1 = spots[k_idx + 1]
+                d0 = float(self.d.distances[s0])
+                d1 = float(self.d.distances[s1])
+                dist_diffs.append(max(0.001, d1 - d0))
 
-                        k = len(clus)
-                        # 多張相片時適度延長單張停留時間
-                        item_duration_sec = float(config.MEDIA_POPUP_DURATION) + max(0.0, (k - 1) * 1.5)
+            total_dist_diff = sum(dist_diffs)
+
+            main_idx_list = []
+            cluster_by_spot = {clus[0].matched_index: clus for clus in clusters}
+            cluster_spot_processed = set()
+
+            for k_idx in range(len(spots) - 1):
+                s0 = spots[k_idx]
+                s1 = spots[k_idx + 1]
+                seg_frames = max(1, int(round(base_ride_frames * (dist_diffs[k_idx] / total_dist_diff))))
+
+                seg_indices = np.linspace(s0, s1, seg_frames, endpoint=(k_idx == len(spots) - 2)).astype(np.int32)
+
+                if main_idx_list and len(seg_indices) > 0 and seg_indices[0] == main_idx_list[-1]:
+                    seg_indices = seg_indices[1:]
+
+                for pt_idx in seg_indices:
+                    pt_val = int(pt_idx)
+                    main_idx_list.append(pt_val)
+
+                    if pt_val in cluster_by_spot and pt_val not in cluster_spot_processed:
+                        cluster_spot_processed.add(pt_val)
+                        clus = cluster_by_spot[pt_val]
+
+                        k_count = len(clus)
+                        item_duration_sec = float(config.MEDIA_POPUP_DURATION) + max(0.0, (k_count - 1) * 1.5)
                         item_dur_frames = max(1, int(round(item_duration_sec * self.fps)))
 
                         for item in clus:
@@ -127,8 +146,7 @@ class RideRenderer:
                                     "fade_frames": fade_frames,
                                 })
 
-                            # 停留機制：在媒體播放期間重複寫入當前點位，使騎士與鏡頭靜止於該處
-                            main_idx_list.extend([spot_idx] * item_dur_frames)
+                            main_idx_list.extend([pt_val] * item_dur_frames)
 
             self.main_indices = np.array(main_idx_list, dtype=np.int32)
             self.main_frames = len(self.main_indices)
