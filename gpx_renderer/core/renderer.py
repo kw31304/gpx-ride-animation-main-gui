@@ -52,13 +52,6 @@ class RideRenderer:
         base_alpha = min(max(config.CAMERA_SMOOTH, 1e-6), 1.0)
         self.camera_alpha = 1.0 - (1.0 - base_alpha) ** (60.0 / self.fps)
 
-        self.main_indices = np.linspace(
-            0,
-            self.d.total_points - 1,
-            self.main_frames,
-        ).astype(np.int32)
-        self.camera_x, self.camera_y = self._precompute_camera()
-
         self.use_cv2 = bool(config.USE_OPENCV_FAST_PATH and HAVE_CV2)
         if not self.tile_cache_enabled:
             print("[INFO] Worker tile cache：OFF（避開 contextily/joblib 多程序 cache contention）")
@@ -70,21 +63,87 @@ class RideRenderer:
         self.media_popups = []
         if config.ENABLE_MEDIA and media_items:
             from gpx_renderer.core.media import prepare_thumbnail
-            popup_duration_frames = max(1, int(round(config.MEDIA_POPUP_DURATION * self.fps)))
-            fade_frames = max(1, int(round(0.3 * self.fps)))
-            for item in media_items:
-                if item.matched_index < 0:
-                    continue
-                f_idx = int(np.argmin(np.abs(self.main_indices - item.matched_index)))
-                if item.thumbnail is None:
-                    item.thumbnail = prepare_thumbnail(item.file_path, config.MEDIA_THUMB_SIZE)
-                if item.thumbnail is not None:
-                    self.media_popups.append({
-                        "item": item,
-                        "start_frame": f_idx,
-                        "end_frame": f_idx + popup_duration_frames,
-                        "fade_frames": fade_frames,
-                    })
+
+            valid_items = [m for m in media_items if m.matched_index >= 0]
+            valid_items.sort(key=lambda m: m.matched_index)
+
+            # 群組 (Cluster) 判別：近距離點位或短時間內之相片
+            clusters = []
+            if valid_items:
+                curr_cluster = [valid_items[0]]
+                for idx_m in range(1, len(valid_items)):
+                    prev_item = curr_cluster[-1]
+                    curr_item = valid_items[idx_m]
+                    close_gpx = abs(curr_item.matched_index - prev_item.matched_index) <= max(6, int(self.d.total_points * 0.04))
+                    close_time = False
+                    if curr_item.timestamp and prev_item.timestamp:
+                        close_time = abs((curr_item.timestamp.replace(tzinfo=None) - prev_item.timestamp.replace(tzinfo=None)).total_seconds()) <= 15.0
+
+                    if close_gpx or close_time:
+                        curr_cluster.append(curr_item)
+                    else:
+                        clusters.append(curr_cluster)
+                        curr_cluster = [curr_item]
+                if curr_cluster:
+                    clusters.append(curr_cluster)
+
+            base_ride_frames = max(1, int(round(self.video_duration * self.fps)))
+            base_indices = np.linspace(0, self.d.total_points - 1, base_ride_frames).astype(np.int32)
+            thumb_size = max(int(config.MEDIA_THUMB_SIZE), int(min(config.FRAME_WIDTH, config.FRAME_HEIGHT) * 0.38))
+
+            main_idx_list = []
+            cluster_spot_map = {}
+            for clus in clusters:
+                spot_idx = clus[0].matched_index
+                cluster_spot_map[spot_idx] = clus
+
+            processed_spots = set()
+            fade_frames = max(1, int(round(0.35 * self.fps)))
+
+            for bf_idx, gpx_pt_idx in enumerate(base_indices):
+                main_idx_list.append(gpx_pt_idx)
+
+                for spot_idx, clus in cluster_spot_map.items():
+                    if spot_idx not in processed_spots and abs(gpx_pt_idx - spot_idx) <= max(2, int(self.d.total_points * 0.015)):
+                        processed_spots.add(spot_idx)
+
+                        k = len(clus)
+                        # 多張相片時適度延長單張停留時間
+                        item_duration_sec = float(config.MEDIA_POPUP_DURATION) + max(0.0, (k - 1) * 1.5)
+                        item_dur_frames = max(1, int(round(item_duration_sec * self.fps)))
+
+                        for item in clus:
+                            start_f = len(main_idx_list) - 1
+                            end_f = start_f + item_dur_frames
+
+                            if item.thumbnail is None:
+                                item.thumbnail = prepare_thumbnail(item.file_path, size=thumb_size)
+
+                            if item.thumbnail is not None:
+                                self.media_popups.append({
+                                    "item": item,
+                                    "start_frame": start_f,
+                                    "end_frame": end_f,
+                                    "fade_frames": fade_frames,
+                                })
+
+                            # 停留機制：在媒體播放期間重複寫入當前點位，使騎士與鏡頭靜止於該處
+                            main_idx_list.extend([spot_idx] * item_dur_frames)
+
+            self.main_indices = np.array(main_idx_list, dtype=np.int32)
+            self.main_frames = len(self.main_indices)
+        else:
+            self.main_frames = max(1, int(round(self.video_duration * self.fps)))
+            self.main_indices = np.linspace(
+                0,
+                self.d.total_points - 1,
+                self.main_frames,
+            ).astype(np.int32)
+
+        self.zoom_frames = max(0, int(round(self.zoom_out_duration * self.fps)))
+        self.hold_frames = max(0, int(round(self.end_hold_duration * self.fps)))
+        self.total_frames = self.main_frames + self.zoom_frames + self.hold_frames
+        self.camera_x, self.camera_y = self._precompute_camera()
 
         self.track_colors = self._build_track_colors()
         self.seg_x0 = self.d.xs[:-1]
@@ -577,25 +636,30 @@ class RideRenderer:
                 idx = item.matched_index
                 px, py = self._world_to_frame_px(float(self.d.xs[idx]), float(self.d.ys[idx]), view_x, view_y, margin)
 
-            if not (-150 <= px <= config.FRAME_WIDTH + 150 and -150 <= py <= config.FRAME_HEIGHT + 150):
+            if not (-200 <= px <= config.FRAME_WIDTH + 200 and -200 <= py <= config.FRAME_HEIGHT + 200):
                 continue
 
             thumb = item.thumbnail
             tw, th = thumb.size
 
             cx = max(20, min(config.FRAME_WIDTH - tw - 20, px - tw // 2))
-            cy = max(20, min(config.FRAME_HEIGHT - th - 20, py - th - 35))
+            if py - th - 40 < int(config.FRAME_HEIGHT * 0.12):
+                cy = min(config.FRAME_HEIGHT - th - 20, py + 30)
+                pin_target_y = cy
+            else:
+                cy = max(20, py - th - 35)
+                pin_target_y = cy + th
 
             pin_target_x = cx + tw // 2
-            pin_target_y = cy + th
 
             base = frame.convert("RGBA")
             overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
             odraw = ImageDraw.Draw(overlay)
 
-            line_alpha = int(220 * alpha)
-            odraw.line([(px, py), (pin_target_x, pin_target_y)], fill=(255, 255, 255, line_alpha), width=2)
-            odraw.ellipse((px - 5, py - 5, px + 5, py + 5), fill=config.ORANGE + (line_alpha,))
+            line_alpha = int(230 * alpha)
+            odraw.line([(px, py), (pin_target_x, pin_target_y)], fill=(255, 255, 255, line_alpha), width=3)
+            odraw.ellipse((px - 7, py - 7, px + 7, py + 7), fill=config.ORANGE + (line_alpha,))
+            odraw.ellipse((px - 3, py - 3, px + 3, py + 3), fill=(255, 255, 255, line_alpha))
 
             if alpha >= 0.99:
                 overlay.paste(thumb, (cx, cy), thumb)

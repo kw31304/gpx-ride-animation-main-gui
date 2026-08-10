@@ -253,7 +253,7 @@ def match_media_to_ride(
     return [m for m in media_items if m.matched_index >= 0]
 
 
-def prepare_thumbnail(file_path: str, size: int = 240) -> Optional[Image.Image]:
+def prepare_thumbnail(file_path: str, size: int = 480) -> Optional[Image.Image]:
     """生成帶圓角與邊框的精美媒體縮圖卡片。"""
     path = Path(file_path)
     if not path.is_file():
@@ -263,10 +263,10 @@ def prepare_thumbnail(file_path: str, size: int = 240) -> Optional[Image.Image]:
         with Image.open(path) as img:
             img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
-            img.thumbnail((size, size), Image.Resampling.BILINEAR)
+            img.thumbnail((size, size), Image.Resampling.LANCZOS)
             w, h = img.size
 
-            radius = max(8, int(min(w, h) * 0.08))
+            radius = max(12, int(min(w, h) * 0.06))
             card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
             mask = Image.new("L", (w, h), 0)
             mdraw = ImageDraw.Draw(mask)
@@ -274,7 +274,7 @@ def prepare_thumbnail(file_path: str, size: int = 240) -> Optional[Image.Image]:
 
             card.paste(img, (0, 0), mask)
             cdraw = ImageDraw.Draw(card)
-            cdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, outline=(255, 255, 255, 220), width=2)
+            cdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, outline=(255, 255, 255, 240), width=3)
             return card
     except Exception:
         return None
