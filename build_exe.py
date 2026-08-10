@@ -51,67 +51,19 @@ def main():
             ffmpeg_src = Path(system_ffmpeg)
             print(f"[OK] 找到系統 FFmpeg 核心：{ffmpeg_src}")
 
-    # 3. 準備打包參數
-    entry_point = project_root / "GPX_Ride_Renderer.py"
+    # 3. 執行 PyInstaller 編譯 (.spec 檔模式)
+    spec_file = project_root / "GPX_Ride_Renderer.spec"
     dist_dir = project_root / "dist"
-    assets_dir = project_root / "gpx_renderer" / "assets"
-
-    add_data_args = []
-    if assets_dir.exists():
-        add_data_args.extend(["--add-data", f"{assets_dir};gpx_renderer/assets"])
-
-    hidden_imports = [
-        "gpx_renderer",
-        "gpx_renderer.config",
-        "gpx_renderer.utils",
-        "gpx_renderer.utils.env",
-        "gpx_renderer.utils.font",
-        "gpx_renderer.core",
-        "gpx_renderer.core.data",
-        "gpx_renderer.core.map_utils",
-        "gpx_renderer.core.encoder",
-        "gpx_renderer.core.renderer",
-        "gpx_renderer.core.parallel",
-        "gpx_renderer.core.media",
-        "gpx_renderer.gui",
-        "gpx_renderer.gui.app",
-        "gpx_renderer.gui.help",
-        "PIL",
-        "PIL.Image",
-        "PIL.ImageDraw",
-        "PIL.ImageFont",
-        "PIL.ImageFilter",
-        "cv2",
-        "numpy",
-        "matplotlib",
-        "gpxpy",
-        "requests",
-        "contextily",
-        "geopy",
-        "shapely",
-        "pyproj",
-        "exifread",
-        "imageio_ffmpeg",
-    ]
-
-    hidden_import_args = []
-    for mod in hidden_imports:
-        hidden_import_args.extend(["--hidden-import", mod])
 
     cmd = [
         str(venv_python),
         "-m",
         "PyInstaller",
         "--noconfirm",
-        "--onedir",
-        "--windowed",
-        "--name=GPX_Ride_Renderer",
-        *add_data_args,
-        *hidden_import_args,
-        str(entry_point),
+        str(spec_file),
     ]
 
-    print(f"[INFO] 正在執行 PyInstaller 編譯打包...")
+    print("[INFO] 正在執行 PyInstaller 編譯打包 (讀取 GPX_Ride_Renderer.spec)...")
     subprocess.check_call(cmd, cwd=str(project_root))
 
     # 4. 複製 ffmpeg.exe 至 EXE 輸出資料夾

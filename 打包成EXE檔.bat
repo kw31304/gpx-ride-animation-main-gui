@@ -1,8 +1,10 @@
 @echo off
-chcp 65001 >nul
-title 打包 GPX Ride Renderer 成 EXE 檔
+setlocal
+cd /d "%~dp0"
+title Build GPX Ride Renderer EXE
+
 echo ========================================================================
-echo   GPX Ride Renderer - 一鍵打包 EXE 腳本
+echo   GPX Ride Renderer - Build EXE Script
 echo ========================================================================
 echo.
 
@@ -16,6 +18,6 @@ if not exist "%PYTHON_EXE%" (
 
 echo.
 echo ========================================================================
-echo   打包結束！按任意鍵退出...
+echo   Build finished! Press any key to exit.
 echo ========================================================================
-pause >nul
+pause
