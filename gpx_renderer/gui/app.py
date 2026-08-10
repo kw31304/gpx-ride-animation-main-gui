@@ -73,6 +73,7 @@ def launch_gui():
     enable_media_var = tk.BooleanVar(value=config.ENABLE_MEDIA)
     media_duration_var = tk.DoubleVar(value=config.MEDIA_POPUP_DURATION)
     media_offset_var = tk.DoubleVar(value=config.MEDIA_TIME_OFFSET_SEC)
+    real_speed_var = tk.BooleanVar(value=config.USE_REAL_SPEED)
     progress_var = tk.DoubleVar(value=0.0)
     status_var = tk.StringVar(value="就緒")
     benchmark_result_var = tk.StringVar(value="Auto Tune：尚未測試")
@@ -342,6 +343,7 @@ def launch_gui():
 
     add_check_with_help(checks, root, "多程序", parallel_var, "parallel")
     add_check_with_help(checks, root, "底圖", basemap_var, "basemap")
+    add_check_with_help(checks, root, "跟隨 GPX 實際速度", real_speed_var, "use_real_speed")
     add_check_with_help(checks, root, "路線媒體卡片", enable_media_var, "enable_media")
     add_check_with_help(checks, root, "Preview（仍使用多程序）", preview_var, "preview")
     add_check_with_help(checks, root, "Contextily cache", cache_var, "contextily_cache")
@@ -480,6 +482,7 @@ def launch_gui():
             "MEDIA_PATH": str(Path(media_var.get().strip()).expanduser().resolve()) if media_var.get().strip() else "",
             "MEDIA_POPUP_DURATION": float(media_duration_var.get()),
             "MEDIA_TIME_OFFSET_SEC": float(media_offset_var.get()),
+            "USE_REAL_SPEED": bool(real_speed_var.get()),
         }
 
     def set_running(running: bool):

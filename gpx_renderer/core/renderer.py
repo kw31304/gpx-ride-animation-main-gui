@@ -96,26 +96,48 @@ class RideRenderer:
             spots = [0] + [clus[0].matched_index for clus in clusters] + [self.d.total_points - 1]
             spots = sorted(list(dict.fromkeys(spots)))
 
-            dist_diffs = []
+            use_real = bool(config.USE_REAL_SPEED and self.d.gpx_times and len(self.d.gpx_times) == self.d.total_points and self.d.gpx_times[0] is not None)
+
+            span_weights = []
             for k_idx in range(len(spots) - 1):
-                s0 = spots[k_idx]
-                s1 = spots[k_idx + 1]
-                d0 = float(self.d.distances[s0])
-                d1 = float(self.d.distances[s1])
-                dist_diffs.append(max(0.001, d1 - d0))
+                s0, s1 = spots[k_idx], spots[k_idx + 1]
+                if use_real:
+                    try:
+                        dt = (self.d.gpx_times[s1].replace(tzinfo=None) - self.d.gpx_times[s0].replace(tzinfo=None)).total_seconds()
+                        span_weights.append(max(0.001, dt))
+                    except Exception:
+                        d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
+                        span_weights.append(max(0.001, d1 - d0))
+                else:
+                    d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
+                    span_weights.append(max(0.001, d1 - d0))
 
-            total_dist_diff = sum(dist_diffs)
-
+            total_weight = sum(span_weights)
             main_idx_list = []
             cluster_by_spot = {clus[0].matched_index: clus for clus in clusters}
             cluster_spot_processed = set()
 
             for k_idx in range(len(spots) - 1):
-                s0 = spots[k_idx]
-                s1 = spots[k_idx + 1]
-                seg_frames = max(1, int(round(base_ride_frames * (dist_diffs[k_idx] / total_dist_diff))))
+                s0, s1 = spots[k_idx], spots[k_idx + 1]
+                seg_frames = max(1, int(round(base_ride_frames * (span_weights[k_idx] / total_weight))))
+                endpoint_flag = (k_idx == len(spots) - 2)
 
-                seg_indices = np.linspace(s0, s1, seg_frames, endpoint=(k_idx == len(spots) - 2)).astype(np.int32)
+                if use_real:
+                    try:
+                        times_sub = self.d.gpx_times[s0:s1 + 1]
+                        tb = times_sub[0].replace(tzinfo=None)
+                        elapsed_sub = np.array([(t.replace(tzinfo=None) - tb).total_seconds() for t in times_sub], dtype=np.float64)
+                        tot_t = elapsed_sub[-1]
+                        if tot_t > 0:
+                            t_targets = np.linspace(0, tot_t, seg_frames, endpoint=endpoint_flag)
+                            pts_sub = np.arange(s0, s1 + 1)
+                            seg_indices = np.interp(t_targets, elapsed_sub, pts_sub).astype(np.int32)
+                        else:
+                            seg_indices = np.linspace(s0, s1, seg_frames, endpoint=endpoint_flag).astype(np.int32)
+                    except Exception:
+                        seg_indices = np.linspace(s0, s1, seg_frames, endpoint=endpoint_flag).astype(np.int32)
+                else:
+                    seg_indices = np.linspace(s0, s1, seg_frames, endpoint=endpoint_flag).astype(np.int32)
 
                 if main_idx_list and len(seg_indices) > 0 and seg_indices[0] == main_idx_list[-1]:
                     seg_indices = seg_indices[1:]
@@ -153,11 +175,25 @@ class RideRenderer:
             self.main_frames = len(self.main_indices)
         else:
             self.main_frames = max(1, int(round(self.video_duration * self.fps)))
-            self.main_indices = np.linspace(
-                0,
-                self.d.total_points - 1,
-                self.main_frames,
-            ).astype(np.int32)
+            use_real = bool(config.USE_REAL_SPEED and self.d.gpx_times and len(self.d.gpx_times) == self.d.total_points and self.d.gpx_times[0] is not None)
+            if use_real:
+                try:
+                    tb = self.d.gpx_times[0].replace(tzinfo=None)
+                    elapsed = np.array([(t.replace(tzinfo=None) - tb).total_seconds() for t in self.d.gpx_times], dtype=np.float64)
+                    tot_t = elapsed[-1]
+                    if tot_t > 0:
+                        t_targets = np.linspace(0, tot_t, self.main_frames)
+                        self.main_indices = np.interp(t_targets, elapsed, np.arange(self.d.total_points)).astype(np.int32)
+                    else:
+                        self.main_indices = np.linspace(0, self.d.total_points - 1, self.main_frames).astype(np.int32)
+                except Exception:
+                    self.main_indices = np.linspace(0, self.d.total_points - 1, self.main_frames).astype(np.int32)
+            else:
+                self.main_indices = np.linspace(
+                    0,
+                    self.d.total_points - 1,
+                    self.main_frames,
+                ).astype(np.int32)
 
         self.zoom_frames = max(0, int(round(self.zoom_out_duration * self.fps)))
         self.hold_frames = max(0, int(round(self.end_hold_duration * self.fps)))
@@ -476,9 +512,9 @@ class RideRenderer:
     # ---------- elevation ----------
     def _init_elevation(self):
         d = self.d
-        self.elev_w = int(round(config.FRAME_WIDTH * 0.56))
-        self.elev_h = int(round(config.FRAME_HEIGHT * 0.155))
         self.elev_x = int(round(config.FRAME_WIDTH * 0.045))
+        self.elev_w = int(round(config.FRAME_WIDTH * 0.91))
+        self.elev_h = int(round(config.FRAME_HEIGHT * 0.155))
         self.elev_y = int(round(config.FRAME_HEIGHT * 0.80))
         pad = max(12, int(round(15 * self.ui_scale)))
         label_h = max(18, int(round(22 * self.ui_scale)))
@@ -695,8 +731,6 @@ class RideRenderer:
         px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN)
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
-        self._draw_media_popups(frame, frame_idx, view_x, view_y, config.VIEW_MARGIN)
-
         hud = self._get_hud(i, idx)
         frame.paste(hud, (int(config.FRAME_WIDTH * 0.05), int(config.FRAME_HEIGHT * 0.08)), hud)
 
@@ -705,6 +739,10 @@ class RideRenderer:
 
         elev = self._compose_elevation(idx)
         frame.paste(elev, (self.elev_x, self.elev_y), elev)
+
+        # 媒體卡片與背景暗化遮罩放置於最頂層 (無法被 HUD / 小地圖 / 海拔圖遮擋)
+        self._draw_media_popups(frame, frame_idx, view_x, view_y, config.VIEW_MARGIN)
+
         return frame
 
     def render_end_frame(self, end_frame_idx: int) -> Image.Image:
