@@ -227,7 +227,7 @@ class MediaManagerDialog(tk.Toplevel):
         on_apply: Optional[Callable[[List[MediaItem], float, float], None]] = None,
     ):
         super().__init__(parent)
-        self.title("📷 路線媒體微調與文字標籤管理")
+        self.title("路線媒體管理")
         self.geometry("1200x700")
         self.minsize(1000, 600)
         self.transient(parent)
@@ -261,7 +261,7 @@ class MediaManagerDialog(tk.Toplevel):
         header_sub.pack(fill="x", pady=(0, 6))
         ttk.Label(
             header_sub,
-            text="📷 路線媒體對齊與文字標籤編輯器",
+            text="路線媒體對齊與文字標籤編輯器",
             font=("Segoe UI", 12, "bold"),
         ).pack(side="left")
         ttk.Label(
