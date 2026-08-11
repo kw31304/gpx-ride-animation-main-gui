@@ -123,6 +123,13 @@ class LocalChunkState:
     track_upto: int = 0  # 已燒入的 segment 數量；segment id 範圍 [0, track_upto)
 
 
+def _get_max_view_margins():
+    aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    if aspect >= 1.0:
+        return config.VIEW_MARGIN * aspect, config.VIEW_MARGIN
+    return config.VIEW_MARGIN, config.VIEW_MARGIN / aspect
+
+
 class LocalBasemapCache:
     """主動畫局部高解析底圖 + 已完成軌跡的增量 raster cache。"""
     def __init__(
@@ -155,20 +162,25 @@ class LocalBasemapCache:
         self.use_cv2 = bool(use_cv2 and HAVE_CV2)
 
     def _key(self, view_x: float, view_y: float):
-        step = max(float(config.LOCAL_CHUNK_STEP_M), config.VIEW_MARGIN * 1.25)
+        margin_x, margin_y = _get_max_view_margins()
+        max_margin = max(margin_x, margin_y)
+        step = max(float(config.LOCAL_CHUNK_STEP_M), max_margin * 1.25)
         gx = int(round(view_x / step))
         gy = int(round(view_y / step))
         return gx, gy
 
     def _build_chunk(self, key) -> LocalChunkState:
         gx, gy = key
-        step = max(float(config.LOCAL_CHUNK_STEP_M), config.VIEW_MARGIN * 1.25)
+        margin_x, margin_y = _get_max_view_margins()
+        max_margin = max(margin_x, margin_y)
+        step = max(float(config.LOCAL_CHUNK_STEP_M), max_margin * 1.25)
         cx0 = gx * step
         cy0 = gy * step
 
-        half = config.VIEW_MARGIN + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
-        west, east = cx0 - half, cx0 + half
-        south, north = cy0 - half, cy0 + half
+        half_x = margin_x + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
+        half_y = margin_y + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
+        west, east = cx0 - half_x, cx0 + half_x
+        south, north = cy0 - half_y, cy0 + half_y
 
         if not config.ENABLE_BASEMAP:
             image = Image.new("RGB", (1024, 1024), (17, 17, 17))
@@ -189,8 +201,9 @@ class LocalBasemapCache:
         return np.rint(px).astype(np.int32), np.rint(py).astype(np.int32)
 
     def _source_track_width(self, rm: RasterMap) -> int:
+        margin_x, _ = _get_max_view_margins()
         src_ppm_x = (rm.width - 1) / max(rm.east - rm.west, 1e-9)
-        out_ppm_x = config.FRAME_WIDTH / max(2.0 * config.VIEW_MARGIN, 1e-9)
+        out_ppm_x = config.FRAME_WIDTH / max(2.0 * margin_x, 1e-9)
         width = config.TRACK_LINE_WIDTH * src_ppm_x / max(out_ppm_x, 1e-9)
         return max(1, int(round(width)))
 
