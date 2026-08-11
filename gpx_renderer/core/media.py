@@ -34,6 +34,8 @@ class MediaItem:
     matched_index: int = -1  # 匹配之 RideData xs/ys 陣列索引
     matched_frame: int = -1  # 匹配之動畫主畫格索引
     thumbnail: Optional[Image.Image] = None  # 快取縮圖
+    caption: str = ""  # 照片下方自訂說明文字
+    manual_distance_km: Optional[float] = None  # 手動指定之里程數 (km)
 
 
 def _convert_dms_to_deg(dms, ref: str) -> float:
@@ -180,6 +182,13 @@ def scan_media_files(
                 if ext in image_exts or ext in video_exts:
                     files.append(Path(root_dir) / fn)
 
+    overrides = {}
+    if getattr(config, "MEDIA_OVERRIDES_JSON", None):
+        try:
+            overrides = json.loads(config.MEDIA_OVERRIDES_JSON)
+        except Exception:
+            overrides = {}
+
     items = []
     for f in sorted(files):
         ext = f.suffix.lower()
@@ -200,7 +209,16 @@ def scan_media_files(
             mx = float(mx_arr[0])
             my = float(my_arr[0])
 
-        if dt is not None or (mx is not None and my is not None):
+        item_ovr = overrides.get(f.name) or overrides.get(str(f)) or {}
+        caption = str(item_ovr.get("caption", "") or "")
+        man_dist = item_ovr.get("manual_distance_km")
+        if man_dist is not None:
+            try:
+                man_dist = float(man_dist)
+            except Exception:
+                man_dist = None
+
+        if dt is not None or (mx is not None and my is not None) or (man_dist is not None and man_dist >= 0):
             items.append(MediaItem(
                 file_path=str(f),
                 filename=f.name,
@@ -210,6 +228,8 @@ def scan_media_files(
                 lon=lon,
                 mercator_x=mx,
                 mercator_y=my,
+                caption=caption,
+                manual_distance_km=man_dist,
             ))
 
     return items
@@ -230,6 +250,14 @@ def match_media_to_ride(
     for item in media_items:
         item.matched_index = -1
         item.matched_frame = -1
+
+        # 0. 手動覆寫里程點 (最高優先權)
+        if item.manual_distance_km is not None and item.manual_distance_km >= 0:
+            target_km = float(item.manual_distance_km)
+            dists = np.abs(ride_data.distances - target_km)
+            best_i = int(np.argmin(dists))
+            item.matched_index = best_i
+            continue
 
         if has_gpx_times and item.timestamp is not None:
             # 去除 時區 影響做比對

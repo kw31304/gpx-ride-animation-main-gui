@@ -740,6 +740,41 @@ class RideRenderer:
                 thumb_alpha.putalpha(a)
                 overlay.paste(thumb_alpha, (cx, cy), thumb_alpha)
 
+            # 若照片設定有自訂說明文字，於相片下方繪製質感浮雕文字標籤列
+            caption_text = str(getattr(item, "caption", "") or "").strip()
+            if caption_text:
+                odraw = ImageDraw.Draw(overlay)
+                font = self.font_panel_label
+                tb = odraw.textbbox((0, 0), caption_text, font=font)
+                text_w = tb[2] - tb[0]
+                text_h = tb[3] - tb[1]
+
+                s = self.ui_scale
+                pad_x = max(14, int(round(18 * s)))
+                pad_y = max(6, int(round(8 * s)))
+                gap = max(10, int(round(14 * s)))
+
+                cap_w = text_w + 2 * pad_x
+                cap_h = text_h + 2 * pad_y
+                cap_x = (config.FRAME_WIDTH - cap_w) // 2
+                cap_y = cy + th + gap
+
+                # 若文字標籤超出畫面底部，向上移至照片卡片內部下方
+                if cap_y + cap_h > config.FRAME_HEIGHT - int(20 * s):
+                    cap_y = cy + th - cap_h - int(12 * s)
+
+                radius = max(10, int(round(14 * s)))
+                odraw.rounded_rectangle(
+                    (cap_x, cap_y, cap_x + cap_w - 1, cap_y + cap_h - 1),
+                    radius=radius,
+                    fill=(9, 13, 18, int(200 * alpha)),
+                    outline=(255, 255, 255, int(45 * alpha)),
+                    width=max(1, int(round(s))),
+                )
+                tx = cap_x + pad_x - tb[0]
+                ty = cap_y + pad_y - tb[1]
+                odraw.text((tx, ty), caption_text, font=font, fill=(255, 255, 255, int(245 * alpha)))
+
             base.alpha_composite(overlay)
             frame.paste(base.convert("RGB"))
 

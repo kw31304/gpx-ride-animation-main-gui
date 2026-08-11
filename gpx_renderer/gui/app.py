@@ -392,6 +392,51 @@ def launch_gui():
     ttk.Entry(media_offset_field, textvariable=media_offset_var, width=8).pack(side="left")
     help_button(media_offset_field, root, "media_offset").pack(side="left", padx=(5, 0))
 
+    media_mgr_field = ttk.Frame(settings)
+    media_mgr_field.grid(row=6, column=4, columnspan=2, sticky="w", padx=(12, 0))
+    ttk.Button(media_mgr_field, text="📷 媒體微調與文字標籤", command=lambda: open_media_dialog()).pack(side="left")
+
+    def open_media_dialog():
+        media_path = media_var.get().strip()
+        gpx_path = gpx_var.get().strip()
+
+        if not media_path:
+            messagebox.showwarning("提示", "請先在主介面選擇路線媒體路徑。")
+            return
+        if not gpx_path or not Path(gpx_path).is_file():
+            messagebox.showwarning("提示", "請先選擇有效的 GPX 軌跡檔案。")
+            return
+
+        try:
+            from gpx_renderer.core.data import load_gpx
+            from gpx_renderer.core.media import scan_media_files
+            from gpx_renderer.gui.media_dialog import MediaManagerDialog
+
+            data = load_gpx(gpx_path)
+            scanned = scan_media_files(media_path, time_offset_sec=float(media_offset_var.get()))
+
+            if not scanned:
+                messagebox.showinfo("提示", "在指定的媒體路徑下未找到相應的照片或影片。")
+                return
+
+            def on_media_applied(updated_items):
+                overrides = {}
+                for item in updated_items:
+                    if item.caption or (item.manual_distance_km is not None and item.manual_distance_km >= 0):
+                        overrides[item.filename] = {
+                            "caption": item.caption,
+                            "manual_distance_km": item.manual_distance_km,
+                        }
+                json_str = json.dumps(overrides, ensure_ascii=False)
+                config.MEDIA_OVERRIDES_JSON = json_str
+                state["media_overrides_json"] = json_str
+                append_log(f"[INFO] 已儲存 {len(overrides)} 個媒體檔案的手動微調里程與說明文字。")
+
+            MediaManagerDialog(root, scanned, data.distances[-1], on_media_applied)
+
+        except Exception as exc:
+            messagebox.showerror("錯誤", f"無法開啟媒體微調視窗：{exc}")
+
     checks = ttk.Frame(settings)
     checks.grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
@@ -536,6 +581,7 @@ def launch_gui():
             "MEDIA_PATH": str(Path(media_var.get().strip()).expanduser().resolve()) if media_var.get().strip() else "",
             "MEDIA_POPUP_DURATION": float(media_duration_var.get()),
             "MEDIA_TIME_OFFSET_SEC": float(media_offset_var.get()),
+            "MEDIA_OVERRIDES_JSON": state.get("media_overrides_json", getattr(config, "MEDIA_OVERRIDES_JSON", "{}")),
             "USE_REAL_SPEED": bool(real_speed_var.get()),
         }
 
