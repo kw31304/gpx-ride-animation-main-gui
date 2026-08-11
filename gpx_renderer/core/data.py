@@ -106,7 +106,7 @@ def format_seconds_human(seconds: float) -> str:
     return f"{minutes}m {sec:02d}s"
 
 
-def load_gpx(path: str | Path) -> RideData:
+def load_gpx(path: str | Path, hide_start_km: float = 0.0, hide_end_km: float = 0.0) -> RideData:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"找不到 GPX：{path.resolve()}")
