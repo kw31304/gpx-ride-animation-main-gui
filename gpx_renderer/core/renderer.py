@@ -458,28 +458,38 @@ class RideRenderer:
     # ---------- minimap ----------
     def _init_minimap(self):
         d = self.d
-        self.mini_w = int(round(config.FRAME_WIDTH * 0.245))
-        self.mini_h = int(round(config.FRAME_HEIGHT * 0.245))
-        self.mini_x = int(round(config.FRAME_WIDTH * 0.715))
-        self.mini_y = int(round(config.FRAME_HEIGHT * 0.055)) + self.mini_h
-        self.mini_pad = max(12, int(round(15 * self.ui_scale)))
-        label_h = max(18, int(round(22 * self.ui_scale)))
+        s = self.ui_scale
 
-        span_x = max(float(np.ptp(d.xs)), 1.0)
-        span_y = max(float(np.ptp(d.ys)), 1.0)
-        pad_x = span_x * 0.10
-        pad_y = span_y * 0.10
-        self.mini_west = float(d.xs.min() - pad_x)
-        self.mini_east = float(d.xs.max() + pad_x)
-        self.mini_south = float(d.ys.min() - pad_y)
-        self.mini_north = float(d.ys.max() + pad_y)
+        self.mini_w = max(220, int(round(280 * s)))
+        self.mini_h = max(150, int(round(180 * s)))
+        margin_right = max(16, int(round(20 * s)))
+        margin_top = max(16, int(round(20 * s)))
+        self.mini_x = config.FRAME_WIDTH - self.mini_w - margin_right
+        self.mini_y = margin_top + self.mini_h
 
-        left = self.mini_pad
-        right = self.mini_w - self.mini_pad
-        top = self.mini_pad + label_h
-        bottom = self.mini_h - self.mini_pad
-        self.mini_px_x = left + (d.xs - self.mini_west) / (self.mini_east - self.mini_west) * max(right - left, 1)
-        self.mini_px_y = top + (self.mini_north - d.ys) / (self.mini_north - self.mini_south) * max(bottom - top, 1)
+        self.mini_pad = max(10, int(round(14 * s)))
+        label_h = max(16, int(round(20 * s)))
+
+        avail_w = max(self.mini_w - 2 * self.mini_pad, 1)
+        avail_h = max(self.mini_h - 2 * self.mini_pad - label_h, 1)
+
+        min_x, max_x = float(d.xs.min()), float(d.xs.max())
+        min_y, max_y = float(d.ys.min()), float(d.ys.max())
+        center_x = (min_x + max_x) * 0.5
+        center_y = (min_y + max_y) * 0.5
+
+        route_w = max(max_x - min_x, 1.0)
+        route_h = max(max_y - min_y, 1.0)
+
+        scale_x = (avail_w * 0.85) / route_w
+        scale_y = (avail_h * 0.85) / route_h
+        scale = min(scale_x, scale_y)
+
+        center_px_x = self.mini_pad + avail_w * 0.5
+        center_px_y = self.mini_pad + label_h + avail_h * 0.5
+
+        self.mini_px_x = center_px_x + (d.xs - center_x) * scale
+        self.mini_px_y = center_px_y - (d.ys - center_y) * scale
 
         self.mini_layer = Image.new("RGBA", (self.mini_w, self.mini_h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(self.mini_layer)
