@@ -202,6 +202,7 @@ def launch_gui():
     media_btn_box = ttk.Frame(files_box)
     media_btn_box.grid(row=2, column=2, padx=(8, 0), pady=4)
     ttk.Button(media_btn_box, text="瀏覽…", command=browse_media).pack(side="left")
+    ttk.Button(media_btn_box, text="📷 媒體微調與文字標籤", command=lambda: open_media_dialog()).pack(side="left", padx=(6, 0))
     help_button(media_btn_box, root, "media_path").pack(side="left", padx=(5, 0))
 
     # ---------- settings ----------
