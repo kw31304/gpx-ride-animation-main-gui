@@ -90,12 +90,14 @@ def build_overview_raster_map(data: RideData, map_style) -> RasterMap:
     """只供結尾 zoom-out 使用的全程低/中解析總覽圖。"""
     end_view_x, end_view_y, end_margin = compute_end_route_view(data)
     aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    import math
+    diag_factor = math.sqrt(1.0 + aspect * aspect) if getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up" else 1.0
     if aspect >= 1.0:
-        end_margin_x, end_margin_y = end_margin * aspect, end_margin
-        view_margin_x, view_margin_y = config.VIEW_MARGIN * aspect, config.VIEW_MARGIN
+        end_margin_x, end_margin_y = end_margin * aspect * diag_factor, end_margin * diag_factor
+        view_margin_x, view_margin_y = config.VIEW_MARGIN * aspect * diag_factor, config.VIEW_MARGIN * diag_factor
     else:
-        end_margin_x, end_margin_y = end_margin, end_margin / aspect
-        view_margin_x, view_margin_y = config.VIEW_MARGIN, config.VIEW_MARGIN / aspect
+        end_margin_x, end_margin_y = end_margin * diag_factor, (end_margin / aspect) * diag_factor
+        view_margin_x, view_margin_y = config.VIEW_MARGIN * diag_factor, (config.VIEW_MARGIN / aspect) * diag_factor
 
     west = min(float(data.xs.min() - view_margin_x), end_view_x - end_margin_x)
     east = max(float(data.xs.max() + view_margin_x), end_view_x + end_margin_x)

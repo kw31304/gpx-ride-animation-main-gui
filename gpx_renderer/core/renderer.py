@@ -25,12 +25,9 @@ from gpx_renderer.core.map_utils import RasterMap, LocalBasemapCache
 
 def _get_aspect_margins(margin: float):
     aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
-    m = margin
-    if getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up":
-        m = m * math.sqrt(1.0 + aspect * aspect)
     if aspect >= 1.0:
-        return m * aspect, m
-    return m, m / aspect
+        return margin * aspect, margin
+    return margin, margin / aspect
 
 
 class RideRenderer:
