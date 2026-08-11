@@ -433,7 +433,7 @@ def launch_gui():
                 state["media_overrides_json"] = json_str
                 append_log(f"[INFO] 已儲存 {len(overrides)} 個媒體檔案的手動微調里程與說明文字。")
 
-            MediaManagerDialog(root, scanned, data.distances[-1], on_media_applied)
+            MediaManagerDialog(root, scanned, data, on_media_applied)
 
         except Exception as exc:
             messagebox.showerror("錯誤", f"無法開啟媒體微調視窗：{exc}")
