@@ -23,6 +23,13 @@ from gpx_renderer.core.data import RideData, ease_smoothstep, compute_end_route_
 from gpx_renderer.core.map_utils import RasterMap, LocalBasemapCache
 
 
+def _get_aspect_margins(margin: float):
+    aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    if aspect >= 1.0:
+        return margin * aspect, margin
+    return margin, margin / aspect
+
+
 class RideRenderer:
     def __init__(
         self,
@@ -271,10 +278,11 @@ class RideRenderer:
         return cx_arr, cy_arr
 
     def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float):
-        left = view_x - margin
-        top = view_y + margin
-        px = (x - left) / (2.0 * margin) * config.FRAME_WIDTH
-        py = (top - y) / (2.0 * margin) * config.FRAME_HEIGHT
+        margin_x, margin_y = _get_aspect_margins(margin)
+        left = view_x - margin_x
+        top = view_y + margin_y
+        px = (x - left) / (2.0 * margin_x) * config.FRAME_WIDTH
+        py = (top - y) / (2.0 * margin_y) * config.FRAME_HEIGHT
         return int(round(px)), int(round(py))
 
     def _build_track_colors(self):
@@ -284,10 +292,11 @@ class RideRenderer:
         return [tuple(map(int, c[:3])) for c in rgba]
 
     def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float) -> Image.Image:
-        left_world = view_x - margin
-        right_world = view_x + margin
-        top_world = view_y + margin
-        bottom_world = view_y - margin
+        margin_x, margin_y = _get_aspect_margins(margin)
+        left_world = view_x - margin_x
+        right_world = view_x + margin_x
+        top_world = view_y + margin_y
+        bottom_world = view_y - margin_y
 
         left_px = (left_world - rm.west) / (rm.east - rm.west) * (rm.width - 1)
         right_px = (right_world - rm.west) / (rm.east - rm.west) * (rm.width - 1)
@@ -326,8 +335,9 @@ class RideRenderer:
         if seg_count <= 0:
             return frame
 
-        left, right = view_x - margin, view_x + margin
-        bottom, top = view_y - margin, view_y + margin
+        margin_x, margin_y = _get_aspect_margins(margin)
+        left, right = view_x - margin_x, view_x + margin_x
+        bottom, top = view_y - margin_y, view_y + margin_y
         mask = (
             (self.seg_max_x[:seg_count] >= left)
             & (self.seg_min_x[:seg_count] <= right)
@@ -338,8 +348,8 @@ class RideRenderer:
         if ids.size == 0:
             return frame
 
-        sx = config.FRAME_WIDTH / (2.0 * margin)
-        sy = config.FRAME_HEIGHT / (2.0 * margin)
+        sx = config.FRAME_WIDTH / (2.0 * margin_x)
+        sy = config.FRAME_HEIGHT / (2.0 * margin_y)
 
         if self.use_cv2:
             arr = np.asarray(frame, dtype=np.uint8).copy()

@@ -1,5 +1,23 @@
 @echo off
-chcp 65001 >nul
+setlocal
 cd /d "%~dp0"
-python GPX_Ride_Renderer.py
-if errorlevel 1 pause
+title Build GPX Ride Renderer EXE
+
+echo ========================================================================
+echo   Run GPX Ride Renderer
+echo ========================================================================
+echo.
+
+set PYTHON_EXE=.venv\Scripts\python.exe
+
+if not exist "%PYTHON_EXE%" (
+    set PYTHON_EXE=python
+)
+
+"%PYTHON_EXE%" GPX_Ride_Renderer.py
+
+echo.
+echo ========================================================================
+echo   Press any key to exit.
+echo ========================================================================
+pause

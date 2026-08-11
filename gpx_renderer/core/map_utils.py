@@ -89,10 +89,18 @@ def _fetch_raster(west: float, south: float, east: float, north: float, map_styl
 def build_overview_raster_map(data: RideData, map_style) -> RasterMap:
     """只供結尾 zoom-out 使用的全程低/中解析總覽圖。"""
     end_view_x, end_view_y, end_margin = compute_end_route_view(data)
-    west = min(float(data.xs.min() - config.VIEW_MARGIN), end_view_x - end_margin)
-    east = max(float(data.xs.max() + config.VIEW_MARGIN), end_view_x + end_margin)
-    south = min(float(data.ys.min() - config.VIEW_MARGIN), end_view_y - end_margin)
-    north = max(float(data.ys.max() + config.VIEW_MARGIN), end_view_y + end_margin)
+    aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    if aspect >= 1.0:
+        end_margin_x, end_margin_y = end_margin * aspect, end_margin
+        view_margin_x, view_margin_y = config.VIEW_MARGIN * aspect, config.VIEW_MARGIN
+    else:
+        end_margin_x, end_margin_y = end_margin, end_margin / aspect
+        view_margin_x, view_margin_y = config.VIEW_MARGIN, config.VIEW_MARGIN / aspect
+
+    west = min(float(data.xs.min() - view_margin_x), end_view_x - end_margin_x)
+    east = max(float(data.xs.max() + view_margin_x), end_view_x + end_margin_x)
+    south = min(float(data.ys.min() - view_margin_y), end_view_y - end_margin_y)
+    north = max(float(data.ys.max() + view_margin_y), end_view_y + end_margin_y)
 
     if not config.ENABLE_BASEMAP:
         image = Image.new("RGB", (2048, 2048), (17, 17, 17))

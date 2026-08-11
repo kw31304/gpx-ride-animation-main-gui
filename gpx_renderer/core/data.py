@@ -203,16 +203,27 @@ def compute_end_route_view(data: RideData):
     safe_w = max(config.END_ROUTE_SAFE_RIGHT_FRAC - config.END_ROUTE_SAFE_LEFT_FRAC, 0.10)
     safe_h = max(config.END_ROUTE_SAFE_BOTTOM_FRAC - config.END_ROUTE_SAFE_TOP_FRAC, 0.10)
 
-    margin = max(
-        config.VIEW_MARGIN,
-        half_w / safe_w,
-        half_h / safe_h,
-        1.0,
-    ) * config.END_ROUTE_EXTRA_PADDING
+    aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    if aspect >= 1.0:
+        margin = max(
+            config.VIEW_MARGIN,
+            (half_w / safe_w) / aspect,
+            half_h / safe_h,
+            1.0,
+        ) * config.END_ROUTE_EXTRA_PADDING
+        margin_x, margin_y = margin * aspect, margin
+    else:
+        margin = max(
+            config.VIEW_MARGIN,
+            half_w / safe_w,
+            (half_h / safe_h) * aspect,
+            1.0,
+        ) * config.END_ROUTE_EXTRA_PADDING
+        margin_x, margin_y = margin, margin / aspect
 
     target_px_center_x = (config.END_ROUTE_SAFE_LEFT_FRAC + config.END_ROUTE_SAFE_RIGHT_FRAC) * 0.5
     target_px_center_y = (config.END_ROUTE_SAFE_TOP_FRAC + config.END_ROUTE_SAFE_BOTTOM_FRAC) * 0.5
 
-    view_x = data.route_center_x - 2.0 * margin * (target_px_center_x - 0.5)
-    view_y = data.route_center_y + 2.0 * margin * (target_px_center_y - 0.5)
+    view_x = data.route_center_x - 2.0 * margin_x * (target_px_center_x - 0.5)
+    view_y = data.route_center_y + 2.0 * margin_y * (target_px_center_y - 0.5)
     return float(view_x), float(view_y), float(margin)
