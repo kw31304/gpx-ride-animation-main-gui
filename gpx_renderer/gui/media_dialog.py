@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-媒體微調與文字標籤手動設定模態視窗 (MediaManagerDialog)，包含互動式 GPX 路線預覽地圖 (可縮放/平移/標記連動)。
+媒體微調與文字標籤手動設定模態視窗 (MediaManagerDialog)，包含互動式 GPX 路線預覽地圖 (可縮放/平移/標記連動) 與媒體參數設定。
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageTk
 
-from gpx_renderer.core.media import MediaItem, prepare_thumbnail
+from gpx_renderer.core.media import MediaItem, match_media_to_ride, scan_media_files, prepare_thumbnail
 from gpx_renderer.core.data import RideData
 
 
@@ -58,7 +58,7 @@ class RoutePreviewCanvas(tk.Frame):
         ttk.Button(tb, text="🔍 全覽", width=6, command=self.reset_view).pack(side="left", padx=2)
         ttk.Button(tb, text="📍 聚焦照片", width=9, command=self.focus_active).pack(side="left", padx=(6, 2))
 
-        ttk.Label(tb, text="(提示: 可用滑鼠滾輪縮放 / 拖曳平移地圖)", font=("Segoe UI", 8), foreground="#777777").pack(side="right", padx=5)
+        ttk.Label(tb, text="(滑鼠滾輪縮放 / 拖曳平移地圖)", font=("Segoe UI", 8), foreground="#777777").pack(side="right", padx=5)
 
         # Canvas
         self.canvas = tk.Canvas(self, bg="#121820", highlightthickness=0)
@@ -100,7 +100,6 @@ class RoutePreviewCanvas(tk.Frame):
     def focus_active(self):
         if self.active_km < 0:
             return
-        # 尋找公里數對應的中心座標
         dists = np.abs(self.ride_data.distances - self.active_km)
         best_i = int(np.argmin(dists))
         self.view_center_x = float(self.ride_data.xs[best_i])
@@ -109,7 +108,6 @@ class RoutePreviewCanvas(tk.Frame):
 
     def zoom(self, factor: float, center_px: Optional[tuple[int, int]] = None):
         if center_px is not None:
-            # 依游標位置保持固定中心縮放
             mx, my = center_px
             wx, wy = self._canvas_to_world(mx, my)
             self.scale *= factor
@@ -177,7 +175,7 @@ class RoutePreviewCanvas(tk.Frame):
             self.canvas.create_line(pts, fill="#2a3848", width=5, capstyle="round", joinstyle="round")
             self.canvas.create_line(pts, fill="#ff7043", width=3, capstyle="round", joinstyle="round")
 
-        # 2. 繪製所有媒體項目的標記點 Pins
+        # 2. 繪製所有媒體項目的標記點 Pins (包含自動帶入之拍攝時間/GPS 對齊點)
         for i, item in enumerate(self.media_items):
             matched_i = item.matched_index
             if item.manual_distance_km is not None and item.manual_distance_km >= 0:
@@ -191,12 +189,12 @@ class RoutePreviewCanvas(tk.Frame):
             my = float(self.ride_data.ys[matched_i])
             px, py = self._world_to_canvas(mx, my)
 
-            # 一般相片標記 (白色小圓圈)
+            # 一般相片標記 (白色圓圈 + 數字)
             is_active = (i == self.selected_index)
             if not is_active:
-                r = 5
-                self.canvas.create_oval(px - r, py - r, px + r, py + r, fill="#ffffff", outline="#222222", width=1)
-                self.canvas.create_text(px, py - 10, text=f"{i+1}", fill="#cccccc", font=("Segoe UI", 8, "bold"))
+                r = 6
+                self.canvas.create_oval(px - r, py - r, px + r, py + r, fill="#ffffff", outline="#222222", width=1.5)
+                self.canvas.create_text(px, py - 11, text=f"{i+1}", fill="#e0e0e0", font=("Segoe UI", 9, "bold"))
 
         # 3. 繪製當前選中/滑動中的高亮橘光標記 Pin
         if self.active_km >= 0:
@@ -206,15 +204,13 @@ class RoutePreviewCanvas(tk.Frame):
             ay = float(self.ride_data.ys[best_i])
             apx, apy = self._world_to_canvas(ax, ay)
 
-            # 外圈發光效果
-            r_outer = 12
+            r_outer = 13
             self.canvas.create_oval(apx - r_outer, apy - r_outer, apx + r_outer, apy + r_outer, fill="", outline="#ffab40", width=3)
             r_inner = 7
             self.canvas.create_oval(apx - r_inner, apy - r_inner, apx + r_inner, apy + r_inner, fill="#ff5722", outline="#ffffff", width=2)
 
-            # 里程標籤
-            self.canvas.create_rectangle(apx - 26, apy - 30, apx + 26, apy - 14, fill="#0a0f14", outline="#ff7043", width=1)
-            self.canvas.create_text(apx, apy - 22, text=f"{self.active_km:.1f} km", fill="#ffffff", font=("Segoe UI", 8, "bold"))
+            self.canvas.create_rectangle(apx - 28, apy - 32, apx + 28, apy - 14, fill="#0a0f14", outline="#ff7043", width=1)
+            self.canvas.create_text(apx, apy - 23, text=f"{self.active_km:.1f} km", fill="#ffffff", font=("Segoe UI", 8, "bold"))
 
 
 class MediaManagerDialog(tk.Toplevel):
@@ -225,40 +221,74 @@ class MediaManagerDialog(tk.Toplevel):
         parent: tk.Tk | tk.Toplevel,
         media_items: List[MediaItem],
         ride_data: RideData,
-        on_apply: Callable[[List[MediaItem]], None],
+        media_duration: float = 3.5,
+        media_offset_sec: float = 0.0,
+        media_path: str = "",
+        on_apply: Optional[Callable[[List[MediaItem], float, float], None]] = None,
     ):
         super().__init__(parent)
         self.title("📷 路線媒體微調與文字標籤管理")
-        self.geometry("1180x680")
-        self.minsize(980, 560)
+        self.geometry("1200x700")
+        self.minsize(1000, 600)
         self.transient(parent)
         self.grab_set()
 
         self.media_items = media_items
         self.ride_data = ride_data
+        self.media_path = media_path
         self.total_distance_km = max(0.1, float(ride_data.distances[-1]))
         self.on_apply = on_apply
         self.selected_index: int = -1
         self.selected_item: Optional[MediaItem] = None
 
+        # 媒體通用參數
+        self.var_media_duration = tk.DoubleVar(value=float(media_duration))
+        self.var_media_offset = tk.DoubleVar(value=float(media_offset_sec))
+
+        # 初次載入時自動帶入拍攝時間/GPS進行全數配對
+        match_media_to_ride(self.media_items, self.ride_data, self.ride_data.gpx_times)
+
         self._init_ui()
         self._populate_tree()
 
     def _init_ui(self):
-        # 標題區
-        header_frame = ttk.Frame(self, padding=(15, 10))
-        header_frame.pack(fill="x")
+        # 頂部控制與全域媒體設定區
+        top_bar = ttk.LabelFrame(self, text=" 媒體播放與相機時間校正 ", padding=(15, 8))
+        top_bar.pack(fill="x", padx=15, pady=(10, 5))
+
+        # 第一列：標題與說明
+        header_sub = ttk.Frame(top_bar)
+        header_sub.pack(fill="x", pady=(0, 6))
         ttk.Label(
-            header_frame,
-            text="📷 路線媒體微調與文字標籤編輯器",
-            font=("Segoe UI", 13, "bold"),
-        ).pack(anchor="w")
+            header_sub,
+            text="📷 路線媒體對齊與文字標籤編輯器",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(side="left")
         ttk.Label(
-            header_frame,
-            text="可在預覽地圖上對齊並微調相片出現的里程點 (km)，並為照片加入下方說明文字。",
+            header_sub,
+            text="（相片已自動依拍攝時間/GPS進行預設配對，可在地圖上拖拉微調並自訂下方文字標籤）",
             font=("Segoe UI", 9),
             foreground="#666666",
-        ).pack(anchor="w", pady=(2, 0))
+        ).pack(side="left", padx=(10, 0))
+
+        # 第二列：將原本主介面的「媒體停留秒數」與「相機時間校正」移入於此
+        settings_row = ttk.Frame(top_bar)
+        settings_row.pack(fill="x", pady=2)
+
+        ttk.Label(settings_row, text="媒體停留秒數：").pack(side="left", padx=(0, 4))
+        spin_dur = ttk.Spinbox(settings_row, from_=1.0, to=30.0, increment=0.5, textvariable=self.var_media_duration, width=6)
+        spin_dur.pack(side="left", padx=(0, 20))
+
+        ttk.Label(settings_row, text="相機時間校正 (秒)：").pack(side="left", padx=(0, 4))
+        entry_offset = ttk.Entry(settings_row, textvariable=self.var_media_offset, width=8)
+        entry_offset.pack(side="left", padx=(0, 8))
+        ttk.Button(settings_row, text="⏱️ 重新對齊時間", command=self._recalculate_time_offset).pack(side="left")
+        ttk.Label(
+            settings_row,
+            text="💡 相機時間慢1分鐘請填 60 秒；快1分鐘請填 -60 秒",
+            font=("Segoe UI", 8),
+            foreground="#666666",
+        ).pack(side="left", padx=(15, 0))
 
         # 主工作區 (三欄分割面板: 左側清單 | 中央地圖預覽 | 右側編輯屬性)
         main_paned = ttk.PanedWindow(self, orient="horizontal")
@@ -367,6 +397,27 @@ class MediaManagerDialog(tk.Toplevel):
         ttk.Button(bottom_frame, text="取消 (Cancel)", command=self.destroy).pack(side="right", padx=(5, 0))
         ttk.Button(bottom_frame, text="💾 儲存並套用設定", command=self._on_save_and_apply).pack(side="right")
 
+    def _recalculate_time_offset(self):
+        """根據輸入的相機時間校正秒數，重新與 GPX 時間軸對齊。"""
+        if not self.media_path:
+            return
+        try:
+            offset_sec = float(self.var_media_offset.get())
+            new_items = scan_media_files(self.media_path, time_offset_sec=offset_sec)
+            if new_items:
+                # 重新對齊
+                match_media_to_ride(new_items, self.ride_data, self.ride_data.gpx_times)
+                # 保留既有的 manual_distance_km 與 caption
+                old_map = {item.filename: (item.manual_distance_km, item.caption) for item in self.media_items}
+                for item in new_items:
+                    if item.filename in old_map:
+                        item.manual_distance_km, item.caption = old_map[item.filename]
+                self.media_items = new_items
+                self._populate_tree()
+                messagebox.showinfo("時間校正", f"已成功套用 {offset_sec} 秒相機時間校正並更新路線圖標記！")
+        except Exception as exc:
+            messagebox.showerror("時間校正錯誤", f"時間校正計算失敗：{exc}")
+
     def _populate_tree(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -406,7 +457,6 @@ class MediaManagerDialog(tk.Toplevel):
             info_str += f" | GPS ({item.lat:.5f}, {item.lon:.5f})"
         self.lbl_auto_info.config(text=f"偵測：{info_str}")
 
-        # 設定目前里程與覆寫狀態
         cur_km = 0.0
         if item.manual_distance_km is not None and item.manual_distance_km >= 0:
             self.var_override.set(True)
@@ -419,11 +469,9 @@ class MediaManagerDialog(tk.Toplevel):
         self._on_override_toggle()
         self.var_caption.set(item.caption or "")
 
-        # 更新地圖焦點
         self.preview_map.set_data(self.media_items, self.selected_index, cur_km)
         self.preview_map.focus_active()
 
-        # 預覽縮圖
         try:
             p = Path(item.file_path)
             if p.is_file() and item.media_type == "image":
@@ -447,7 +495,6 @@ class MediaManagerDialog(tk.Toplevel):
             v = float(val)
             round_v = round(v, 2)
             self.var_dist_km.set(round_v)
-            # 地圖標記即時滾動連動！
             self.preview_map.active_km = round_v
             self.preview_map.redraw()
         except Exception:
@@ -480,8 +527,11 @@ class MediaManagerDialog(tk.Toplevel):
     def _on_save_and_apply(self):
         self._apply_current_edit()
         try:
-            self.on_apply(self.media_items)
-            messagebox.showinfo("套用成功", "已成功更新媒體微調設定與路線對齊點！")
+            dur = float(self.var_media_duration.get())
+            offset_sec = float(self.var_media_offset.get())
+            if self.on_apply:
+                self.on_apply(self.media_items, dur, offset_sec)
+            messagebox.showinfo("套用成功", "已成功更新媒體微調設定、對齊里程與全域媒體參數！")
             self.destroy()
         except Exception as exc:
             messagebox.showerror("套用失敗", f"更新媒體設定時發生錯誤：{exc}")

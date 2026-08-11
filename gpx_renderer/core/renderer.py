@@ -253,6 +253,7 @@ class RideRenderer:
         self.font_summary_label = load_font(max(9, int(round(11 * ui_scale))), bold=True)
         self.font_summary_value = load_font(max(20, int(round(29 * ui_scale))), bold=True)
         self.font_summary_unit = load_font(max(10, int(round(12 * ui_scale))), bold=True)
+        self.font_caption = load_font(max(18, int(round(25 * ui_scale))), bold=True)
 
         self.hud_update_every = max(1, int(round(self.fps / max(1, config.HUD_UPDATE_HZ))))
         self.cached_hud: Image.Image | None = None
@@ -740,19 +741,19 @@ class RideRenderer:
                 thumb_alpha.putalpha(a)
                 overlay.paste(thumb_alpha, (cx, cy), thumb_alpha)
 
-            # 若照片設定有自訂說明文字，於相片下方繪製質感浮雕文字標籤列
+            # 若照片設定有自訂說明文字，於相片下方繪製質感放大浮雕文字標籤列
             caption_text = str(getattr(item, "caption", "") or "").strip()
             if caption_text:
                 odraw = ImageDraw.Draw(overlay)
-                font = self.font_panel_label
+                font = self.font_caption
                 tb = odraw.textbbox((0, 0), caption_text, font=font)
                 text_w = tb[2] - tb[0]
                 text_h = tb[3] - tb[1]
 
                 s = self.ui_scale
-                pad_x = max(14, int(round(18 * s)))
-                pad_y = max(6, int(round(8 * s)))
-                gap = max(10, int(round(14 * s)))
+                pad_x = max(20, int(round(26 * s)))
+                pad_y = max(10, int(round(12 * s)))
+                gap = max(12, int(round(16 * s)))
 
                 cap_w = text_w + 2 * pad_x
                 cap_h = text_h + 2 * pad_y
@@ -763,17 +764,17 @@ class RideRenderer:
                 if cap_y + cap_h > config.FRAME_HEIGHT - int(20 * s):
                     cap_y = cy + th - cap_h - int(12 * s)
 
-                radius = max(10, int(round(14 * s)))
+                radius = max(12, int(round(16 * s)))
                 odraw.rounded_rectangle(
                     (cap_x, cap_y, cap_x + cap_w - 1, cap_y + cap_h - 1),
                     radius=radius,
-                    fill=(9, 13, 18, int(200 * alpha)),
-                    outline=(255, 255, 255, int(45 * alpha)),
-                    width=max(1, int(round(s))),
+                    fill=(9, 13, 18, int(215 * alpha)),
+                    outline=(255, 255, 255, int(60 * alpha)),
+                    width=max(1, int(round(1.5 * s))),
                 )
                 tx = cap_x + pad_x - tb[0]
                 ty = cap_y + pad_y - tb[1]
-                odraw.text((tx, ty), caption_text, font=font, fill=(255, 255, 255, int(245 * alpha)))
+                odraw.text((tx, ty), caption_text, font=font, fill=(255, 255, 255, int(248 * alpha)))
 
             base.alpha_composite(overlay)
             frame.paste(base.convert("RGB"))

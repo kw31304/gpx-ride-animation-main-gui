@@ -381,22 +381,6 @@ def launch_gui():
     ttk.Spinbox(chunks_field, from_=1, to=12, textvariable=chunks_var, width=8).pack(side="left")
     help_button(chunks_field, root, "chunks").pack(side="left", padx=(5, 0))
 
-    ttk.Label(settings, text="媒體停留秒").grid(row=6, column=0, sticky="w", pady=4)
-    media_dur_field = ttk.Frame(settings)
-    media_dur_field.grid(row=6, column=1, sticky="w")
-    ttk.Spinbox(media_dur_field, from_=1.0, to=30.0, increment=0.5, textvariable=media_duration_var, width=8).pack(side="left")
-    help_button(media_dur_field, root, "media_duration").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="相機時間校正(秒)").grid(row=6, column=2, sticky="e", padx=(12, 6))
-    media_offset_field = ttk.Frame(settings)
-    media_offset_field.grid(row=6, column=3, sticky="w")
-    ttk.Entry(media_offset_field, textvariable=media_offset_var, width=8).pack(side="left")
-    help_button(media_offset_field, root, "media_offset").pack(side="left", padx=(5, 0))
-
-    media_mgr_field = ttk.Frame(settings)
-    media_mgr_field.grid(row=6, column=4, columnspan=2, sticky="w", padx=(12, 0))
-    ttk.Button(media_mgr_field, text="📷 媒體微調與文字標籤", command=lambda: open_media_dialog()).pack(side="left")
-
     def open_media_dialog():
         media_path = media_var.get().strip()
         gpx_path = gpx_var.get().strip()
@@ -420,7 +404,10 @@ def launch_gui():
                 messagebox.showinfo("提示", "在指定的媒體路徑下未找到相應的照片或影片。")
                 return
 
-            def on_media_applied(updated_items):
+            def on_media_applied(updated_items, new_dur, new_offset):
+                media_duration_var.set(new_dur)
+                media_offset_var.set(new_offset)
+
                 overrides = {}
                 for item in updated_items:
                     if item.caption or (item.manual_distance_km is not None and item.manual_distance_km >= 0):
@@ -431,15 +418,21 @@ def launch_gui():
                 json_str = json.dumps(overrides, ensure_ascii=False)
                 config.MEDIA_OVERRIDES_JSON = json_str
                 state["media_overrides_json"] = json_str
-                append_log(f"[INFO] 已儲存 {len(overrides)} 個媒體檔案的手動微調里程與說明文字。")
+                append_log(f"[INFO] 已儲存 {len(overrides)} 個媒體檔案的手動微調里程與說明文字 (停留秒數={new_dur}s, 時間校正={new_offset}s)。")
 
-            MediaManagerDialog(root, scanned, data, on_media_applied)
+            MediaManagerDialog(
+                root, scanned, data,
+                media_duration=float(media_duration_var.get()),
+                media_offset_sec=float(media_offset_var.get()),
+                media_path=media_path,
+                on_apply=on_media_applied,
+            )
 
         except Exception as exc:
             messagebox.showerror("錯誤", f"無法開啟媒體微調視窗：{exc}")
 
     checks = ttk.Frame(settings)
-    checks.grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
+    checks.grid(row=6, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
     add_check_with_help(checks, root, "多程序", parallel_var, "parallel")
     add_check_with_help(checks, root, "底圖", basemap_var, "basemap")
@@ -450,7 +443,7 @@ def launch_gui():
     add_check_with_help(checks, root, "並行時停用 joblib cache", disable_parallel_cache_var, "parallel_cache")
 
     tune_row = ttk.Frame(settings)
-    tune_row.grid(row=8, column=0, columnspan=6, sticky="ew", pady=(8, 0))
+    tune_row.grid(row=7, column=0, columnspan=6, sticky="ew", pady=(8, 0))
     tune_row.columnconfigure(2, weight=1)
     benchmark_btn = ttk.Button(tune_row, text="效能測試 / Auto Tune", command=lambda: start_benchmark())
     benchmark_btn.grid(row=0, column=0, sticky="w")
