@@ -28,10 +28,47 @@ class RideData:
     fit_margin: float
     speed_norm: Normalize
     gpx_times: list | None = None
+    headings: np.ndarray | None = None
 
     @property
     def total_points(self) -> int:
         return len(self.xs)
+
+
+def compute_headings(xs: np.ndarray, ys: np.ndarray, window_size: int = 35) -> np.ndarray:
+    """計算軌跡點的平滑前進行進角 (radians, -pi to pi)。以單位向量平滑避免 +-pi 斷階。"""
+    n = len(xs)
+    if n == 0:
+        return np.array([], dtype=np.float64)
+    if n == 1:
+        return np.zeros(1, dtype=np.float64)
+
+    dx = np.zeros(n, dtype=np.float64)
+    dy = np.zeros(n, dtype=np.float64)
+
+    dx[:-1] = xs[1:] - xs[:-1]
+    dy[:-1] = ys[1:] - ys[:-1]
+    dx[-1] = dx[-2]
+    dy[-1] = dy[-2]
+
+    if n > 2:
+        dx[1:-1] = (xs[2:] - xs[:-2]) * 0.5
+        dy[1:-1] = (ys[2:] - ys[:-2]) * 0.5
+
+    norm = np.hypot(dx, dy)
+    valid = norm > 1e-6
+    ux = np.where(valid, dx / np.maximum(norm, 1e-6), 0.0)
+    uy = np.where(valid, dy / np.maximum(norm, 1e-6), 1.0)  # 預設朝北
+
+    w = max(1, int(window_size))
+    if w % 2 == 0:
+        w += 1
+    if w > 1 and n >= w:
+        kernel = np.ones(w, dtype=np.float64) / float(w)
+        ux = np.convolve(ux, kernel, mode="same")
+        uy = np.convolve(uy, kernel, mode="same")
+
+    return np.arctan2(uy, ux)
 
 
 def latlon_to_mercator(lat: np.ndarray, lon: np.ndarray):
@@ -188,6 +225,7 @@ def load_gpx(path: str | Path, hide_start_km: float = 0.0, hide_end_km: float = 
         fit_margin=fit_margin,
         speed_norm=Normalize(vmin=vmin, vmax=vmax, clip=True),
         gpx_times=times,
+        headings=compute_headings(xs, ys),
     )
 
     h_start = hide_start_km if hide_start_km > 0 else getattr(config, "HIDE_START_DISTANCE_KM", 0.0)
@@ -263,6 +301,7 @@ def trim_ride_data(data: RideData, hide_start_km: float = 0.0, hide_end_km: floa
         fit_margin=fit_margin,
         speed_norm=Normalize(vmin=vmin, vmax=vmax, clip=True),
         gpx_times=gpx_times,
+        headings=compute_headings(xs, ys),
     )
 
 

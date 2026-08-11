@@ -25,9 +25,12 @@ from gpx_renderer.core.map_utils import RasterMap, LocalBasemapCache
 
 def _get_aspect_margins(margin: float):
     aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    m = margin
+    if getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up":
+        m = m * math.sqrt(1.0 + aspect * aspect)
     if aspect >= 1.0:
-        return margin * aspect, margin
-    return margin, margin / aspect
+        return m * aspect, m
+    return m, m / aspect
 
 
 class RideRenderer:
@@ -213,7 +216,7 @@ class RideRenderer:
         self.zoom_frames = max(0, int(round(self.zoom_out_duration * self.fps)))
         self.hold_frames = max(0, int(round(self.end_hold_duration * self.fps)))
         self.total_frames = self.main_frames + self.zoom_frames + self.hold_frames
-        self.camera_x, self.camera_y = self._precompute_camera()
+        self.camera_x, self.camera_y, self.camera_h = self._precompute_camera()
 
         self.track_colors = self._build_track_colors()
         self.seg_x0 = self.d.xs[:-1]
@@ -269,6 +272,8 @@ class RideRenderer:
         ty = self.d.ys[self.main_indices]
         cx_arr = np.empty(self.main_frames, dtype=np.float64)
         cy_arr = np.empty(self.main_frames, dtype=np.float64)
+        ch_arr = np.empty(self.main_frames, dtype=np.float64)
+
         cx_arr[0] = tx[0]
         cy_arr[0] = ty[0]
         a = self.camera_alpha
@@ -276,14 +281,50 @@ class RideRenderer:
         for i in range(1, self.main_frames):
             cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
             cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
-        return cx_arr, cy_arr
 
-    def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float):
+        if getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up" and self.d.headings is not None and len(self.d.headings) > 0:
+            target_h = self.d.headings[self.main_indices]
+
+            rot_base_alpha = min(max(getattr(config, "CAMERA_ROTATION_SMOOTH", 0.025), 1e-6), 1.0)
+            rot_alpha = 1.0 - (1.0 - rot_base_alpha) ** (60.0 / self.fps)
+
+            max_speed_deg = float(getattr(config, "CAMERA_MAX_ROTATION_SPEED_DEG", 25.0))
+            max_step_rad = math.radians(max_speed_deg) / float(self.fps)
+            deadband_rad = math.radians(1.5)
+
+            ch_arr[0] = float(target_h[0])
+
+            for i in range(1, self.main_frames):
+                prev_angle = float(ch_arr[i - 1])
+                t_angle = float(target_h[i])
+
+                diff = (t_angle - prev_angle + math.pi) % (2.0 * math.pi) - math.pi
+
+                if abs(diff) < deadband_rad:
+                    ch_arr[i] = prev_angle
+                else:
+                    step = diff * rot_alpha
+                    step = max(-max_step_rad, min(max_step_rad, step))
+                    ch_arr[i] = prev_angle + step
+        else:
+            ch_arr.fill(math.pi / 2.0)
+
+        return cx_arr, cy_arr, ch_arr
+
+    def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0):
         margin_x, margin_y = _get_aspect_margins(margin)
-        left = view_x - margin_x
-        top = view_y + margin_y
-        px = (x - left) / (2.0 * margin_x) * config.FRAME_WIDTH
-        py = (top - y) / (2.0 * margin_y) * config.FRAME_HEIGHT
+        alpha = heading_rad - math.pi / 2.0
+        cos_a = math.cos(alpha)
+        sin_a = math.sin(alpha)
+
+        dx = x - view_x
+        dy = y - view_y
+
+        rx = dx * cos_a + dy * sin_a
+        ry = -dx * sin_a + dy * cos_a
+
+        px = config.FRAME_WIDTH / 2.0 + (rx / (2.0 * margin_x)) * config.FRAME_WIDTH
+        py = config.FRAME_HEIGHT / 2.0 - (ry / (2.0 * margin_y)) * config.FRAME_HEIGHT
         return int(round(px)), int(round(py))
 
     def _build_track_colors(self):
@@ -292,27 +333,36 @@ class RideRenderer:
         rgba = cmap(normalized, bytes=True)
         return [tuple(map(int, c[:3])) for c in rgba]
 
-    def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float) -> Image.Image:
+    def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0) -> Image.Image:
         margin_x, margin_y = _get_aspect_margins(margin)
-        left_world = view_x - margin_x
-        right_world = view_x + margin_x
-        top_world = view_y + margin_y
-        bottom_world = view_y - margin_y
+        alpha = heading_rad - math.pi / 2.0
+        cos_a = math.cos(alpha)
+        sin_a = math.sin(alpha)
 
-        left_px = (left_world - rm.west) / (rm.east - rm.west) * (rm.width - 1)
-        right_px = (right_world - rm.west) / (rm.east - rm.west) * (rm.width - 1)
-        top_px = (rm.north - top_world) / (rm.north - rm.south) * (rm.height - 1)
-        bottom_px = (rm.north - bottom_world) / (rm.north - rm.south) * (rm.height - 1)
+        W = float(config.FRAME_WIDTH)
+        H = float(config.FRAME_HEIGHT)
+        W2 = W * 0.5
+        H2 = H * 0.5
+
+        kx = W / (2.0 * margin_x)
+        ky = H / (2.0 * margin_y)
+
+        Sx = (rm.width - 1.0) / max(rm.east - rm.west, 1e-6)
+        Sy = (rm.height - 1.0) / max(rm.north - rm.south, 1e-6)
+
+        Uv = (view_x - rm.west) * Sx
+        Vv = (rm.north - view_y) * Sy
 
         if self.use_cv2:
-            src_w = max(float(right_px - left_px), 1e-6)
-            src_h = max(float(bottom_px - top_px), 1e-6)
-            sx = config.FRAME_WIDTH / src_w
-            sy = config.FRAME_HEIGHT / src_h
-            matrix = np.array(
-                [[sx, 0.0, -left_px * sx], [0.0, sy, -top_px * sy]],
-                dtype=np.float32,
-            )
+            m00 = (kx * cos_a) / Sx
+            m01 = (-kx * sin_a) / Sy
+            m02 = W2 - Uv * m00 - Vv * m01
+
+            m10 = (ky * sin_a) / Sx
+            m11 = (ky * cos_a) / Sy
+            m12 = H2 - Uv * m10 - Vv * m11
+
+            matrix = np.array([[m00, m01, m02], [m10, m11, m12]], dtype=np.float32)
             out = cv2.warpAffine(
                 rm.np_image,
                 matrix,
@@ -323,15 +373,22 @@ class RideRenderer:
             )
             return Image.fromarray(out)
 
+        a = (Sx * cos_a) / kx
+        b = (Sx * sin_a) / ky
+        c = Uv - W2 * a - H2 * b
+        d = (-Sy * sin_a) / kx
+        e = (Sy * cos_a) / ky
+        f = Vv - W2 * d - H2 * e
+
         return rm.image.transform(
             (config.FRAME_WIDTH, config.FRAME_HEIGHT),
-            Image.Transform.EXTENT,
-            (left_px, top_px, right_px, bottom_px),
+            Image.Transform.AFFINE,
+            (a, b, c, d, e, f),
             resample=config.MAP_RESAMPLE,
             fillcolor=(17, 17, 17),
         )
 
-    def _draw_visible_track(self, frame: Image.Image, idx: int, view_x: float, view_y: float, margin: float) -> Image.Image:
+    def _draw_visible_track(self, frame: Image.Image, idx: int, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0) -> Image.Image:
         seg_count = min(max(int(idx), 0), len(self.seg_x0))
         if seg_count <= 0:
             return frame
@@ -349,20 +406,37 @@ class RideRenderer:
         if ids.size == 0:
             return frame
 
-        sx = config.FRAME_WIDTH / (2.0 * margin_x)
-        sy = config.FRAME_HEIGHT / (2.0 * margin_y)
+        alpha = heading_rad - math.pi / 2.0
+        cos_a = math.cos(alpha)
+        sin_a = math.sin(alpha)
+
+        W2 = config.FRAME_WIDTH * 0.5
+        H2 = config.FRAME_HEIGHT * 0.5
+        kx = config.FRAME_WIDTH / (2.0 * margin_x)
+        ky = config.FRAME_HEIGHT / (2.0 * margin_y)
+
+        dx0 = self.seg_x0[ids] - view_x
+        dy0 = self.seg_y0[ids] - view_y
+        dx1 = self.seg_x1[ids] - view_x
+        dy1 = self.seg_y1[ids] - view_y
+
+        rx0 = dx0 * cos_a + dy0 * sin_a
+        ry0 = -dx0 * sin_a + dy0 * cos_a
+        rx1 = dx1 * cos_a + dy1 * sin_a
+        ry1 = -dx1 * sin_a + dy1 * cos_a
+
+        px0 = np.rint(W2 + rx0 * kx).astype(np.int32)
+        py0 = np.rint(H2 - ry0 * ky).astype(np.int32)
+        px1 = np.rint(W2 + rx1 * kx).astype(np.int32)
+        py1 = np.rint(H2 - ry1 * ky).astype(np.int32)
 
         if self.use_cv2:
             arr = np.asarray(frame, dtype=np.uint8).copy()
-            x0 = np.rint((self.seg_x0[ids] - left) * sx).astype(np.int32)
-            x1 = np.rint((self.seg_x1[ids] - left) * sx).astype(np.int32)
-            y0 = np.rint((top - self.seg_y0[ids]) * sy).astype(np.int32)
-            y1 = np.rint((top - self.seg_y1[ids]) * sy).astype(np.int32)
             for j, seg_id in enumerate(ids):
                 cv2.line(
                     arr,
-                    (int(x0[j]), int(y0[j])),
-                    (int(x1[j]), int(y1[j])),
+                    (int(px0[j]), int(py0[j])),
+                    (int(px1[j]), int(py1[j])),
                     self.track_colors[int(seg_id)],
                     thickness=5,
                     lineType=cv2.LINE_AA,
@@ -370,11 +444,9 @@ class RideRenderer:
             return Image.fromarray(arr)
 
         draw = ImageDraw.Draw(frame)
-        for seg_id in ids:
+        for j, seg_id in enumerate(ids):
             i = int(seg_id)
-            p0 = self._world_to_frame_px(float(self.seg_x0[i]), float(self.seg_y0[i]), view_x, view_y, margin)
-            p1 = self._world_to_frame_px(float(self.seg_x1[i]), float(self.seg_y1[i]), view_x, view_y, margin)
-            draw.line([p0, p1], fill=self.track_colors[i], width=5)
+            draw.line([(int(px0[j]), int(py0[j])), (int(px1[j]), int(py1[j]))], fill=self.track_colors[i], width=5)
         return frame
 
     # ---------- HUD ----------
@@ -787,12 +859,13 @@ class RideRenderer:
 
         view_x = float(self.camera_x[i])
         view_y = float(self.camera_y[i])
+        heading_rad = float(self.camera_h[i])
 
         local_rm = self.local_maps.get(view_x, view_y, idx)
-        frame = self._crop_raster(local_rm, view_x, view_y, config.VIEW_MARGIN)
+        frame = self._crop_raster(local_rm, view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad)
 
         draw = ImageDraw.Draw(frame)
-        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN)
+        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad)
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
         hud = self._get_hud(i, idx)
@@ -823,6 +896,13 @@ class RideRenderer:
         eased = ease_smoothstep(progress)
         start_x = float(self.camera_x[-1])
         start_y = float(self.camera_y[-1])
+        start_h = float(self.camera_h[-1])
+        target_h = math.pi / 2.0  # 平滑旋轉回正北朝上
+
+        ux = math.cos(start_h) * (1.0 - eased) + math.cos(target_h) * eased
+        uy = math.sin(start_h) * (1.0 - eased) + math.sin(target_h) * eased
+        heading_rad = math.atan2(uy, ux)
+
         end_x, end_y, end_margin = compute_end_route_view(d)
         view_x = start_x + (end_x - start_x) * eased
         view_y = start_y + (end_y - start_y) * eased
@@ -830,12 +910,12 @@ class RideRenderer:
 
         if self.rm is None:
             raise RuntimeError("render_end_frame 需要 overview_map。")
-        frame = self._crop_raster(self.rm, view_x, view_y, margin)
-        frame = self._draw_visible_track(frame, d.total_points - 1, view_x, view_y, margin)
+        frame = self._crop_raster(self.rm, view_x, view_y, margin, heading_rad=heading_rad)
+        frame = self._draw_visible_track(frame, d.total_points - 1, view_x, view_y, margin, heading_rad=heading_rad)
         draw = ImageDraw.Draw(frame)
 
-        sx, sy = self._world_to_frame_px(float(d.xs[0]), float(d.ys[0]), view_x, view_y, margin)
-        ex, ey = self._world_to_frame_px(float(d.xs[-1]), float(d.ys[-1]), view_x, view_y, margin)
+        sx, sy = self._world_to_frame_px(float(d.xs[0]), float(d.ys[0]), view_x, view_y, margin, heading_rad=heading_rad)
+        ex, ey = self._world_to_frame_px(float(d.xs[-1]), float(d.ys[-1]), view_x, view_y, margin, heading_rad=heading_rad)
         self._draw_marker(draw, sx, sy, config.GREEN, config.WHITE, r=8, outline_w=2)
         self._draw_marker(draw, ex, ey, config.ORANGE, config.WHITE, r=8, outline_w=2)
 

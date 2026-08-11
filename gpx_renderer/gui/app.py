@@ -76,6 +76,7 @@ def launch_gui():
     hide_start_var = tk.DoubleVar(value=config.HIDE_START_DISTANCE_KM)
     hide_end_var = tk.DoubleVar(value=config.HIDE_END_DISTANCE_KM)
     real_speed_var = tk.BooleanVar(value=config.USE_REAL_SPEED)
+    camera_mode_var = tk.StringVar(value=getattr(config, "CAMERA_MODE", "North-Up"))
     progress_var = tk.DoubleVar(value=0.0)
     status_var = tk.StringVar(value="就緒")
     benchmark_result_var = tk.StringVar(value="Auto Tune：尚未測試")
@@ -329,15 +330,35 @@ def launch_gui():
     ttk.Label(auto_row, text="秒").grid(row=0, column=3, sticky="w", padx=(4, 12))
     ttk.Label(auto_row, textvariable=distance_info_var).grid(row=0, column=5, sticky="w")
 
-    ttk.Label(settings, text="Local Zoom").grid(row=3, column=0, sticky="w", pady=4)
+    CAMERA_MODE_LABELS = {
+        "North-Up": "正北朝上 (North-Up)",
+        "Heading-Up": "跟隨行進方向 (Heading-Up)",
+    }
+    camera_mode_combo_var = tk.StringVar(value=CAMERA_MODE_LABELS.get(camera_mode_var.get(), "正北朝上 (North-Up)"))
+    ttk.Label(settings, text="視角模式").grid(row=3, column=0, sticky="w", pady=4)
+    camera_mode_field = ttk.Frame(settings)
+    camera_mode_field.grid(row=3, column=1, sticky="w")
+    camera_mode_combo = ttk.Combobox(camera_mode_field, textvariable=camera_mode_combo_var, values=list(CAMERA_MODE_LABELS.values()), state="readonly", width=22)
+    camera_mode_combo.pack(side="left")
+    help_button(camera_mode_field, root, "camera_mode").pack(side="left", padx=(5, 0))
+
+    def on_camera_mode_change(_=None):
+        sel = camera_mode_combo_var.get()
+        if "Heading-Up" in sel:
+            camera_mode_var.set("Heading-Up")
+        else:
+            camera_mode_var.set("North-Up")
+    camera_mode_combo.bind("<<ComboboxSelected>>", on_camera_mode_change)
+
+    ttk.Label(settings, text="Local Zoom").grid(row=3, column=2, sticky="e", padx=(12, 6))
     local_zoom_field = ttk.Frame(settings)
-    local_zoom_field.grid(row=3, column=1, sticky="w")
+    local_zoom_field.grid(row=3, column=3, sticky="w")
     ttk.Combobox(local_zoom_field, textvariable=local_zoom_var, values=["auto", "15", "16", "17", "18"], state="readonly", width=8).pack(side="left")
     help_button(local_zoom_field, root, "local_zoom").pack(side="left", padx=(5, 0))
 
-    ttk.Label(settings, text="View Margin").grid(row=3, column=2, sticky="e", padx=(12, 6))
+    ttk.Label(settings, text="View Margin").grid(row=3, column=4, sticky="e", padx=(12, 6))
     margin_field = ttk.Frame(settings)
-    margin_field.grid(row=3, column=3, sticky="w")
+    margin_field.grid(row=3, column=5, sticky="w")
     ttk.Entry(margin_field, textvariable=margin_var, width=10).pack(side="left")
     help_button(margin_field, root, "view_margin").pack(side="left", padx=(5, 0))
 
@@ -597,6 +618,7 @@ def launch_gui():
             "USE_REAL_SPEED": bool(real_speed_var.get()),
             "HIDE_START_DISTANCE_KM": float(hide_start_var.get()),
             "HIDE_END_DISTANCE_KM": float(hide_end_var.get()),
+            "CAMERA_MODE": camera_mode_var.get(),
         }
 
     def set_running(running: bool):

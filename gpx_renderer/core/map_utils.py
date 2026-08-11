@@ -125,9 +125,13 @@ class LocalChunkState:
 
 def _get_max_view_margins():
     aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
+    margin = float(config.VIEW_MARGIN)
+    if getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up":
+        import math
+        margin = margin * math.sqrt(1.0 + aspect * aspect)
     if aspect >= 1.0:
-        return config.VIEW_MARGIN * aspect, config.VIEW_MARGIN
-    return config.VIEW_MARGIN, config.VIEW_MARGIN / aspect
+        return margin * aspect, margin
+    return margin, margin / aspect
 
 
 class LocalBasemapCache:
