@@ -73,6 +73,8 @@ def launch_gui():
     enable_media_var = tk.BooleanVar(value=config.ENABLE_MEDIA)
     media_duration_var = tk.DoubleVar(value=config.MEDIA_POPUP_DURATION)
     media_offset_var = tk.DoubleVar(value=config.MEDIA_TIME_OFFSET_SEC)
+    hide_start_var = tk.DoubleVar(value=config.HIDE_START_DISTANCE_KM)
+    hide_end_var = tk.DoubleVar(value=config.HIDE_END_DISTANCE_KM)
     real_speed_var = tk.BooleanVar(value=config.USE_REAL_SPEED)
     progress_var = tk.DoubleVar(value=0.0)
     status_var = tk.StringVar(value="就緒")
@@ -381,6 +383,18 @@ def launch_gui():
     ttk.Spinbox(chunks_field, from_=1, to=12, textvariable=chunks_var, width=8).pack(side="left")
     help_button(chunks_field, root, "chunks").pack(side="left", padx=(5, 0))
 
+    ttk.Label(settings, text="隱藏起點 (km)").grid(row=6, column=0, sticky="w", pady=4)
+    hide_start_field = ttk.Frame(settings)
+    hide_start_field.grid(row=6, column=1, sticky="w")
+    ttk.Spinbox(hide_start_field, from_=0.0, to=50.0, increment=0.1, textvariable=hide_start_var, width=8).pack(side="left")
+    help_button(hide_start_field, root, "hide_start").pack(side="left", padx=(5, 0))
+
+    ttk.Label(settings, text="隱藏終點 (km)").grid(row=6, column=2, sticky="e", padx=(12, 6))
+    hide_end_field = ttk.Frame(settings)
+    hide_end_field.grid(row=6, column=3, sticky="w")
+    ttk.Spinbox(hide_end_field, from_=0.0, to=50.0, increment=0.1, textvariable=hide_end_var, width=8).pack(side="left")
+    help_button(hide_end_field, root, "hide_end").pack(side="left", padx=(5, 0))
+
     def open_media_dialog():
         media_path = media_var.get().strip()
         gpx_path = gpx_var.get().strip()
@@ -397,7 +411,11 @@ def launch_gui():
             from gpx_renderer.core.media import scan_media_files
             from gpx_renderer.gui.media_dialog import MediaManagerDialog
 
-            data = load_gpx(gpx_path)
+            data = load_gpx(
+                gpx_path,
+                hide_start_km=float(hide_start_var.get()),
+                hide_end_km=float(hide_end_var.get()),
+            )
             scanned = scan_media_files(media_path, time_offset_sec=float(media_offset_var.get()))
 
             if not scanned:
@@ -432,7 +450,7 @@ def launch_gui():
             messagebox.showerror("錯誤", f"無法開啟媒體微調視窗：{exc}")
 
     checks = ttk.Frame(settings)
-    checks.grid(row=6, column=0, columnspan=6, sticky="w", pady=(6, 0))
+    checks.grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
     add_check_with_help(checks, root, "多程序", parallel_var, "parallel")
     add_check_with_help(checks, root, "底圖", basemap_var, "basemap")
@@ -443,7 +461,7 @@ def launch_gui():
     add_check_with_help(checks, root, "並行時停用 joblib cache", disable_parallel_cache_var, "parallel_cache")
 
     tune_row = ttk.Frame(settings)
-    tune_row.grid(row=7, column=0, columnspan=6, sticky="ew", pady=(8, 0))
+    tune_row.grid(row=8, column=0, columnspan=6, sticky="ew", pady=(8, 0))
     tune_row.columnconfigure(2, weight=1)
     benchmark_btn = ttk.Button(tune_row, text="效能測試 / Auto Tune", command=lambda: start_benchmark())
     benchmark_btn.grid(row=0, column=0, sticky="w")
@@ -577,6 +595,8 @@ def launch_gui():
             "MEDIA_TIME_OFFSET_SEC": float(media_offset_var.get()),
             "MEDIA_OVERRIDES_JSON": state.get("media_overrides_json", getattr(config, "MEDIA_OVERRIDES_JSON", "{}")),
             "USE_REAL_SPEED": bool(real_speed_var.get()),
+            "HIDE_START_DISTANCE_KM": float(hide_start_var.get()),
+            "HIDE_END_DISTANCE_KM": float(hide_end_var.get()),
         }
 
     def set_running(running: bool):

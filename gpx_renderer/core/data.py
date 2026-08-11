@@ -175,7 +175,7 @@ def load_gpx(path: str | Path) -> RideData:
     if not np.isfinite(vmax) or vmax <= vmin:
         vmax = vmin + 1.0
 
-    return RideData(
+    data = RideData(
         xs=xs,
         ys=ys,
         eles=eles,
@@ -188,6 +188,81 @@ def load_gpx(path: str | Path) -> RideData:
         fit_margin=fit_margin,
         speed_norm=Normalize(vmin=vmin, vmax=vmax, clip=True),
         gpx_times=times,
+    )
+
+    h_start = hide_start_km if hide_start_km > 0 else getattr(config, "HIDE_START_DISTANCE_KM", 0.0)
+    h_end = hide_end_km if hide_end_km > 0 else getattr(config, "HIDE_END_DISTANCE_KM", 0.0)
+    if h_start > 0 or h_end > 0:
+        data = trim_ride_data(data, h_start, h_end)
+
+    return data
+
+
+def trim_ride_data(data: RideData, hide_start_km: float = 0.0, hide_end_km: float = 0.0) -> RideData:
+    """隱藏/裁切路線起點或終點一段距離 (km)，重新計算對齊資訊。"""
+    hide_start = max(0.0, float(hide_start_km))
+    hide_end = max(0.0, float(hide_end_km))
+
+    if hide_start <= 0.0 and hide_end <= 0.0:
+        return data
+
+    total_km = float(data.distances[-1]) if len(data.distances) > 0 else 0.0
+    if total_km <= 0.0 or data.total_points < 4:
+        return data
+
+    target_start_km = min(hide_start, total_km * 0.45)
+    target_end_km = min(total_km - hide_end, total_km * 0.99)
+    if target_end_km <= target_start_km:
+        target_end_km = target_start_km + 0.01
+
+    start_i = int(np.searchsorted(data.distances, target_start_km))
+    end_i = int(np.searchsorted(data.distances, target_end_km, side="right"))
+    start_i = max(0, min(start_i, data.total_points - 2))
+    end_i = max(start_i + 2, min(end_i, data.total_points))
+
+    xs = data.xs[start_i:end_i]
+    ys = data.ys[start_i:end_i]
+    eles = data.eles[start_i:end_i]
+    distances = data.distances[start_i:end_i] - data.distances[start_i]
+    speeds = data.speeds[start_i:end_i]
+    elevation_gain = data.elevation_gain[start_i:end_i] - data.elevation_gain[start_i]
+
+    gpx_times = data.gpx_times[start_i:end_i] if data.gpx_times else None
+    if gpx_times and gpx_times[0] is not None and gpx_times[-1] is not None:
+        total_seconds = (gpx_times[-1] - gpx_times[0]).total_seconds()
+    else:
+        total_seconds = data.total_seconds
+
+    route_center_x = float((xs.max() + xs.min()) / 2.0)
+    route_center_y = float((ys.max() + ys.min()) / 2.0)
+    route_half_w = float((xs.max() - xs.min()) / 2.0)
+    route_half_h = float((ys.max() - ys.min()) / 2.0)
+    fit_margin = max(
+        config.VIEW_MARGIN,
+        max(route_half_w, route_half_h) * (1.0 + config.END_PADDING_FRAC),
+        1.0,
+    )
+
+    vmin = float(np.percentile(speeds, 5))
+    vmax = float(np.percentile(speeds, 95))
+    if not np.isfinite(vmin):
+        vmin = 0.0
+    if not np.isfinite(vmax) or vmax <= vmin:
+        vmax = vmin + 1.0
+
+    return RideData(
+        xs=xs,
+        ys=ys,
+        eles=eles,
+        distances=distances,
+        speeds=speeds,
+        elevation_gain=elevation_gain,
+        total_seconds=total_seconds,
+        route_center_x=route_center_x,
+        route_center_y=route_center_y,
+        fit_margin=fit_margin,
+        speed_norm=Normalize(vmin=vmin, vmax=vmax, clip=True),
+        gpx_times=gpx_times,
     )
 
 
