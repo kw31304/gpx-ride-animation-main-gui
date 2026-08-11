@@ -386,16 +386,16 @@ class MediaManagerDialog(tk.Toplevel):
         ).pack(anchor="w")
 
         # 套用單項微調按鈕
-        btn_apply_single = ttk.Button(edit_frame, text="更新此項設定", command=self._apply_current_edit)
+        btn_apply_single = ttk.Button(edit_frame, text="套用設定", command=self._apply_current_edit)
         btn_apply_single.pack(anchor="e")
 
         # 底部按鈕欄
         bottom_frame = ttk.Frame(self, padding=(15, 10))
         bottom_frame.pack(fill="x")
 
-        ttk.Button(bottom_frame, text="🔄 重置全部為自動對齊", command=self._reset_all).pack(side="left")
+        ttk.Button(bottom_frame, text="重置全部為自動對齊", command=self._reset_all).pack(side="left")
         ttk.Button(bottom_frame, text="取消 (Cancel)", command=self.destroy).pack(side="right", padx=(5, 0))
-        ttk.Button(bottom_frame, text="💾 儲存並套用設定", command=self._on_save_and_apply).pack(side="right")
+        ttk.Button(bottom_frame, text="儲存並套用", command=self._on_save_and_apply).pack(side="right")
 
     def _recalculate_time_offset(self):
         """根據輸入的相機時間校正秒數，重新與 GPX 時間軸對齊。"""
@@ -450,11 +450,17 @@ class MediaManagerDialog(tk.Toplevel):
         item = self.selected_item
 
         self.lbl_filename.config(text=f"檔案：{item.filename}")
-        info_str = "無"
+        info_str = ""
         if item.timestamp:
             info_str = f"時間 {item.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
         if item.lat is not None and item.lon is not None:
-            info_str += f" | GPS ({item.lat:.5f}, {item.lon:.5f})"
+            gps_text = f"GPS ({item.lat:.5f}, {item.lon:.5f})"
+            if info_str:
+                info_str += f"\n{gps_text}"
+            else:
+                info_str = gps_text
+        if not info_str:
+            info_str = "無 EXIF 資訊"
         self.lbl_auto_info.config(text=f"偵測：{info_str}")
 
         cur_km = 0.0
