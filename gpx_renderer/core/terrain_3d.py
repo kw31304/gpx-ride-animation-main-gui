@@ -135,7 +135,7 @@ def render_3d_terrain_frame(
     out_arr = np.full((H, W, 3), 17, dtype=np.uint8)
 
     if HAVE_CV2 and cv2 is not None:
-        # 分塊 3D 透視三角面片極速局部貼圖 (Patch-based Bounding Box Affine)
+        # 分塊 3D 透視三角面片極速無縫貼圖 (Triangle Masked Affine Blending)
         for r in range(grid_res - 1):
             for c in range(grid_res - 1):
                 dst_pts1 = np.float32([
@@ -155,11 +155,15 @@ def render_3d_terrain_frame(
                 by1 = min(H, int(math.ceil(float(np.max(dst_pts1[:, 1])))))
 
                 if bx1 > bx0 and by1 > by0:
+                    pw, ph = bx1 - bx0, by1 - by0
                     dst1_loc = dst_pts1 - np.float32([bx0, by0])
                     try:
                         M1 = cv2.getAffineTransform(src_pts1, dst1_loc)
+                        warped1 = cv2.warpAffine(src_img, M1, (pw, ph), flags=cv2.INTER_LINEAR)
+                        mask1 = np.zeros((ph, pw), dtype=np.uint8)
+                        cv2.fillConvexPoly(mask1, np.int32(np.round(dst1_loc)), 255)
                         patch1 = out_arr[by0:by1, bx0:bx1]
-                        cv2.warpAffine(src_img, M1, (bx1 - bx0, by1 - by0), dst=patch1, borderMode=cv2.BORDER_TRANSPARENT, flags=cv2.INTER_LINEAR)
+                        cv2.copyTo(warped1, mask1, patch1)
                     except Exception:
                         pass
 
@@ -180,11 +184,15 @@ def render_3d_terrain_frame(
                 by1 = min(H, int(math.ceil(float(np.max(dst_pts2[:, 1])))))
 
                 if bx1 > bx0 and by1 > by0:
+                    pw, ph = bx1 - bx0, by1 - by0
                     dst2_loc = dst_pts2 - np.float32([bx0, by0])
                     try:
                         M2 = cv2.getAffineTransform(src_pts2, dst2_loc)
+                        warped2 = cv2.warpAffine(src_img, M2, (pw, ph), flags=cv2.INTER_LINEAR)
+                        mask2 = np.zeros((ph, pw), dtype=np.uint8)
+                        cv2.fillConvexPoly(mask2, np.int32(np.round(dst2_loc)), 255)
                         patch2 = out_arr[by0:by1, bx0:bx1]
-                        cv2.warpAffine(src_img, M2, (bx1 - bx0, by1 - by0), dst=patch2, borderMode=cv2.BORDER_TRANSPARENT, flags=cv2.INTER_LINEAR)
+                        cv2.copyTo(warped2, mask2, patch2)
                     except Exception:
                         pass
 

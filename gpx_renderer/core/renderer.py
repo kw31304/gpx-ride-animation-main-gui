@@ -309,7 +309,18 @@ class RideRenderer:
 
         return cx_arr, cy_arr, ch_arr
 
-    def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0):
+    def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, z: float = 0.0):
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+            from gpx_renderer.core.terrain_3d import Camera3D, project_3d_points
+            pitch_deg = float(getattr(config, "CAMERA_PITCH_DEG", 50.0))
+            exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
+            cam = Camera3D(
+                x=view_x, y=view_y, z=z * exaggeration,
+                heading_rad=heading_rad, pitch_deg=pitch_deg, exaggeration=exaggeration
+            )
+            px_arr, py_arr, _ = project_3d_points(np.array([x]), np.array([y]), np.array([z]), cam, margin)
+            return int(round(px_arr[0])), int(round(py_arr[0]))
+
         margin_x, margin_y = _get_aspect_margins(margin)
         alpha = heading_rad - math.pi / 2.0
         cos_a = math.cos(alpha)
@@ -397,6 +408,9 @@ class RideRenderer:
         )
 
     def _draw_visible_track(self, frame: Image.Image, idx: int, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0) -> Image.Image:
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+            return frame
+
         seg_count = min(max(int(idx), 0), len(self.seg_x0))
         if seg_count <= 0:
             return frame
@@ -873,7 +887,7 @@ class RideRenderer:
         frame = self._crop_raster(local_rm, view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad)
 
         draw = ImageDraw.Draw(frame)
-        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad)
+        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad, z=float(d.eles[idx]))
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
         hud = self._get_hud(i, idx)
