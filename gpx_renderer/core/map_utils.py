@@ -137,7 +137,7 @@ def _get_max_view_margins():
     margin = float(config.VIEW_MARGIN)
     if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
         import math
-        margin = margin * math.sqrt(1.0 + aspect * aspect) * 1.5
+        margin = margin * 1.8 * math.sqrt(1.0 + aspect * aspect) * 1.5
     elif getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up":
         import math
         margin = margin * math.sqrt(1.0 + aspect * aspect)
