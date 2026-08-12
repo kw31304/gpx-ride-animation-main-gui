@@ -125,10 +125,9 @@ def render_3d_terrain_frame(
     out_arr = np.full((H, W, 3), 17, dtype=np.uint8)
 
     if HAVE_CV2 and cv2 is not None:
-        # 分塊 3D 透視三角面片高速繪製 (Triangular Mesh Homography Warp)
+        # 分塊 3D 透視三角面片極速局部貼圖 (Patch-based Bounding Box Affine)
         for r in range(grid_res - 1):
             for c in range(grid_res - 1):
-                # 頂點：(r, c), (r, c+1), (r+1, c+1), (r+1, c)
                 dst_pts1 = np.float32([
                     [px_grid[r, c], py_grid[r, c]],
                     [px_grid[r, c + 1], py_grid[r, c + 1]],
@@ -140,11 +139,19 @@ def render_3d_terrain_frame(
                     [src_mesh_x[r + 1, c], src_mesh_y[r + 1, c]],
                 ])
 
-                try:
-                    M1 = cv2.getAffineTransform(src_pts1, dst_pts1)
-                    cv2.warpAffine(src_img, M1, (W, H), dst=out_arr, borderMode=cv2.BORDER_TRANSPARENT, flags=cv2.INTER_LINEAR)
-                except Exception:
-                    pass
+                bx0 = max(0, int(math.floor(float(np.min(dst_pts1[:, 0])))))
+                bx1 = min(W, int(math.ceil(float(np.max(dst_pts1[:, 0])))))
+                by0 = max(0, int(math.floor(float(np.min(dst_pts1[:, 1])))))
+                by1 = min(H, int(math.ceil(float(np.max(dst_pts1[:, 1])))))
+
+                if bx1 > bx0 and by1 > by0:
+                    dst1_loc = dst_pts1 - np.float32([bx0, by0])
+                    try:
+                        M1 = cv2.getAffineTransform(src_pts1, dst1_loc)
+                        patch1 = out_arr[by0:by1, bx0:bx1]
+                        cv2.warpAffine(src_img, M1, (bx1 - bx0, by1 - by0), dst=patch1, borderMode=cv2.BORDER_TRANSPARENT, flags=cv2.INTER_LINEAR)
+                    except Exception:
+                        pass
 
                 dst_pts2 = np.float32([
                     [px_grid[r, c + 1], py_grid[r, c + 1]],
@@ -157,10 +164,18 @@ def render_3d_terrain_frame(
                     [src_mesh_x[r + 1, c], src_mesh_y[r + 1, c]],
                 ])
 
-                try:
-                    M2 = cv2.getAffineTransform(src_pts2, dst_pts2)
-                    cv2.warpAffine(src_img, M2, (W, H), dst=out_arr, borderMode=cv2.BORDER_TRANSPARENT, flags=cv2.INTER_LINEAR)
-                except Exception:
-                    pass
+                bx0 = max(0, int(math.floor(float(np.min(dst_pts2[:, 0])))))
+                bx1 = min(W, int(math.ceil(float(np.max(dst_pts2[:, 0])))))
+                by0 = max(0, int(math.floor(float(np.min(dst_pts2[:, 1])))))
+                by1 = min(H, int(math.ceil(float(np.max(dst_pts2[:, 1])))))
+
+                if bx1 > bx0 and by1 > by0:
+                    dst2_loc = dst_pts2 - np.float32([bx0, by0])
+                    try:
+                        M2 = cv2.getAffineTransform(src_pts2, dst2_loc)
+                        patch2 = out_arr[by0:by1, bx0:bx1]
+                        cv2.warpAffine(src_img, M2, (bx1 - bx0, by1 - by0), dst=patch2, borderMode=cv2.BORDER_TRANSPARENT, flags=cv2.INTER_LINEAR)
+                    except Exception:
+                        pass
 
     return Image.fromarray(out_arr)
