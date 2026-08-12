@@ -333,6 +333,7 @@ def launch_gui():
     CAMERA_MODE_LABELS = {
         "North-Up": "正北朝上 (North-Up)",
         "Heading-Up": "跟隨行進方向 (Heading-Up)",
+        "3D-Terrain": "3D 真地形 (3D-Terrain)",
     }
     camera_mode_combo_var = tk.StringVar(value=CAMERA_MODE_LABELS.get(camera_mode_var.get(), "正北朝上 (North-Up)"))
     ttk.Label(settings, text="視角模式").grid(row=3, column=0, sticky="w", pady=4)
@@ -344,7 +345,9 @@ def launch_gui():
 
     def on_camera_mode_change(_=None):
         sel = camera_mode_combo_var.get()
-        if "Heading-Up" in sel:
+        if "3D-Terrain" in sel:
+            camera_mode_var.set("3D-Terrain")
+        elif "Heading-Up" in sel:
             camera_mode_var.set("Heading-Up")
         else:
             camera_mode_var.set("North-Up")

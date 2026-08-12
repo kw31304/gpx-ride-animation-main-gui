@@ -279,7 +279,7 @@ class RideRenderer:
             cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
             cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
 
-        if getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up" and self.d.headings is not None and len(self.d.headings) > 0:
+        if getattr(config, "CAMERA_MODE", "North-Up") in ("Heading-Up", "3D-Terrain") and self.d.headings is not None and len(self.d.headings) > 0:
             target_h = self.d.headings[self.main_indices]
 
             rot_base_alpha = min(max(getattr(config, "CAMERA_ROTATION_SMOOTH", 0.025), 1e-6), 1.0)
@@ -331,6 +331,15 @@ class RideRenderer:
         return [tuple(map(int, c[:3])) for c in rgba]
 
     def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0) -> Image.Image:
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+            from gpx_renderer.core.terrain_3d import render_3d_terrain_frame
+            pitch_deg = float(getattr(config, "CAMERA_PITCH_DEG", 50.0))
+            exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
+            return render_3d_terrain_frame(
+                rm, view_x, view_y, margin, heading_rad,
+                pitch_deg=pitch_deg, exaggeration=exaggeration
+            )
+
         margin_x, margin_y = _get_aspect_margins(margin)
         alpha = heading_rad - math.pi / 2.0
         cos_a = math.cos(alpha)

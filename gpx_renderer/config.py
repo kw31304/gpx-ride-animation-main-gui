@@ -23,9 +23,11 @@ END_HOLD_DURATION = 4.0
 
 VIEW_MARGIN = 1600.0
 CAMERA_SMOOTH = 0.15
-CAMERA_MODE = "North-Up"  # "North-Up"（正北朝上）或 "Heading-Up"（跟隨行進方向轉動）
-CAMERA_ROTATION_SMOOTH = 0.025  # Heading-Up 模式下視角轉向平滑係數（調低越平緩）
-CAMERA_MAX_ROTATION_SPEED_DEG = 25.0  # Heading-Up 視角每秒最大旋轉角度 (deg/sec)，防止過髮夾彎頭暈
+CAMERA_MODE = "North-Up"  # "North-Up"（正北朝上）、"Heading-Up"（跟隨行進方向轉動）或 "3D-Terrain"（3D 地形透視）
+CAMERA_ROTATION_SMOOTH = 0.025  # Heading-Up / 3D 模式下視角轉向平滑係數（調低越平緩）
+CAMERA_MAX_ROTATION_SPEED_DEG = 25.0  # 視角每秒最大旋轉角度 (deg/sec)，防止過髮夾彎頭暈
+CAMERA_PITCH_DEG = 50.0  # 3D 模式下鏡頭俯角 (degrees, 0度為正俯瞰，90度為水平)
+ELEVATION_EXAGGERATION = 1.5  # 3D 模式下地形高度放大係數 (1.0為真實高度，1.5為微誇大立體感)
 END_PADDING_FRAC = 0.18
 
 # 結尾版面
@@ -118,6 +120,7 @@ RUNTIME_CONFIG_KEYS = {
     "MEDIA_OVERRIDES_JSON", "USE_REAL_SPEED",
     "HIDE_START_DISTANCE_KM", "HIDE_END_DISTANCE_KM",
     "CAMERA_MODE", "CAMERA_ROTATION_SMOOTH", "CAMERA_MAX_ROTATION_SPEED_DEG",
+    "CAMERA_PITCH_DEG", "ELEVATION_EXAGGERATION",
 }
 
 # 顏色
