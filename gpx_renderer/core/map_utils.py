@@ -36,8 +36,8 @@ class RasterMap:
         if self.image.mode != "RGB":
             self.image = self.image.convert("RGB")
         max_dim = max(self.image.width, self.image.height)
-        if max_dim > 2048:
-            scale = 2048.0 / float(max_dim)
+        if max_dim > 4096:
+            scale = 4096.0 / float(max_dim)
             new_w = max(1, int(round(self.image.width * scale)))
             new_h = max(1, int(round(self.image.height * scale)))
             self.image = self.image.resize((new_w, new_h), Image.Resampling.BILINEAR)
@@ -137,7 +137,7 @@ def _get_max_view_margins():
     margin = float(config.VIEW_MARGIN)
     if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
         import math
-        margin = margin * 1.8 * math.sqrt(1.0 + aspect * aspect) * 1.5
+        margin = margin * 1.35 * math.sqrt(1.0 + aspect * aspect)
     elif getattr(config, "CAMERA_MODE", "North-Up") == "Heading-Up":
         import math
         margin = margin * math.sqrt(1.0 + aspect * aspect)
