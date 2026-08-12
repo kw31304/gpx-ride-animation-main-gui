@@ -106,11 +106,12 @@ def render_3d_terrain_frame(
     else:
         dem_grid = get_elevation_grid(local_rm.west, local_rm.south, local_rm.east, local_rm.north, rows=grid_res, cols=grid_res)
     avg_z = float(np.mean(dem_grid))
+    cam_alt = margin * 0.8
 
     camera = Camera3D(
         x=view_x,
         y=view_y,
-        z=avg_z * exaggeration,
+        z=(avg_z * exaggeration) + cam_alt,
         heading_rad=heading_rad,
         pitch_deg=pitch_deg,
         exaggeration=exaggeration,

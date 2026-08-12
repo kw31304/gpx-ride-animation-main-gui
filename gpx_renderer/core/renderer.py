@@ -314,8 +314,9 @@ class RideRenderer:
             from gpx_renderer.core.terrain_3d import Camera3D, project_3d_points
             pitch_deg = float(getattr(config, "CAMERA_PITCH_DEG", 50.0))
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
+            cam_alt = margin * 0.8
             cam = Camera3D(
-                x=view_x, y=view_y, z=z * exaggeration,
+                x=view_x, y=view_y, z=(z * exaggeration) + cam_alt,
                 heading_rad=heading_rad, pitch_deg=pitch_deg, exaggeration=exaggeration
             )
             px_arr, py_arr, _ = project_3d_points(np.array([x]), np.array([y]), np.array([z]), cam, margin)
