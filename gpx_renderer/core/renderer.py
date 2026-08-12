@@ -262,6 +262,7 @@ class RideRenderer:
         self._init_minimap()
         self._init_elevation()
         self._init_summary()
+        self._terrain_out_buffer = np.full((config.FRAME_HEIGHT, config.FRAME_WIDTH, 3), 17, dtype=np.uint8)
 
     # ---------- geometry ----------
     def _precompute_camera(self):
@@ -337,7 +338,8 @@ class RideRenderer:
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
             return render_3d_terrain_frame(
                 rm, view_x, view_y, margin, heading_rad,
-                pitch_deg=pitch_deg, exaggeration=exaggeration
+                pitch_deg=pitch_deg, exaggeration=exaggeration,
+                out_buffer=self._terrain_out_buffer,
             )
 
         margin_x, margin_y = _get_aspect_margins(margin)

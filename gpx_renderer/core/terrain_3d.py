@@ -88,13 +88,23 @@ def render_3d_terrain_frame(
     pitch_deg: float = 50.0,
     exaggeration: float = 1.5,
     grid_res: int = 24,
+    out_buffer: np.ndarray | None = None,
 ) -> Image.Image:
     """渲染帶有 3D 山脈地形起伏與透視投影的地圖畫格。"""
     W = config.FRAME_WIDTH
     H = config.FRAME_HEIGHT
 
-    # 1. 下載 / 取得該區域的高程 DEM 網格
-    dem_grid = get_elevation_grid(local_rm.west, local_rm.south, local_rm.east, local_rm.north, rows=grid_res, cols=grid_res)
+    if out_buffer is not None and out_buffer.shape == (H, W, 3):
+        out_arr = out_buffer
+        out_arr.fill(17)
+    else:
+        out_arr = np.full((H, W, 3), 17, dtype=np.uint8)
+
+    # 1. 取得該區域的高程 DEM 網格 (優先使用已預先計算好的塊陣列)
+    if local_rm.dem_grid is not None:
+        dem_grid = local_rm.dem_grid
+    else:
+        dem_grid = get_elevation_grid(local_rm.west, local_rm.south, local_rm.east, local_rm.north, rows=grid_res, cols=grid_res)
     avg_z = float(np.mean(dem_grid))
 
     camera = Camera3D(

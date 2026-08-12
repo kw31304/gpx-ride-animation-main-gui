@@ -15,6 +15,7 @@ import subprocess
 import multiprocessing as mp
 from dataclasses import dataclass
 from pathlib import Path
+import gc
 
 import numpy as np
 
@@ -474,6 +475,7 @@ def _dynamic_worker_loop(worker_id: int, worker_cfg: DynamicWorkerConfig, task_q
                 break
             try:
                 _encode_chunk_with_renderer(renderer, task, worker_cfg.ffmpeg, worker_cfg.encoder, worker_id, result_queue)
+                gc.collect()
             except Exception as exc:
                 result_queue.put(("error", worker_id, task.segment_index, 0, 0, repr(exc)))
                 return

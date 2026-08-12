@@ -30,6 +30,7 @@ class RasterMap:
     south: float
     north: float
     np_image: np.ndarray | None = None
+    dem_grid: np.ndarray | None = None
 
     def __post_init__(self):
         if self.image.mode != "RGB":
@@ -198,6 +199,14 @@ class LocalBasemapCache:
             print(f"\n[WARN] 局部底圖 chunk {key} 下載失敗，使用純色背景：{exc}")
             image = Image.new("RGB", (1024, 1024), (17, 17, 17))
             rm = RasterMap(image, west, east, south, north)
+
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+            try:
+                from gpx_renderer.core.dem_utils import get_elevation_grid
+                rm.dem_grid = get_elevation_grid(west, south, east, north, rows=24, cols=24)
+            except Exception:
+                pass
+
         return LocalChunkState(rm)
 
     @staticmethod
