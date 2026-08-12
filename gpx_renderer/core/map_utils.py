@@ -35,6 +35,12 @@ class RasterMap:
     def __post_init__(self):
         if self.image.mode != "RGB":
             self.image = self.image.convert("RGB")
+        max_dim = max(self.image.width, self.image.height)
+        if max_dim > 2048:
+            scale = 2048.0 / float(max_dim)
+            new_w = max(1, int(round(self.image.width * scale)))
+            new_h = max(1, int(round(self.image.height * scale)))
+            self.image = self.image.resize((new_w, new_h), Image.Resampling.BILINEAR)
         if self.np_image is None:
             self.np_image = np.asarray(self.image, dtype=np.uint8).copy()
 
@@ -274,7 +280,8 @@ class LocalBasemapCache:
         else:
             state = self._build_chunk(key)
             self.cache[key] = state
-            while len(self.cache) > max(1, int(config.LOCAL_CACHE_CHUNKS)):
+            max_c = 2 if (not self.tile_cache_enabled or getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain") else max(1, int(config.LOCAL_CACHE_CHUNKS))
+            while len(self.cache) > max_c:
                 self.cache.popitem(last=False)
 
         self._ensure_track(state, idx)
