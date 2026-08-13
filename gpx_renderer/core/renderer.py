@@ -213,7 +213,6 @@ class RideRenderer:
         self.zoom_frames = max(0, int(round(self.zoom_out_duration * self.fps)))
         self.hold_frames = max(0, int(round(self.end_hold_duration * self.fps)))
         self.total_frames = self.main_frames + self.zoom_frames + self.hold_frames
-        self.camera_x, self.camera_y, self.camera_h = self._precompute_camera()
 
         self.track_colors = self._build_track_colors()
         self.seg_x0 = self.d.xs[:-1]
@@ -264,6 +263,8 @@ class RideRenderer:
         self._init_summary()
         self._terrain_out_buffer = np.full((config.FRAME_HEIGHT, config.FRAME_WIDTH, 3), 17, dtype=np.uint8)
 
+        self.camera_x, self.camera_y, self.camera_h, self.camera_p, self.camera_m = self._precompute_camera()
+
     # ---------- geometry ----------
     def _precompute_camera(self):
         tx = self.d.xs[self.main_indices]
@@ -271,6 +272,8 @@ class RideRenderer:
         cx_arr = np.empty(self.main_frames, dtype=np.float64)
         cy_arr = np.empty(self.main_frames, dtype=np.float64)
         ch_arr = np.empty(self.main_frames, dtype=np.float64)
+        cp_arr = np.empty(self.main_frames, dtype=np.float64)
+        cm_arr = np.empty(self.main_frames, dtype=np.float64)
 
         cx_arr[0] = tx[0]
         cy_arr[0] = ty[0]
@@ -279,6 +282,15 @@ class RideRenderer:
         for i in range(1, self.main_frames):
             cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
             cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
+
+        is_3d = (getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain")
+        target_pitch = float(getattr(config, "CAMERA_PITCH_DEG", 50.0)) if is_3d else 0.0
+        base_margin = float(config.VIEW_MARGIN)
+        target_margin = base_margin * 1.35 if is_3d else base_margin
+        start_margin = target_margin * 1.5 if is_3d else target_margin
+
+        intro_hold_f = int(round(float(getattr(config, "INTRO_HOLD_SEC", 1.5)) * self.fps)) if is_3d else 0
+        intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
 
         if getattr(config, "CAMERA_MODE", "North-Up") in ("Heading-Up", "3D-Terrain") and self.d.headings is not None and len(self.d.headings) > 0:
             target_h = self.d.headings[self.main_indices]
@@ -307,20 +319,35 @@ class RideRenderer:
         else:
             ch_arr.fill(math.pi / 2.0)
 
-        return cx_arr, cy_arr, ch_arr
+        for i in range(self.main_frames):
+            if is_3d and i < intro_hold_f:
+                cp_arr[i] = 0.0
+                cm_arr[i] = start_margin
+                ch_arr[i] = math.pi / 2.0
+            elif is_3d and i < intro_hold_f + intro_trans_f and intro_trans_f > 0:
+                t = (i - intro_hold_f) / float(intro_trans_f)
+                alpha = ease_smoothstep(t)
+                cp_arr[i] = alpha * target_pitch
+                cm_arr[i] = start_margin + alpha * (target_margin - start_margin)
+                target_h_val = float(ch_arr[i])
+                diff_h = (target_h_val - math.pi / 2.0 + math.pi) % (2.0 * math.pi) - math.pi
+                ch_arr[i] = math.pi / 2.0 + alpha * diff_h
+            else:
+                cp_arr[i] = target_pitch if is_3d else 0.0
+                cm_arr[i] = target_margin
 
-    def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, z: float = 0.0):
-        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+        return cx_arr, cy_arr, ch_arr, cp_arr, cm_arr
+
+    def _world_to_frame_px(self, x: float, y: float, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, z: float = 0.0, pitch_deg: float = 0.0):
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:
             from gpx_renderer.core.terrain_3d import Camera3D, project_3d_points
-            pitch_deg = float(getattr(config, "CAMERA_PITCH_DEG", 50.0))
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
-            margin_3d = margin * 1.35
-            cam_alt = margin_3d * 0.7
+            cam_alt = margin * 0.7
             cam = Camera3D(
                 x=view_x, y=view_y, z=(z * exaggeration) + cam_alt,
                 heading_rad=heading_rad, pitch_deg=pitch_deg, exaggeration=exaggeration
             )
-            px_arr, py_arr, _ = project_3d_points(np.array([x]), np.array([y]), np.array([z]), cam, margin_3d)
+            px_arr, py_arr, _ = project_3d_points(np.array([x]), np.array([y]), np.array([z]), cam, margin)
             return int(round(px_arr[0])), int(round(py_arr[0]))
 
         margin_x, margin_y = _get_aspect_margins(margin)
@@ -344,14 +371,12 @@ class RideRenderer:
         rgba = cmap(normalized, bytes=True)
         return [tuple(map(int, c[:3])) for c in rgba]
 
-    def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0) -> Image.Image:
-        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+    def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0) -> Image.Image:
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:
             from gpx_renderer.core.terrain_3d import render_3d_terrain_frame
-            pitch_deg = float(getattr(config, "CAMERA_PITCH_DEG", 50.0))
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
-            margin_3d = margin * 1.35
             return render_3d_terrain_frame(
-                rm, view_x, view_y, margin_3d, heading_rad,
+                rm, view_x, view_y, margin, heading_rad,
                 pitch_deg=pitch_deg, exaggeration=exaggeration,
                 out_buffer=self._terrain_out_buffer,
             )
@@ -885,12 +910,14 @@ class RideRenderer:
         view_x = float(self.camera_x[i])
         view_y = float(self.camera_y[i])
         heading_rad = float(self.camera_h[i])
+        pitch_deg = float(self.camera_p[i])
+        current_margin = float(self.camera_m[i])
 
         local_rm = self.local_maps.get(view_x, view_y, idx)
-        frame = self._crop_raster(local_rm, view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad)
+        frame = self._crop_raster(local_rm, view_x, view_y, current_margin, heading_rad=heading_rad, pitch_deg=pitch_deg)
 
         draw = ImageDraw.Draw(frame)
-        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, config.VIEW_MARGIN, heading_rad=heading_rad, z=float(d.eles[idx]))
+        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, current_margin, heading_rad=heading_rad, z=float(d.eles[idx]), pitch_deg=pitch_deg)
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
         hud = self._get_hud(i, idx)
@@ -903,7 +930,7 @@ class RideRenderer:
         frame.paste(elev, (self.elev_x, self.elev_y), elev)
 
         # 媒體卡片與背景暗化遮罩放置於最頂層 (無法被 HUD / 小地圖 / 海拔圖遮擋)
-        self._draw_media_popups(frame, frame_idx, view_x, view_y, config.VIEW_MARGIN)
+        self._draw_media_popups(frame, frame_idx, view_x, view_y, current_margin)
 
         return frame
 
@@ -922,7 +949,10 @@ class RideRenderer:
         start_x = float(self.camera_x[-1])
         start_y = float(self.camera_y[-1])
         start_h = float(self.camera_h[-1])
+        start_p = float(self.camera_p[-1])
+        start_m = float(self.camera_m[-1])
         target_h = math.pi / 2.0  # 平滑旋轉回正北朝上
+        current_pitch = start_p * (1.0 - eased)  # 平滑由 3D 俯角抬升回 2D 正俯瞰 (0°)
 
         ux = math.cos(start_h) * (1.0 - eased) + math.cos(target_h) * eased
         uy = math.sin(start_h) * (1.0 - eased) + math.sin(target_h) * eased
@@ -931,16 +961,16 @@ class RideRenderer:
         end_x, end_y, end_margin = compute_end_route_view(d)
         view_x = start_x + (end_x - start_x) * eased
         view_y = start_y + (end_y - start_y) * eased
-        margin = config.VIEW_MARGIN + (end_margin - config.VIEW_MARGIN) * eased
+        margin = start_m + (end_margin - start_m) * eased
 
         if self.rm is None:
             raise RuntimeError("render_end_frame 需要 overview_map。")
-        frame = self._crop_raster(self.rm, view_x, view_y, margin, heading_rad=heading_rad)
+        frame = self._crop_raster(self.rm, view_x, view_y, margin, heading_rad=heading_rad, pitch_deg=current_pitch)
         frame = self._draw_visible_track(frame, d.total_points - 1, view_x, view_y, margin, heading_rad=heading_rad)
         draw = ImageDraw.Draw(frame)
 
-        sx, sy = self._world_to_frame_px(float(d.xs[0]), float(d.ys[0]), view_x, view_y, margin, heading_rad=heading_rad)
-        ex, ey = self._world_to_frame_px(float(d.xs[-1]), float(d.ys[-1]), view_x, view_y, margin, heading_rad=heading_rad)
+        sx, sy = self._world_to_frame_px(float(d.xs[0]), float(d.ys[0]), view_x, view_y, margin, heading_rad=heading_rad, z=float(d.eles[0]), pitch_deg=current_pitch)
+        ex, ey = self._world_to_frame_px(float(d.xs[-1]), float(d.ys[-1]), view_x, view_y, margin, heading_rad=heading_rad, z=float(d.eles[-1]), pitch_deg=current_pitch)
         self._draw_marker(draw, sx, sy, config.GREEN, config.WHITE, r=8, outline_w=2)
         self._draw_marker(draw, ex, ey, config.ORANGE, config.WHITE, r=8, outline_w=2)
 
