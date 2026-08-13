@@ -290,7 +290,15 @@ class RideRenderer:
         start_margin = target_margin * 1.5 if is_3d else target_margin
 
         intro_hold_f = int(round(float(getattr(config, "INTRO_HOLD_SEC", 1.5)) * self.fps)) if is_3d else 0
+        intro_motion_2d_f = int(round(float(getattr(config, "INTRO_MOTION_2D_SEC", 1.5)) * self.fps)) if is_3d else 0
         intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
+        outro_trans_f = int(round(float(getattr(config, "OUTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
+
+        # 開場靜止 2D 正俯瞰停留階段：鏡頭錨定在起點位置
+        if is_3d and intro_hold_f > 0:
+            for i in range(min(intro_hold_f, self.main_frames)):
+                cx_arr[i] = tx[0]
+                cy_arr[i] = ty[0]
 
         if getattr(config, "CAMERA_MODE", "North-Up") in ("Heading-Up", "3D-Terrain") and self.d.headings is not None and len(self.d.headings) > 0:
             target_h = self.d.headings[self.main_indices]
@@ -320,20 +328,33 @@ class RideRenderer:
             ch_arr.fill(math.pi / 2.0)
 
         for i in range(self.main_frames):
-            if is_3d and i < intro_hold_f:
-                cp_arr[i] = 0.0
-                cm_arr[i] = start_margin
-                ch_arr[i] = math.pi / 2.0
-            elif is_3d and i < intro_hold_f + intro_trans_f and intro_trans_f > 0:
-                t = (i - intro_hold_f) / float(intro_trans_f)
-                alpha = ease_smoothstep(t)
-                cp_arr[i] = alpha * target_pitch
-                cm_arr[i] = start_margin + alpha * (target_margin - start_margin)
-                target_h_val = float(ch_arr[i])
-                diff_h = (target_h_val - math.pi / 2.0 + math.pi) % (2.0 * math.pi) - math.pi
-                ch_arr[i] = math.pi / 2.0 + alpha * diff_h
+            if is_3d:
+                start_2d_limit = intro_hold_f + intro_motion_2d_f
+                if i < start_2d_limit:
+                    cp_arr[i] = 0.0
+                    cm_arr[i] = start_margin
+                    ch_arr[i] = math.pi / 2.0
+                elif i < start_2d_limit + intro_trans_f and intro_trans_f > 0:
+                    t = (i - start_2d_limit) / float(intro_trans_f)
+                    alpha = ease_smoothstep(t)
+                    cp_arr[i] = alpha * target_pitch
+                    cm_arr[i] = start_margin + alpha * (target_margin - start_margin)
+                    target_h_val = float(ch_arr[i])
+                    diff_h = (target_h_val - math.pi / 2.0 + math.pi) % (2.0 * math.pi) - math.pi
+                    ch_arr[i] = math.pi / 2.0 + alpha * diff_h
+                elif i >= self.main_frames - outro_trans_f and outro_trans_f > 0:
+                    t = (i - (self.main_frames - outro_trans_f)) / float(outro_trans_f)
+                    alpha = ease_smoothstep(t)
+                    cp_arr[i] = target_pitch * (1.0 - alpha)
+                    cm_arr[i] = target_margin + alpha * (start_margin - target_margin)
+                    target_h_val = float(ch_arr[i])
+                    diff_h = (math.pi / 2.0 - target_h_val + math.pi) % (2.0 * math.pi) - math.pi
+                    ch_arr[i] = target_h_val + alpha * diff_h
+                else:
+                    cp_arr[i] = target_pitch
+                    cm_arr[i] = target_margin
             else:
-                cp_arr[i] = target_pitch if is_3d else 0.0
+                cp_arr[i] = 0.0
                 cm_arr[i] = target_margin
 
         return cx_arr, cy_arr, ch_arr, cp_arr, cm_arr
