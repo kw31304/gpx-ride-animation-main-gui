@@ -279,10 +279,6 @@ class RideRenderer:
         cy_arr[0] = ty[0]
         a = self.camera_alpha
 
-        for i in range(1, self.main_frames):
-            cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
-            cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
-
         is_3d = (getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain")
         target_pitch = float(getattr(config, "CAMERA_PITCH_DEG", 50.0)) if is_3d else 0.0
         base_margin = float(config.VIEW_MARGIN)
@@ -294,11 +290,13 @@ class RideRenderer:
         intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
         outro_trans_f = int(round(float(getattr(config, "OUTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
 
-        # 開場靜止 2D 正俯瞰停留階段：鏡頭錨定在起點位置
-        if is_3d and intro_hold_f > 0:
-            for i in range(min(intro_hold_f, self.main_frames)):
+        for i in range(1, self.main_frames):
+            if is_3d and i < intro_hold_f:
                 cx_arr[i] = tx[0]
                 cy_arr[i] = ty[0]
+            else:
+                cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
+                cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
 
         if getattr(config, "CAMERA_MODE", "North-Up") in ("Heading-Up", "3D-Terrain") and self.d.headings is not None and len(self.d.headings) > 0:
             target_h = self.d.headings[self.main_indices]
