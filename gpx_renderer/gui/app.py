@@ -27,7 +27,7 @@ from gpx_renderer.gui.components import add_check_with_help, RenderProgressDashb
 def launch_gui():
     """Tkinter GUI。真正渲染放在獨立 Python subprocess，避免 GUI 被 multiprocessing 拖死。"""
     root = tk.Tk()
-    root.title("GPX Ride Renderer V1.2.0")
+    root.title("GPX Ride Renderer V1.2.1")
     root.geometry("980x860")
     root.minsize(860, 760)
 
