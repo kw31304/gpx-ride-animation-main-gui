@@ -267,6 +267,14 @@ class RideRenderer:
         self.font_panel_label = load_font(max(9, int(round(10 * ui_scale))), bold=True)
         self.font_panel_metric = load_font(max(12, int(round(16 * ui_scale))), bold=True)
 
+        self.font_summary_title = load_font(max(22, int(round(30 * ui_scale))), bold=True)
+        self.font_summary_label = load_font(max(9, int(round(11 * ui_scale))), bold=True)
+        self.font_summary_value = load_font(max(20, int(round(29 * ui_scale))), bold=True)
+        self.font_summary_unit = load_font(max(10, int(round(12 * ui_scale))), bold=True)
+        self.font_caption = load_font(max(18, int(round(25 * ui_scale))), bold=True)
+
+        self.hud_update_every = max(1, int(round(self.fps / max(1, config.HUD_UPDATE_HZ))))
+
         self.cached_hud: Image.Image | None = None
         self.cached_hud_idx = -1
 
