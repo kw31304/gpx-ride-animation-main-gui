@@ -187,7 +187,130 @@ SETTING_HELP = {
         "• 未勾選（等速移動，預設）：動畫在路線上以均勻幾何速度前進，視覺推進最流暢。\n"
         "• 勾選（實際速度移動）：依照 GPX 實際記錄的時間點前進。真實還原騎乘時上坡變慢、下坡變快或停等紅燈的體感。"
     ),
+    "hide_start": (
+        "隱藏起點 (km)",
+        "用途：控制主動畫前段隱藏的 GPX 軌跡距離 (0~50 km)。\n\n"
+        "建議：如需保護騎乘起點隱私（例如住家周邊），可設為 0.5~2 km。"
+    ),
+    "hide_end": (
+        "隱藏終點 (km)",
+        "用途：控制主動畫後段隱藏的 GPX 軌跡距離 (0~50 km)。\n\n"
+        "建議：如需保護抵達地點隱私，可設為 0.5~2 km。"
+    ),
 }
+
+
+class ToolTip:
+    """
+    Tkinter ToolTip 懸浮提示框元件。
+    滑鼠游移至目標元件上時自動顯示說明訊息。
+    """
+    def __init__(self, widget, text_or_key, delay: int = 350):
+        self.widget = widget
+        self.text_or_key = text_or_key
+        self.delay = delay
+        self.tip_window = None
+        self.timer_id = None
+
+        self.widget.bind("<Enter>", self._on_enter, add="+")
+        self.widget.bind("<Leave>", self._on_leave, add="+")
+        self.widget.bind("<ButtonPress>", self._on_leave, add="+")
+
+    def _on_enter(self, event=None):
+        self._schedule()
+
+    def _on_leave(self, event=None):
+        self._unschedule()
+        self.hide_tip()
+
+    def _schedule(self):
+        self._unschedule()
+        if self.widget.winfo_exists():
+            self.timer_id = self.widget.after(self.delay, self.show_tip)
+
+    def _unschedule(self):
+        if self.timer_id:
+            try:
+                self.widget.after_cancel(self.timer_id)
+            except Exception:
+                pass
+            self.timer_id = None
+
+    def show_tip(self):
+        if self.tip_window or not self.widget.winfo_exists():
+            return
+
+        if isinstance(self.text_or_key, str) and self.text_or_key in SETTING_HELP:
+            title, body = SETTING_HELP[self.text_or_key]
+            text = f"【{title}】\n{body}"
+        elif isinstance(self.text_or_key, tuple) and len(self.text_or_key) == 2:
+            title, body = self.text_or_key
+            text = f"【{title}】\n{body}"
+        else:
+            text = str(self.text_or_key)
+
+        if not text.strip():
+            return
+
+        try:
+            x = self.widget.winfo_rootx() + 15
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        except Exception:
+            return
+
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        try:
+            tw.wm_attributes("-topmost", True)
+        except Exception:
+            pass
+
+        label = tk.Label(
+            tw,
+            text=text,
+            justify="left",
+            background="#20242a",
+            foreground="#f0f3f6",
+            relief="solid",
+            border=1,
+            wraplength=420,
+            font=("Microsoft JhengHei UI", 9),
+            padx=9,
+            pady=7,
+        )
+        label.pack()
+
+        tw.update_idletasks()
+        sw = tw.winfo_screenwidth()
+        sh = tw.winfo_screenheight()
+        tw_w = tw.winfo_width()
+        tw_h = tw.winfo_height()
+
+        if x + tw_w > sw - 10:
+            x = max(10, sw - tw_w - 10)
+        if y + tw_h > sh - 10:
+            y = self.widget.winfo_rooty() - tw_h - 5
+
+        tw.wm_geometry(f"+{x}+{y}")
+
+    def hide_tip(self):
+        tw = self.tip_window
+        self.tip_window = None
+        if tw:
+            try:
+                tw.destroy()
+            except Exception:
+                pass
+
+
+def add_tooltip(widget_or_widgets, text_or_key: str | tuple):
+    """將 ToolTip 綁定至單一或多個元件"""
+    if isinstance(widget_or_widgets, (list, tuple, set)):
+        for w in widget_or_widgets:
+            if w:
+                ToolTip(w, text_or_key)
+    elif widget_or_widgets:
+        ToolTip(widget_or_widgets, text_or_key)
 
 
 def show_setting_help(root, key: str):
@@ -216,11 +339,11 @@ def show_setting_help(root, key: str):
 
 
 def help_button(parent, root, key: str):
-    return ttk.Button(parent, text="?", width=2, command=lambda k=key: show_setting_help(root, k))
+    """相容用函式：已全面改用 ToolTip，此處不建立實體按鈕。"""
+    return None
 
 
 def field_with_help(parent, root, widget, key: str, *, fill=False):
-    box = ttk.Frame(parent)
-    widget.pack(in_=box, side="left", fill="x" if fill else None, expand=fill)
-    help_button(box, root, key).pack(side="left", padx=(5, 0))
-    return box
+    add_tooltip(widget, key)
+    return widget
+

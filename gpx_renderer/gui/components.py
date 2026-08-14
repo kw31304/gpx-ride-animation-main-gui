@@ -8,15 +8,14 @@ import math
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import ttk
-from gpx_renderer.gui.help import help_button
+from gpx_renderer.gui.help import add_tooltip, help_button
 
 
 def add_check_with_help(parent, root, text, variable, key):
-    box = ttk.Frame(parent)
-    box.pack(side="left", padx=(0, 10))
-    ttk.Checkbutton(box, text=text, variable=variable).pack(side="left")
-    help_button(box, root, key).pack(side="left", padx=(4, 0))
-    return box
+    cb = ttk.Checkbutton(parent, text=text, variable=variable)
+    cb.pack(side="left", padx=(0, 14))
+    add_tooltip(cb, key)
+    return cb
 
 
 class RenderProgressDashboard(ttk.LabelFrame):

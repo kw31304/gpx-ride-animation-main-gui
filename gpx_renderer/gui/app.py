@@ -20,7 +20,7 @@ from gpx_renderer import config
 from gpx_renderer.utils import _background_subprocess_kwargs, _self_subprocess_command
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
-from gpx_renderer.gui.help import help_button, show_setting_help
+from gpx_renderer.gui.help import help_button, show_setting_help, add_tooltip
 from gpx_renderer.gui.components import add_check_with_help, RenderProgressDashboard
 
 
@@ -172,8 +172,10 @@ def launch_gui():
     files_box.grid(row=0, column=0, sticky="ew")
     files_box.columnconfigure(1, weight=1)
 
-    ttk.Label(files_box, text="GPX").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=4)
-    ttk.Entry(files_box, textvariable=gpx_var).grid(row=0, column=1, sticky="ew", pady=4)
+    lbl_gpx = ttk.Label(files_box, text="GPX 檔案")
+    lbl_gpx.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=4)
+    ent_gpx = ttk.Entry(files_box, textvariable=gpx_var)
+    ent_gpx.grid(row=0, column=1, sticky="ew", pady=4)
     def browse_gpx():
         p = filedialog.askopenfilename(title="選擇 GPX", filetypes=[("GPX", "*.gpx"), ("所有檔案", "*.*")])
         if p:
@@ -185,239 +187,15 @@ def launch_gui():
             refresh_gpx_distance()
     ttk.Button(files_box, text="瀏覽…", command=browse_gpx).grid(row=0, column=2, padx=(8, 0), pady=4)
 
-    ttk.Label(files_box, text="輸出").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=4)
-    ttk.Entry(files_box, textvariable=out_var).grid(row=1, column=1, sticky="ew", pady=4)
+    lbl_out = ttk.Label(files_box, text="輸出影片")
+    lbl_out.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=4)
+    ent_out = ttk.Entry(files_box, textvariable=out_var)
+    ent_out.grid(row=1, column=1, sticky="ew", pady=4)
     def browse_out():
         p = filedialog.asksaveasfilename(title="輸出 MP4", defaultextension=".mp4", filetypes=[("MP4", "*.mp4")])
         if p:
             out_var.set(p)
     ttk.Button(files_box, text="瀏覽…", command=browse_out).grid(row=1, column=2, padx=(8, 0), pady=4)
-
-    ttk.Label(files_box, text="媒體檔/資料夾").grid(row=2, column=0, sticky="w", padx=(0, 8), pady=4)
-    ttk.Entry(files_box, textvariable=media_var).grid(row=2, column=1, sticky="ew", pady=4)
-    def browse_media():
-        p = filedialog.askdirectory(title="選擇照片/影片資料夾")
-        if not p:
-            p = filedialog.askopenfilename(title="選擇照片或影片", filetypes=[("媒體檔案", "*.jpg;*.jpeg;*.png;*.webp;*.mp4;*.mov"), ("所有檔案", "*.*")])
-        if p:
-            media_var.set(p)
-            enable_media_var.set(True)
-    media_btn_box = ttk.Frame(files_box)
-    media_btn_box.grid(row=2, column=2, padx=(8, 0), pady=4)
-    ttk.Button(media_btn_box, text="瀏覽…", command=browse_media).pack(side="left")
-    ttk.Button(media_btn_box, text="媒體管理", command=lambda: open_media_dialog()).pack(side="left", padx=(6, 0))
-    help_button(media_btn_box, root, "media_path").pack(side="left", padx=(5, 0))
-
-    # ---------- settings ----------
-    settings = ttk.LabelFrame(outer, text="渲染設定", padding=10)
-    settings.grid(row=1, column=0, sticky="ew", pady=(10, 0))
-    for c in range(6):
-        settings.columnconfigure(c, weight=1 if c in (1, 3, 5) else 0)
-
-    map_labels = [f"{k}. {v[0]}" for k, v in config.MAP_STYLE_OPTIONS.items()]
-    map_combo_var = tk.StringVar(value=map_labels[0])
-    ttk.Label(settings, text="地圖風格").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=4)
-    map_field = ttk.Frame(settings)
-    map_field.grid(row=0, column=1, columnspan=3, sticky="ew", pady=4)
-    map_field.columnconfigure(0, weight=1)
-    map_combo = ttk.Combobox(map_field, textvariable=map_combo_var, values=map_labels, state="readonly", width=28)
-    map_combo.grid(row=0, column=0, sticky="ew")
-    help_button(map_field, root, "map_style").grid(row=0, column=1, padx=(5, 0))
-    def on_map_change(_=None):
-        map_var.set(map_combo_var.get().split(".", 1)[0])
-    map_combo.bind("<<ComboboxSelected>>", on_map_change)
-
-    ttk.Label(settings, text="模式").grid(row=0, column=4, sticky="e", padx=(12, 6))
-    profile_field = ttk.Frame(settings)
-    profile_field.grid(row=0, column=5, sticky="ew")
-    profile_field.columnconfigure(0, weight=1)
-    profile_combo = ttk.Combobox(profile_field, textvariable=profile_var, values=["快速", "平衡", "高畫質"], state="readonly", width=10)
-    profile_combo.grid(row=0, column=0, sticky="ew")
-    help_button(profile_field, root, "profile").grid(row=0, column=1, padx=(5, 0))
-
-    RESOLUTION_PRESETS = [
-        ("1080p 直式 9:16 (1080×1920) - 社群媒體", 1080, 1920),
-        ("1080p 橫式 16:9 (1920×1080) - YouTube", 1920, 1080),
-        ("1080p 正方形 1:1 (1080×1080) - 標準方形", 1080, 1080),
-        ("720p  直式 9:16 (720×1280)  - 社群媒體", 720, 1280),
-        ("720p  橫式 16:9 (1280×720)", 1280, 720),     
-        ("IG 貼文直式 4:5 (1080×1350)", 1080, 1350),
-        ("1440p 正方形 1:1 (1440×1440) - 高畫質方形", 1440, 1440),
-        ("2K 橫式 16:9 (2560×1440)", 2560, 1440),
-        ("640×360  超低 16:9 測試 (極速)", 640, 360),
-        ("480×480  超低 1:1  測試 (極速)", 480, 480),
-        ("360×640  超低 直式 測試 (極速)", 360, 640),
-        ("自訂解析度...", None, None),
-    ]
-
-    res_combo_labels = [p[0] for p in RESOLUTION_PRESETS]
-
-    def _find_matching_preset(w, h):
-        for label, pw, ph in RESOLUTION_PRESETS:
-            if pw == w and ph == h:
-                return label
-        return "✏️ 自訂解析度..."
-
-    res_combo_var = tk.StringVar(value=_find_matching_preset(width_var.get(), height_var.get()))
-
-    ttk.Label(settings, text="解析度預設").grid(row=1, column=0, sticky="w", pady=4)
-    res_field = ttk.Frame(settings)
-    res_field.grid(row=1, column=1, sticky="ew", pady=4)
-
-    res_combo = ttk.Combobox(res_field, textvariable=res_combo_var, values=res_combo_labels, state="readonly", width=26)
-    res_combo.pack(side="left", fill="x", expand=True)
-
-    def on_res_preset_change(_=None):
-        sel = res_combo_var.get()
-        for label, pw, ph in RESOLUTION_PRESETS:
-            if label == sel and pw is not None and ph is not None:
-                width_var.set(pw)
-                height_var.set(ph)
-                break
-
-    res_combo.bind("<<ComboboxSelected>>", on_res_preset_change)
-
-    ttk.Label(settings, text="自訂(寬×高)").grid(row=1, column=2, sticky="e", padx=(12, 6))
-    res_custom_frame = ttk.Frame(settings)
-    res_custom_frame.grid(row=1, column=3, sticky="w")
-    ttk.Entry(res_custom_frame, textvariable=width_var, width=5).pack(side="left")
-    ttk.Label(res_custom_frame, text="×").pack(side="left")
-    ttk.Entry(res_custom_frame, textvariable=height_var, width=5).pack(side="left")
-    help_button(res_custom_frame, root, "resolution").pack(side="left", padx=(5, 0))
-
-    def on_custom_dim_change(*args):
-        try:
-            w, h = int(width_var.get()), int(height_var.get())
-            matched = _find_matching_preset(w, h)
-            if res_combo_var.get() != matched:
-                res_combo_var.set(matched)
-        except Exception:
-            pass
-
-    width_var.trace_add("write", on_custom_dim_change)
-    height_var.trace_add("write", on_custom_dim_change)
-
-    ttk.Label(settings, text="FPS").grid(row=1, column=4, sticky="e", padx=(12, 6))
-    fps_field = ttk.Frame(settings)
-    fps_field.grid(row=1, column=5, sticky="w")
-    ttk.Spinbox(fps_field, from_=24, to=120, textvariable=fps_var, width=8).pack(side="left")
-    help_button(fps_field, root, "fps").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="主動畫秒數").grid(row=2, column=0, sticky="w", pady=4)
-    duration_field = ttk.Frame(settings)
-    duration_field.grid(row=2, column=1, sticky="ew")
-    duration_entry = ttk.Entry(duration_field, textvariable=duration_var, width=10)
-    duration_entry.pack(side="left", fill="x", expand=True)
-    help_button(duration_field, root, "duration").pack(side="left", padx=(5, 0))
-
-    auto_row = ttk.Frame(settings)
-    auto_row.grid(row=2, column=2, columnspan=4, sticky="ew", pady=(3, 5))
-    auto_row.columnconfigure(5, weight=1)
-    auto_toggle_box = ttk.Frame(auto_row)
-    auto_toggle_box.grid(row=0, column=0, sticky="w", padx=(0, 12))
-    ttk.Checkbutton(
-        auto_toggle_box,
-        text="依 GPX 距離自動設定秒數",
-        variable=auto_duration_var,
-        command=on_auto_duration_toggle,
-    ).pack(side="left")
-    help_button(auto_toggle_box, root, "auto_duration").pack(side="left", padx=(5, 0))
-    ttk.Label(auto_row, text="每 100 km").grid(row=0, column=1, sticky="e", padx=(0, 5))
-    rate_field = ttk.Frame(auto_row)
-    rate_field.grid(row=0, column=2, sticky="w")
-    ttk.Spinbox(rate_field, from_=5, to=600, increment=5, textvariable=seconds_per_100km_var, width=7).pack(side="left")
-    help_button(rate_field, root, "seconds_per_100km").pack(side="left", padx=(5, 0))
-    ttk.Label(auto_row, text="秒").grid(row=0, column=3, sticky="w", padx=(4, 12))
-    ttk.Label(auto_row, textvariable=distance_info_var).grid(row=0, column=5, sticky="w")
-
-    CAMERA_MODE_LABELS = {
-        "North-Up": "正北朝上 (North-Up)",
-        "Heading-Up": "跟隨行進方向 (Heading-Up)",
-        "3D-Terrain": "3D 真地形 (3D-Terrain)",
-    }
-    camera_mode_combo_var = tk.StringVar(value=CAMERA_MODE_LABELS.get(camera_mode_var.get(), "正北朝上 (North-Up)"))
-    ttk.Label(settings, text="視角模式").grid(row=3, column=0, sticky="w", pady=4)
-    camera_mode_field = ttk.Frame(settings)
-    camera_mode_field.grid(row=3, column=1, sticky="w")
-    camera_mode_combo = ttk.Combobox(camera_mode_field, textvariable=camera_mode_combo_var, values=list(CAMERA_MODE_LABELS.values()), state="readonly", width=22)
-    camera_mode_combo.pack(side="left")
-    help_button(camera_mode_field, root, "camera_mode").pack(side="left", padx=(5, 0))
-
-    def on_camera_mode_change(_=None):
-        sel = camera_mode_combo_var.get()
-        if "3D-Terrain" in sel:
-            camera_mode_var.set("3D-Terrain")
-        elif "Heading-Up" in sel:
-            camera_mode_var.set("Heading-Up")
-        else:
-            camera_mode_var.set("North-Up")
-    camera_mode_combo.bind("<<ComboboxSelected>>", on_camera_mode_change)
-
-    ttk.Label(settings, text="Local Zoom").grid(row=3, column=2, sticky="e", padx=(12, 6))
-    local_zoom_field = ttk.Frame(settings)
-    local_zoom_field.grid(row=3, column=3, sticky="w")
-    ttk.Combobox(local_zoom_field, textvariable=local_zoom_var, values=["auto", "15", "16", "17", "18"], state="readonly", width=8).pack(side="left")
-    help_button(local_zoom_field, root, "local_zoom").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="View Margin").grid(row=3, column=4, sticky="e", padx=(12, 6))
-    margin_field = ttk.Frame(settings)
-    margin_field.grid(row=3, column=5, sticky="w")
-    ttk.Entry(margin_field, textvariable=margin_var, width=10).pack(side="left")
-    help_button(margin_field, root, "view_margin").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="Workers").grid(row=3, column=4, sticky="e", padx=(12, 6))
-    workers_field = ttk.Frame(settings)
-    workers_field.grid(row=3, column=5, sticky="w")
-    ttk.Spinbox(workers_field, from_=1, to=max(2, os.cpu_count() or 8), textvariable=workers_var, width=8).pack(side="left")
-    help_button(workers_field, root, "workers").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="NVENC bitrate").grid(row=4, column=0, sticky="w", pady=4)
-    bitrate_field = ttk.Frame(settings)
-    bitrate_field.grid(row=4, column=1, sticky="w")
-    ttk.Combobox(bitrate_field, textvariable=bitrate_var, values=["8M", "12M", "20M", "24M", "30M", "40M", "60M"], width=8).pack(side="left")
-    help_button(bitrate_field, root, "bitrate").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="NVENC preset").grid(row=4, column=2, sticky="e", padx=(12, 6))
-    preset_field = ttk.Frame(settings)
-    preset_field.grid(row=4, column=3, sticky="w")
-    ttk.Combobox(preset_field, textvariable=preset_var, values=["p1", "p2", "p3", "p4", "p5", "p6", "p7"], state="readonly", width=8).pack(side="left")
-    help_button(preset_field, root, "nvenc_preset").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="Tile connections").grid(row=4, column=4, sticky="e", padx=(12, 6))
-    connections_field = ttk.Frame(settings)
-    connections_field.grid(row=4, column=5, sticky="w")
-    ttk.Spinbox(connections_field, from_=1, to=16, textvariable=connections_var, width=8).pack(side="left")
-    help_button(connections_field, root, "tile_connections").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="Zoom-out 秒").grid(row=5, column=0, sticky="w", pady=4)
-    zoomout_field = ttk.Frame(settings)
-    zoomout_field.grid(row=5, column=1, sticky="w")
-    ttk.Entry(zoomout_field, textvariable=zoomout_var, width=8).pack(side="left")
-    help_button(zoomout_field, root, "zoomout").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="結尾停留秒").grid(row=5, column=2, sticky="e", padx=(12, 6))
-    hold_field = ttk.Frame(settings)
-    hold_field.grid(row=5, column=3, sticky="w")
-    ttk.Entry(hold_field, textvariable=hold_var, width=8).pack(side="left")
-    help_button(hold_field, root, "end_hold").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="Chunks / Worker").grid(row=5, column=4, sticky="e", padx=(12, 6))
-    chunks_field = ttk.Frame(settings)
-    chunks_field.grid(row=5, column=5, sticky="w")
-    ttk.Spinbox(chunks_field, from_=1, to=12, textvariable=chunks_var, width=8).pack(side="left")
-    help_button(chunks_field, root, "chunks").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="隱藏起點 (km)").grid(row=6, column=0, sticky="w", pady=4)
-    hide_start_field = ttk.Frame(settings)
-    hide_start_field.grid(row=6, column=1, sticky="w")
-    ttk.Spinbox(hide_start_field, from_=0.0, to=50.0, increment=0.1, textvariable=hide_start_var, width=8).pack(side="left")
-    help_button(hide_start_field, root, "hide_start").pack(side="left", padx=(5, 0))
-
-    ttk.Label(settings, text="隱藏終點 (km)").grid(row=6, column=2, sticky="e", padx=(12, 6))
-    hide_end_field = ttk.Frame(settings)
-    hide_end_field.grid(row=6, column=3, sticky="w")
-    ttk.Spinbox(hide_end_field, from_=0.0, to=50.0, increment=0.1, textvariable=hide_end_var, width=8).pack(side="left")
-    help_button(hide_end_field, root, "hide_end").pack(side="left", padx=(5, 0))
 
     def open_media_dialog():
         media_path = media_var.get().strip()
@@ -473,26 +251,261 @@ def launch_gui():
         except Exception as exc:
             messagebox.showerror("錯誤", f"無法開啟媒體微調視窗：{exc}")
 
+    lbl_media = ttk.Label(files_box, text="路線媒體")
+    lbl_media.grid(row=2, column=0, sticky="w", padx=(0, 8), pady=4)
+    ent_media = ttk.Entry(files_box, textvariable=media_var)
+    ent_media.grid(row=2, column=1, sticky="ew", pady=4)
+    add_tooltip((lbl_media, ent_media), "media_path")
+
+    def browse_media():
+        p = filedialog.askdirectory(title="選擇照片/影片資料夾")
+        if not p:
+            p = filedialog.askopenfilename(title="選擇照片或影片", filetypes=[("媒體檔案", "*.jpg;*.jpeg;*.png;*.webp;*.mp4;*.mov"), ("所有檔案", "*.*")])
+        if p:
+            media_var.set(p)
+            enable_media_var.set(True)
+    media_btn_box = ttk.Frame(files_box)
+    media_btn_box.grid(row=2, column=2, padx=(8, 0), pady=4)
+    ttk.Button(media_btn_box, text="瀏覽…", command=browse_media).pack(side="left")
+    ttk.Button(media_btn_box, text="媒體管理", command=lambda: open_media_dialog()).pack(side="left", padx=(6, 0))
+
+    # ---------- settings ----------
+    settings = ttk.LabelFrame(outer, text="渲染設定", padding=10)
+    settings.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+    for c in range(6):
+        settings.columnconfigure(c, weight=1 if c in (1, 3, 5) else 0)
+
+    # --- Row 0: 地圖風格, 視角模式, 預設模式 ---
+    map_labels = [f"{k}. {v[0]}" for k, v in config.MAP_STYLE_OPTIONS.items()]
+    map_combo_var = tk.StringVar(value=map_labels[0])
+    lbl_map = ttk.Label(settings, text="地圖風格")
+    lbl_map.grid(row=0, column=0, sticky="e", padx=(8, 4), pady=4)
+    map_combo = ttk.Combobox(settings, textvariable=map_combo_var, values=map_labels, state="readonly", width=22)
+    map_combo.grid(row=0, column=1, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_map, map_combo), "map_style")
+    def on_map_change(_=None):
+        map_var.set(map_combo_var.get().split(".", 1)[0])
+    map_combo.bind("<<ComboboxSelected>>", on_map_change)
+
+    CAMERA_MODE_LABELS = {
+        "North-Up": "正北朝上 (North-Up)",
+        "Heading-Up": "跟隨行進方向 (Heading-Up)",
+        "3D-Terrain": "3D 真地形 (3D-Terrain)",
+    }
+    camera_mode_combo_var = tk.StringVar(value=CAMERA_MODE_LABELS.get(camera_mode_var.get(), "正北朝上 (North-Up)"))
+    lbl_cam = ttk.Label(settings, text="視角模式")
+    lbl_cam.grid(row=0, column=2, sticky="e", padx=(8, 4), pady=4)
+    camera_mode_combo = ttk.Combobox(settings, textvariable=camera_mode_combo_var, values=list(CAMERA_MODE_LABELS.values()), state="readonly", width=22)
+    camera_mode_combo.grid(row=0, column=3, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_cam, camera_mode_combo), "camera_mode")
+    def on_camera_mode_change(_=None):
+        sel = camera_mode_combo_var.get()
+        if "3D-Terrain" in sel:
+            camera_mode_var.set("3D-Terrain")
+        elif "Heading-Up" in sel:
+            camera_mode_var.set("Heading-Up")
+        else:
+            camera_mode_var.set("North-Up")
+    camera_mode_combo.bind("<<ComboboxSelected>>", on_camera_mode_change)
+
+    lbl_prof = ttk.Label(settings, text="預設模式")
+    lbl_prof.grid(row=0, column=4, sticky="e", padx=(8, 4), pady=4)
+    profile_combo = ttk.Combobox(settings, textvariable=profile_var, values=["快速", "平衡", "高畫質"], state="readonly", width=14)
+    profile_combo.grid(row=0, column=5, sticky="w", padx=(0, 8), pady=4)
+    add_tooltip((lbl_prof, profile_combo), "profile")
+
+    # --- Row 1: 解析度預設, 自訂尺寸, FPS ---
+    RESOLUTION_PRESETS = [
+        ("1080p 直式 9:16 (1080×1920) - 社群媒體", 1080, 1920),
+        ("1080p 橫式 16:9 (1920×1080) - YouTube", 1920, 1080),
+        ("1080p 正方形 1:1 (1080×1080) - 標準方形", 1080, 1080),
+        ("720p  直式 9:16 (720×1280)  - 社群媒體", 720, 1280),
+        ("720p  橫式 16:9 (1280×720)", 1280, 720),     
+        ("IG 貼文直式 4:5 (1080×1350)", 1080, 1350),
+        ("1440p 正方形 1:1 (1440×1440) - 高畫質方形", 1440, 1440),
+        ("2K 橫式 16:9 (2560×1440)", 2560, 1440),
+        ("640×360  超低 16:9 測試 (極速)", 640, 360),
+        ("480×480  超低 1:1  測試 (極速)", 480, 480),
+        ("360×640  超低 直式 測試 (極速)", 360, 640),
+        ("自訂解析度...", None, None),
+    ]
+    res_combo_labels = [p[0] for p in RESOLUTION_PRESETS]
+
+    def _find_matching_preset(w, h):
+        for label, pw, ph in RESOLUTION_PRESETS:
+            if pw == w and ph == h:
+                return label
+        return "✏️ 自訂解析度..."
+
+    res_combo_var = tk.StringVar(value=_find_matching_preset(width_var.get(), height_var.get()))
+    lbl_res = ttk.Label(settings, text="解析度預設")
+    lbl_res.grid(row=1, column=0, sticky="e", padx=(8, 4), pady=4)
+    res_combo = ttk.Combobox(settings, textvariable=res_combo_var, values=res_combo_labels, state="readonly", width=22)
+    res_combo.grid(row=1, column=1, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_res, res_combo), "resolution")
+
+    def on_res_preset_change(_=None):
+        sel = res_combo_var.get()
+        for label, pw, ph in RESOLUTION_PRESETS:
+            if label == sel and pw is not None and ph is not None:
+                width_var.set(pw)
+                height_var.set(ph)
+                break
+    res_combo.bind("<<ComboboxSelected>>", on_res_preset_change)
+
+    lbl_custom = ttk.Label(settings, text="自訂尺寸")
+    lbl_custom.grid(row=1, column=2, sticky="e", padx=(8, 4), pady=4)
+    res_custom_frame = ttk.Frame(settings)
+    res_custom_frame.grid(row=1, column=3, sticky="w", padx=(0, 14), pady=4)
+    ent_w = ttk.Entry(res_custom_frame, textvariable=width_var, width=5)
+    ent_w.pack(side="left")
+    ttk.Label(res_custom_frame, text="×").pack(side="left", padx=2)
+    ent_h = ttk.Entry(res_custom_frame, textvariable=height_var, width=5)
+    ent_h.pack(side="left")
+    add_tooltip((lbl_custom, ent_w, ent_h), "resolution")
+
+    def on_custom_dim_change(*args):
+        try:
+            w, h = int(width_var.get()), int(height_var.get())
+            matched = _find_matching_preset(w, h)
+            if res_combo_var.get() != matched:
+                res_combo_var.set(matched)
+        except Exception:
+            pass
+
+    width_var.trace_add("write", on_custom_dim_change)
+    height_var.trace_add("write", on_custom_dim_change)
+
+    lbl_fps = ttk.Label(settings, text="FPS (幀率)")
+    lbl_fps.grid(row=1, column=4, sticky="e", padx=(8, 4), pady=4)
+    fps_spin = ttk.Spinbox(settings, from_=24, to=120, textvariable=fps_var, width=14)
+    fps_spin.grid(row=1, column=5, sticky="w", padx=(0, 8), pady=4)
+    add_tooltip((lbl_fps, fps_spin), "fps")
+
+    # --- Row 2: 主動畫秒數, 依 GPX 距離自動, 每 100km 秒數, 距離資訊 ---
+    lbl_dur = ttk.Label(settings, text="主動畫秒數")
+    lbl_dur.grid(row=2, column=0, sticky="e", padx=(8, 4), pady=4)
+    dur_frame = ttk.Frame(settings)
+    dur_frame.grid(row=2, column=1, sticky="w", padx=(0, 14), pady=4)
+    duration_entry = ttk.Entry(dur_frame, textvariable=duration_var, width=9)
+    duration_entry.pack(side="left")
+    ttk.Label(dur_frame, text=" 秒").pack(side="left")
+    add_tooltip((lbl_dur, duration_entry), "duration")
+
+    chk_auto_dur = ttk.Checkbutton(settings, text="依 GPX 距離自動", variable=auto_duration_var, command=on_auto_duration_toggle)
+    chk_auto_dur.grid(row=2, column=2, sticky="e", padx=(8, 4), pady=4)
+    add_tooltip(chk_auto_dur, "auto_duration")
+
+    rate_frame = ttk.Frame(settings)
+    rate_frame.grid(row=2, column=3, sticky="w", padx=(0, 14), pady=4)
+    rate_spin = ttk.Spinbox(rate_frame, from_=5, to=600, increment=5, textvariable=seconds_per_100km_var, width=6)
+    rate_spin.pack(side="left")
+    ttk.Label(rate_frame, text=" 秒 / 100km").pack(side="left")
+    add_tooltip((rate_spin, rate_frame), "seconds_per_100km")
+
+    lbl_dist_info = ttk.Label(settings, textvariable=distance_info_var, font=("Microsoft JhengHei UI", 9, "bold"), foreground="#0056b3")
+    lbl_dist_info.grid(row=2, column=4, columnspan=2, sticky="w", padx=(4, 8), pady=4)
+    add_tooltip(lbl_dist_info, "auto_duration")
+
+    # --- Row 3: Local Zoom, View Margin, Tile 連線數 ---
+    lbl_zoom = ttk.Label(settings, text="Local Zoom")
+    lbl_zoom.grid(row=3, column=0, sticky="e", padx=(8, 4), pady=4)
+    local_zoom_combo = ttk.Combobox(settings, textvariable=local_zoom_var, values=["auto", "15", "16", "17", "18"], state="readonly", width=14)
+    local_zoom_combo.grid(row=3, column=1, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_zoom, local_zoom_combo), "local_zoom")
+
+    lbl_margin = ttk.Label(settings, text="View Margin")
+    lbl_margin.grid(row=3, column=2, sticky="e", padx=(8, 4), pady=4)
+    margin_entry = ttk.Entry(settings, textvariable=margin_var, width=14)
+    margin_entry.grid(row=3, column=3, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_margin, margin_entry), "view_margin")
+
+    lbl_conn = ttk.Label(settings, text="Tile 連線數")
+    lbl_conn.grid(row=3, column=4, sticky="e", padx=(8, 4), pady=4)
+    conn_spin = ttk.Spinbox(settings, from_=1, to=16, textvariable=connections_var, width=14)
+    conn_spin.grid(row=3, column=5, sticky="w", padx=(0, 8), pady=4)
+    add_tooltip((lbl_conn, conn_spin), "tile_connections")
+
+    # --- Row 4: Zoom-out 秒, 結尾停留秒, 起終點隱藏 ---
+    lbl_zoomout = ttk.Label(settings, text="Zoom-out 秒")
+    lbl_zoomout.grid(row=4, column=0, sticky="e", padx=(8, 4), pady=4)
+    zoomout_entry = ttk.Entry(settings, textvariable=zoomout_var, width=14)
+    zoomout_entry.grid(row=4, column=1, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_zoomout, zoomout_entry), "zoomout")
+
+    lbl_hold = ttk.Label(settings, text="結尾停留秒")
+    lbl_hold.grid(row=4, column=2, sticky="e", padx=(8, 4), pady=4)
+    hold_entry = ttk.Entry(settings, textvariable=hold_var, width=14)
+    hold_entry.grid(row=4, column=3, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_hold, hold_entry), "end_hold")
+
+    lbl_hide = ttk.Label(settings, text="起終點隱藏")
+    lbl_hide.grid(row=4, column=4, sticky="e", padx=(8, 4), pady=4)
+    hide_frame = ttk.Frame(settings)
+    hide_frame.grid(row=4, column=5, sticky="w", padx=(0, 8), pady=4)
+    ttk.Label(hide_frame, text="起 ").pack(side="left")
+    spin_hs = ttk.Spinbox(hide_frame, from_=0.0, to=50.0, increment=0.1, textvariable=hide_start_var, width=4)
+    spin_hs.pack(side="left")
+    ttk.Label(hide_frame, text="k | 終 ").pack(side="left")
+    spin_he = ttk.Spinbox(hide_frame, from_=0.0, to=50.0, increment=0.1, textvariable=hide_end_var, width=4)
+    spin_he.pack(side="left")
+    ttk.Label(hide_frame, text="k").pack(side="left")
+    add_tooltip((lbl_hide, spin_hs), "hide_start")
+    add_tooltip(spin_he, "hide_end")
+
+    # --- Row 5: NVENC 比特率, NVENC Preset, Workers / Chunks ---
+    lbl_bitrate = ttk.Label(settings, text="NVENC 比特率")
+    lbl_bitrate.grid(row=5, column=0, sticky="e", padx=(8, 4), pady=4)
+    bitrate_combo = ttk.Combobox(settings, textvariable=bitrate_var, values=["8M", "12M", "20M", "24M", "30M", "40M", "60M"], width=14)
+    bitrate_combo.grid(row=5, column=1, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_bitrate, bitrate_combo), "bitrate")
+
+    lbl_preset = ttk.Label(settings, text="NVENC Preset")
+    lbl_preset.grid(row=5, column=2, sticky="e", padx=(8, 4), pady=4)
+    preset_combo = ttk.Combobox(settings, textvariable=preset_var, values=["p1", "p2", "p3", "p4", "p5", "p6", "p7"], state="readonly", width=14)
+    preset_combo.grid(row=5, column=3, sticky="w", padx=(0, 14), pady=4)
+    add_tooltip((lbl_preset, preset_combo), "nvenc_preset")
+
+    lbl_wc = ttk.Label(settings, text="Workers / Chunks")
+    lbl_wc.grid(row=5, column=4, sticky="e", padx=(8, 4), pady=4)
+    wc_frame = ttk.Frame(settings)
+    wc_frame.grid(row=5, column=5, sticky="w", padx=(0, 8), pady=4)
+    spin_w = ttk.Spinbox(wc_frame, from_=1, to=max(2, os.cpu_count() or 8), textvariable=workers_var, width=4)
+    spin_w.pack(side="left")
+    ttk.Label(wc_frame, text=" W × ").pack(side="left")
+    spin_c = ttk.Spinbox(wc_frame, from_=1, to=12, textvariable=chunks_var, width=4)
+    spin_c.pack(side="left")
+    ttk.Label(wc_frame, text=" C").pack(side="left")
+    add_tooltip((lbl_wc, spin_w), "workers")
+    add_tooltip(spin_c, "chunks")
+
+    # --- Row 6: 功能開關核取方塊 ---
     checks = ttk.Frame(settings)
-    checks.grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
+    checks.grid(row=6, column=0, columnspan=6, sticky="w", pady=(8, 4), padx=4)
 
     add_check_with_help(checks, root, "多程序", parallel_var, "parallel")
     add_check_with_help(checks, root, "底圖", basemap_var, "basemap")
     add_check_with_help(checks, root, "跟隨 GPX 實際速度", real_speed_var, "use_real_speed")
     add_check_with_help(checks, root, "路線媒體卡片", enable_media_var, "enable_media")
-    add_check_with_help(checks, root, "Preview（仍使用多程序）", preview_var, "preview")
-    add_check_with_help(checks, root, "Contextily cache", cache_var, "contextily_cache")
-    add_check_with_help(checks, root, "並行時停用 joblib cache", disable_parallel_cache_var, "parallel_cache")
+    add_check_with_help(checks, root, "Preview 預覽模式", preview_var, "preview")
+    add_check_with_help(checks, root, "Contextily Cache", cache_var, "contextily_cache")
+    add_check_with_help(checks, root, "多程序停用 Cache", disable_parallel_cache_var, "parallel_cache")
 
+    # --- Row 7: Auto Tune 效能測試列 ---
     tune_row = ttk.Frame(settings)
-    tune_row.grid(row=8, column=0, columnspan=6, sticky="ew", pady=(8, 0))
-    tune_row.columnconfigure(2, weight=1)
-    benchmark_btn = ttk.Button(tune_row, text="效能測試 / Auto Tune", command=lambda: start_benchmark())
+    tune_row.grid(row=7, column=0, columnspan=6, sticky="ew", pady=(6, 2), padx=4)
+    tune_row.columnconfigure(1, weight=1)
+
+    benchmark_btn = ttk.Button(tune_row, text="⚡ 效能測試 / Auto Tune", command=lambda: start_benchmark())
     benchmark_btn.grid(row=0, column=0, sticky="w")
-    help_button(tune_row, root, "autotune").grid(row=0, column=1, sticky="w", padx=(5, 10))
-    ttk.Label(tune_row, textvariable=benchmark_result_var).grid(row=0, column=2, sticky="w")
+    add_tooltip(benchmark_btn, "autotune")
+
+    benchmark_lbl = ttk.Label(tune_row, textvariable=benchmark_result_var, font=("Microsoft JhengHei UI", 9, "bold"))
+    benchmark_lbl.grid(row=0, column=1, sticky="w", padx=(12, 12))
+    add_tooltip(benchmark_lbl, "autotune")
+
     apply_benchmark_btn = ttk.Button(tune_row, text="套用建議", command=lambda: apply_benchmark_recommendation(), state="disabled")
-    apply_benchmark_btn.grid(row=0, column=3, sticky="e", padx=(10, 0))
+    apply_benchmark_btn.grid(row=0, column=2, sticky="e", padx=(10, 0))
 
     def apply_profile(_=None):
         mode = profile_var.get()
