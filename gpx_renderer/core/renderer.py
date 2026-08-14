@@ -205,6 +205,17 @@ class RideRenderer:
                     d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
                     target_dists = np.linspace(d0, d1, self.main_frames)
                     self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
+            if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+                intro_hold_f = int(round(float(getattr(config, "INTRO_HOLD_SEC", 1.5)) * self.fps))
+                intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps))
+                intro_total_f = intro_hold_f + intro_trans_f
+                ride_frames = max(1, self.main_frames - intro_total_f)
+                d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
+                target_dists = np.linspace(d0, d1, ride_frames)
+                ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
+                self.main_indices = np.empty(self.main_frames, dtype=np.int32)
+                self.main_indices[:intro_total_f] = 0
+                self.main_indices[intro_total_f:] = ride_indices
             else:
                 d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
                 target_dists = np.linspace(d0, d1, self.main_frames)
@@ -286,12 +297,15 @@ class RideRenderer:
         start_margin = target_margin * 1.5 if is_3d else target_margin
 
         intro_hold_f = int(round(float(getattr(config, "INTRO_HOLD_SEC", 1.5)) * self.fps)) if is_3d else 0
-        intro_motion_2d_f = int(round(float(getattr(config, "INTRO_MOTION_2D_SEC", 1.5)) * self.fps)) if is_3d else 0
         intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
+        intro_total_f = intro_hold_f + intro_trans_f
         outro_trans_f = int(round(float(getattr(config, "OUTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
 
-        for i in range(1, self.main_frames):
-            if is_3d and i < intro_hold_f:
+        for i in range(self.main_frames):
+            if is_3d and i < intro_total_f:
+                cx_arr[i] = tx[0]
+                cy_arr[i] = ty[0]
+            elif i == 0:
                 cx_arr[i] = tx[0]
                 cy_arr[i] = ty[0]
             else:
@@ -327,13 +341,12 @@ class RideRenderer:
 
         for i in range(self.main_frames):
             if is_3d:
-                start_2d_limit = intro_hold_f + intro_motion_2d_f
-                if i < start_2d_limit:
+                if i < intro_hold_f:
                     cp_arr[i] = 0.0
                     cm_arr[i] = start_margin
                     ch_arr[i] = math.pi / 2.0
-                elif i < start_2d_limit + intro_trans_f and intro_trans_f > 0:
-                    t = (i - start_2d_limit) / float(intro_trans_f)
+                elif i < intro_total_f and intro_trans_f > 0:
+                    t = (i - intro_hold_f) / float(intro_trans_f)
                     alpha = ease_smoothstep(t)
                     cp_arr[i] = alpha * target_pitch
                     cm_arr[i] = start_margin + alpha * (target_margin - start_margin)
