@@ -316,16 +316,18 @@ class RideRenderer:
         max_step_rad = math.radians(max_speed_deg) / float(self.fps)
         deadband_rad = math.radians(1.5)
 
-        # 1. Camera position (cx, cy)
-        cx_arr[0] = tx[0]
-        cy_arr[0] = ty[0]
+        # 1. Target rider position (rx, ry) with smooth IIR tracking
+        rx_arr = np.empty(self.main_frames, dtype=np.float64)
+        ry_arr = np.empty(self.main_frames, dtype=np.float64)
+        rx_arr[0] = tx[0]
+        ry_arr[0] = ty[0]
         for i in range(1, self.main_frames):
             if is_3d and i < intro_total_f:
-                cx_arr[i] = tx[0]
-                cy_arr[i] = ty[0]
+                rx_arr[i] = tx[0]
+                ry_arr[i] = ty[0]
             else:
-                cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
-                cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
+                rx_arr[i] = rx_arr[i - 1] + (tx[i] - rx_arr[i - 1]) * a
+                ry_arr[i] = ry_arr[i - 1] + (ty[i] - ry_arr[i - 1]) * a
 
         # 2. Camera pitch (cp) & margin (cm)
         for i in range(self.main_frames):
@@ -381,6 +383,18 @@ class RideRenderer:
                         ch_arr[i] = prev_angle + step
         else:
             ch_arr.fill(math.pi / 2.0)
+
+        # 4. 根據 3D 俯角計算相機後撤距離 d_offset，使騎乘指示點 100% 精準置於畫面正中央 (W/2, H/2)
+        for i in range(self.main_frames):
+            if is_3d and cp_arr[i] > 0.001:
+                pitch_rad = math.radians(cp_arr[i])
+                cam_alt = cm_arr[i] * 0.85
+                d_offset = -cam_alt * math.tan(pitch_rad)
+                cx_arr[i] = rx_arr[i] - d_offset * math.cos(ch_arr[i])
+                cy_arr[i] = ry_arr[i] - d_offset * math.sin(ch_arr[i])
+            else:
+                cx_arr[i] = rx_arr[i]
+                cy_arr[i] = ry_arr[i]
 
         return cx_arr, cy_arr, ch_arr, cp_arr, cm_arr
 
