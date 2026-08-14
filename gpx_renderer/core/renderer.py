@@ -171,23 +171,26 @@ class RideRenderer:
                             start_f = len(main_idx_list) - 1
                             end_f = start_f + item_dur_frames
 
-                            if item.thumbnail is None:
-                                item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h)
 
-                            if item.thumbnail is not None:
-                                self.media_popups.append({
-                                    "item": item,
-                                    "start_frame": start_f,
-                                    "end_frame": end_f,
-                                    "fade_frames": fade_frames,
-                                })
+            for i, pt_val in enumerate(base_indices):
+                main_idx_list.append(pt_val)
+                if pt_val in media_by_start:
+                    for item, item_dur_frames in media_by_start[pt_val]:
+                        start_f = len(main_idx_list)
+                        end_f = start_f + item_dur_frames
+                        fade_frames = max(1, int(round(0.3 * self.fps)))
+                        self.media_popups.append({
+                            "item": item,
+                            "start_frame": start_f,
+                            "end_frame": end_f,
+                            "fade_frames": fade_frames,
+                        })
+                        main_idx_list.extend([pt_val] * item_dur_frames)
 
-                            main_idx_list.extend([pt_val] * item_dur_frames)
-
-            self.main_indices = np.array(main_idx_list, dtype=np.int32)
-            self.main_frames = len(self.main_indices)
+            ride_indices = np.array(main_idx_list, dtype=np.int32)
         else:
-            self.main_frames = max(1, int(round(self.video_duration * self.fps)))
+            self.media_popups = []
+            main_f = max(1, int(round(self.video_duration * self.fps)))
             use_real = bool(config.USE_REAL_SPEED and self.d.gpx_times and len(self.d.gpx_times) == self.d.total_points and self.d.gpx_times[0] is not None)
             if use_real:
                 try:
@@ -195,31 +198,34 @@ class RideRenderer:
                     elapsed = np.array([(t.replace(tzinfo=None) - tb).total_seconds() for t in self.d.gpx_times], dtype=np.float64)
                     tot_t = elapsed[-1]
                     if tot_t > 0:
-                        t_targets = np.linspace(0, tot_t, self.main_frames)
-                        self.main_indices = np.interp(t_targets, elapsed, np.arange(self.d.total_points)).astype(np.int32)
+                        t_targets = np.linspace(0, tot_t, main_f)
+                        ride_indices = np.interp(t_targets, elapsed, np.arange(self.d.total_points)).astype(np.int32)
                     else:
                         d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                        target_dists = np.linspace(d0, d1, self.main_frames)
-                        self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
+                        target_dists = np.linspace(d0, d1, main_f)
+                        ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
                 except Exception:
                     d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                    target_dists = np.linspace(d0, d1, self.main_frames)
-                    self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
-            if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
-                intro_hold_f = int(round(float(getattr(config, "INTRO_HOLD_SEC", 1.5)) * self.fps))
-                intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps))
-                intro_total_f = intro_hold_f + intro_trans_f
-                ride_frames = max(1, self.main_frames - intro_total_f)
-                d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                target_dists = np.linspace(d0, d1, ride_frames)
-                ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
-                self.main_indices = np.empty(self.main_frames, dtype=np.int32)
-                self.main_indices[:intro_total_f] = 0
-                self.main_indices[intro_total_f:] = ride_indices
+                    target_dists = np.linspace(d0, d1, main_f)
+                    ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
             else:
                 d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                target_dists = np.linspace(d0, d1, self.main_frames)
-                self.main_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
+                target_dists = np.linspace(d0, d1, main_f)
+                ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
+
+        # 2. 若為 3D 地形模式，在最前段插入 2D 靜止 + 2D轉3D 俯衝過渡 (INTRO_HOLD_SEC + INTRO_TRANSITION_SEC)
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+            intro_hold_f = int(round(float(getattr(config, "INTRO_HOLD_SEC", 1.5)) * self.fps))
+            intro_trans_f = int(round(float(getattr(config, "INTRO_TRANSITION_SEC", 2.0)) * self.fps))
+            intro_total_f = intro_hold_f + intro_trans_f
+            self.main_indices = np.concatenate([
+                np.full(intro_total_f, 0, dtype=np.int32),
+                ride_indices
+            ])
+        else:
+            self.main_indices = ride_indices
+
+        self.main_frames = len(self.main_indices)
 
         self.zoom_frames = max(0, int(round(self.zoom_out_duration * self.fps)))
         self.hold_frames = max(0, int(round(self.end_hold_duration * self.fps)))
@@ -259,14 +265,8 @@ class RideRenderer:
         self.font_hud_label = load_font(max(9, int(round(10 * ui_scale))), bold=True)
         self.font_hud_metric = load_font(max(13, int(round(18 * ui_scale))), bold=True)
         self.font_panel_label = load_font(max(9, int(round(10 * ui_scale))), bold=True)
+        self.font_panel_metric = load_font(max(12, int(round(16 * ui_scale))), bold=True)
 
-        self.font_summary_title = load_font(max(22, int(round(30 * ui_scale))), bold=True)
-        self.font_summary_label = load_font(max(9, int(round(11 * ui_scale))), bold=True)
-        self.font_summary_value = load_font(max(20, int(round(29 * ui_scale))), bold=True)
-        self.font_summary_unit = load_font(max(10, int(round(12 * ui_scale))), bold=True)
-        self.font_caption = load_font(max(18, int(round(25 * ui_scale))), bold=True)
-
-        self.hud_update_every = max(1, int(round(self.fps / max(1, config.HUD_UPDATE_HZ))))
         self.cached_hud: Image.Image | None = None
         self.cached_hud_idx = -1
 
@@ -287,11 +287,10 @@ class RideRenderer:
         cp_arr = np.empty(self.main_frames, dtype=np.float64)
         cm_arr = np.empty(self.main_frames, dtype=np.float64)
 
-        cx_arr[0] = tx[0]
-        cy_arr[0] = ty[0]
-        a = self.camera_alpha
-
         is_3d = (getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain")
+        is_heading_up = (getattr(config, "CAMERA_MODE", "North-Up") in ("Heading-Up", "3D-Terrain"))
+        has_headings = (is_heading_up and self.d.headings is not None and len(self.d.headings) > 0)
+
         target_pitch = float(getattr(config, "CAMERA_PITCH_DEG", 42.0)) if is_3d else 0.0
         base_margin = float(config.VIEW_MARGIN)
         target_margin = base_margin * 1.35 if is_3d else base_margin
@@ -302,72 +301,78 @@ class RideRenderer:
         intro_total_f = intro_hold_f + intro_trans_f
         outro_trans_f = int(round(float(getattr(config, "OUTRO_TRANSITION_SEC", 2.0)) * self.fps)) if is_3d else 0
 
-        for i in range(self.main_frames):
+        a = self.camera_alpha
+        rot_base_alpha = min(max(getattr(config, "CAMERA_ROTATION_SMOOTH", 0.025), 1e-6), 1.0)
+        rot_alpha = 1.0 - (1.0 - rot_base_alpha) ** (60.0 / self.fps)
+        max_speed_deg = float(getattr(config, "CAMERA_MAX_ROTATION_SPEED_DEG", 25.0))
+        max_step_rad = math.radians(max_speed_deg) / float(self.fps)
+        deadband_rad = math.radians(1.5)
+
+        # 1. Camera position (cx, cy)
+        cx_arr[0] = tx[0]
+        cy_arr[0] = ty[0]
+        for i in range(1, self.main_frames):
             if is_3d and i < intro_total_f:
-                cx_arr[i] = tx[0]
-                cy_arr[i] = ty[0]
-            elif i == 0:
                 cx_arr[i] = tx[0]
                 cy_arr[i] = ty[0]
             else:
                 cx_arr[i] = cx_arr[i - 1] + (tx[i] - cx_arr[i - 1]) * a
                 cy_arr[i] = cy_arr[i - 1] + (ty[i] - cy_arr[i - 1]) * a
 
-        if getattr(config, "CAMERA_MODE", "North-Up") in ("Heading-Up", "3D-Terrain") and self.d.headings is not None and len(self.d.headings) > 0:
-            target_h = self.d.headings[self.main_indices]
-
-            rot_base_alpha = min(max(getattr(config, "CAMERA_ROTATION_SMOOTH", 0.025), 1e-6), 1.0)
-            rot_alpha = 1.0 - (1.0 - rot_base_alpha) ** (60.0 / self.fps)
-
-            max_speed_deg = float(getattr(config, "CAMERA_MAX_ROTATION_SPEED_DEG", 25.0))
-            max_step_rad = math.radians(max_speed_deg) / float(self.fps)
-            deadband_rad = math.radians(1.5)
-
-            ch_arr[0] = float(target_h[0])
-
-            for i in range(1, self.main_frames):
-                prev_angle = float(ch_arr[i - 1])
-                t_angle = float(target_h[i])
-
-                diff = (t_angle - prev_angle + math.pi) % (2.0 * math.pi) - math.pi
-
-                if abs(diff) < deadband_rad:
-                    ch_arr[i] = prev_angle
-                else:
-                    step = diff * rot_alpha
-                    step = max(-max_step_rad, min(max_step_rad, step))
-                    ch_arr[i] = prev_angle + step
-        else:
-            ch_arr.fill(math.pi / 2.0)
-
+        # 2. Camera pitch (cp) & margin (cm)
         for i in range(self.main_frames):
             if is_3d:
                 if i < intro_hold_f:
                     cp_arr[i] = 0.0
                     cm_arr[i] = start_margin
-                    ch_arr[i] = math.pi / 2.0
                 elif i < intro_total_f and intro_trans_f > 0:
                     t = (i - intro_hold_f) / float(intro_trans_f)
                     alpha = ease_smoothstep(t)
                     cp_arr[i] = alpha * target_pitch
                     cm_arr[i] = start_margin + alpha * (target_margin - start_margin)
-                    target_h_val = float(ch_arr[i])
-                    diff_h = (target_h_val - math.pi / 2.0 + math.pi) % (2.0 * math.pi) - math.pi
-                    ch_arr[i] = math.pi / 2.0 + alpha * diff_h
                 elif i >= self.main_frames - outro_trans_f and outro_trans_f > 0:
                     t = (i - (self.main_frames - outro_trans_f)) / float(outro_trans_f)
                     alpha = ease_smoothstep(t)
                     cp_arr[i] = target_pitch * (1.0 - alpha)
                     cm_arr[i] = target_margin + alpha * (start_margin - target_margin)
-                    target_h_val = float(ch_arr[i])
-                    diff_h = (math.pi / 2.0 - target_h_val + math.pi) % (2.0 * math.pi) - math.pi
-                    ch_arr[i] = target_h_val + alpha * diff_h
                 else:
                     cp_arr[i] = target_pitch
                     cm_arr[i] = target_margin
             else:
                 cp_arr[i] = 0.0
                 cm_arr[i] = target_margin
+
+        # 3. Camera heading (ch)
+        if has_headings:
+            target_h = self.d.headings[self.main_indices]
+            initial_route_heading = float(target_h[intro_total_f if is_3d else 0])
+
+            for i in range(self.main_frames):
+                if is_3d and i < intro_hold_f:
+                    ch_arr[i] = math.pi / 2.0
+                elif is_3d and i < intro_total_f and intro_trans_f > 0:
+                    t = (i - intro_hold_f) / float(intro_trans_f)
+                    alpha = ease_smoothstep(t)
+                    diff = (initial_route_heading - math.pi / 2.0 + math.pi) % (2.0 * math.pi) - math.pi
+                    ch_arr[i] = math.pi / 2.0 + alpha * diff
+                elif is_3d and i >= self.main_frames - outro_trans_f and outro_trans_f > 0:
+                    t = (i - (self.main_frames - outro_trans_f)) / float(outro_trans_f)
+                    alpha = ease_smoothstep(t)
+                    base_h = ch_arr[self.main_frames - outro_trans_f - 1]
+                    diff = (math.pi / 2.0 - base_h + math.pi) % (2.0 * math.pi) - math.pi
+                    ch_arr[i] = base_h + alpha * diff
+                else:
+                    prev_angle = ch_arr[i - 1] if i > 0 else initial_route_heading
+                    t_angle = float(target_h[i])
+                    diff = (t_angle - prev_angle + math.pi) % (2.0 * math.pi) - math.pi
+                    if abs(diff) < deadband_rad:
+                        ch_arr[i] = prev_angle
+                    else:
+                        step = diff * rot_alpha
+                        step = max(-max_step_rad, min(max_step_rad, step))
+                        ch_arr[i] = prev_angle + step
+        else:
+            ch_arr.fill(math.pi / 2.0)
 
         return cx_arr, cy_arr, ch_arr, cp_arr, cm_arr
 

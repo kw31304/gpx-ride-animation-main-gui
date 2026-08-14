@@ -5,6 +5,7 @@ Tkinter 介面輔助元件與帶說明按鈕的複用 UI 元件。
 """
 
 import math
+import time
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import ttk
@@ -38,6 +39,7 @@ class RenderProgressDashboard(ttk.LabelFrame):
         self.worker_rows = []
         self.progress_var = progress_var if progress_var is not None else tk.DoubleVar(value=0.0)
         self.status_var = status_var if status_var is not None else tk.StringVar(value="就緒")
+        self.start_time = None
 
         self.columnconfigure(0, weight=1)
 
@@ -80,12 +82,14 @@ class RenderProgressDashboard(ttk.LabelFrame):
 
         self.eta_var = tk.StringVar(value="預估剩餘時間: --")
         self.clock_var = tk.StringVar(value="預計完成時刻: --:--:--")
+        self.elapsed_var = tk.StringVar(value="已耗時: --")
         self.fps_var = tk.StringVar(value="渲染速度: -- frame/s")
         self.frame_stat_var = tk.StringVar(value="已完成幀數: 0 / 0")
 
-        ttk.Label(self.eta_card, textvariable=self.eta_var, font=("Microsoft JhengHei UI", 9, "bold")).pack(side="left", padx=(0, 15))
-        ttk.Label(self.eta_card, textvariable=self.clock_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 15))
-        ttk.Label(self.eta_card, textvariable=self.fps_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 15))
+        ttk.Label(self.eta_card, textvariable=self.eta_var, font=("Microsoft JhengHei UI", 9, "bold")).pack(side="left", padx=(0, 12))
+        ttk.Label(self.eta_card, textvariable=self.clock_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 12))
+        ttk.Label(self.eta_card, textvariable=self.elapsed_var, font=("Microsoft JhengHei UI", 9, "bold"), foreground="#0078d4").pack(side="left", padx=(0, 12))
+        ttk.Label(self.eta_card, textvariable=self.fps_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 12))
         ttk.Label(self.eta_card, textvariable=self.frame_stat_var, font=("Microsoft JhengHei UI", 9)).pack(side="right")
 
         # 2. 各 Worker 子進度條區塊 (在主進度條下方)
@@ -97,6 +101,16 @@ class RenderProgressDashboard(ttk.LabelFrame):
         self.workers_frame.columnconfigure(1, weight=1)
 
         self.set_worker_count(worker_count)
+
+    def _format_seconds_human(self, sec_val: float) -> str:
+        s_int = int(round(sec_val))
+        h, rem = divmod(s_int, 3600)
+        m, s = divmod(rem, 60)
+        if h > 0:
+            return f"{h}時{m}分{s}秒"
+        elif m > 0:
+            return f"{m}分{s}秒"
+        return f"{s}秒"
 
     def set_worker_count(self, count: int):
         """根據指定的 Worker 數量動態建立/重建子進度條"""
@@ -142,6 +156,13 @@ class RenderProgressDashboard(ttk.LabelFrame):
 
         self.frame_stat_var.set(f"已完成幀數: {rendered} / {total}")
 
+        if self.start_time is not None:
+            elapsed = time.perf_counter() - self.start_time
+            if rendered >= total and total > 0:
+                self.elapsed_var.set(f"實際總耗時: {self._format_seconds_human(elapsed)}")
+            else:
+                self.elapsed_var.set(f"已耗時: {self._format_seconds_human(elapsed)}")
+
         if eta_seconds is not None and math.isfinite(eta_seconds) and eta_seconds >= 0:
             eta_sec = int(round(eta_seconds))
             hours, remainder = divmod(eta_sec, 3600)
@@ -167,7 +188,8 @@ class RenderProgressDashboard(ttk.LabelFrame):
                 self.clock_var.set("預計完成時刻: --:--:--")
 
     def reset(self, new_worker_count: int | None = None):
-        """重置所有 Worker 進度條與 ETA 狀態"""
+        """重置所有 Worker 進度條與 ETA 狀態，並啟動精確計時"""
+        self.start_time = time.perf_counter()
         if new_worker_count is not None and new_worker_count != len(self.worker_rows):
             self.set_worker_count(new_worker_count)
         else:
@@ -176,6 +198,7 @@ class RenderProgressDashboard(ttk.LabelFrame):
                 row["status_var"].set("待命")
         self.eta_var.set("預估剩餘時間: --")
         self.clock_var.set("預計完成時刻: --:--:--")
+        self.elapsed_var.set("已耗時: 0秒")
         self.fps_var.set("渲染速度: -- frame/s")
         self.frame_stat_var.set("已完成幀數: 0 / 0")
 
