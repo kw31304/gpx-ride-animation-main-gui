@@ -265,20 +265,88 @@ class ToolTip:
         except Exception:
             pass
 
-        label = tk.Label(
+        trans_key = "#000001"
+        supports_trans = False
+        try:
+            tw.wm_attributes("-transparentcolor", trans_key)
+            tw.configure(bg=trans_key)
+            supports_trans = True
+        except Exception:
+            pass
+
+        pad_x, pad_y = 12, 10
+        wraplen = 400
+
+        dummy = tk.Label(
             tw,
             text=text,
             justify="left",
-            background="#20242a",
-            foreground="#f0f3f6",
-            relief="solid",
-            border=1,
-            wraplength=420,
+            wraplength=wraplen,
             font=("Microsoft JhengHei UI", 9),
-            padx=9,
-            pady=7,
         )
-        label.pack()
+        dummy.update_idletasks()
+        text_w = dummy.winfo_reqwidth()
+        text_h = dummy.winfo_reqheight()
+        dummy.destroy()
+
+        box_w = text_w + pad_x * 2
+        box_h = text_h + pad_y * 2
+
+        if supports_trans:
+            canvas = tk.Canvas(
+                tw,
+                width=box_w,
+                height=box_h,
+                bg=trans_key,
+                highlightthickness=0,
+                bd=0,
+            )
+            canvas.pack()
+
+            bg_color = "#20242a"
+            border_color = "#4a5260"
+            r = 8
+
+            canvas.create_arc(0, 0, 2*r, 2*r, start=90, extent=90, fill=bg_color, outline=bg_color)
+            canvas.create_arc(box_w - 2*r, 0, box_w, 2*r, start=0, extent=90, fill=bg_color, outline=bg_color)
+            canvas.create_arc(box_w - 2*r, box_h - 2*r, box_w, box_h, start=270, extent=90, fill=bg_color, outline=bg_color)
+            canvas.create_arc(0, box_h - 2*r, 2*r, box_h, start=180, extent=90, fill=bg_color, outline=bg_color)
+            canvas.create_rectangle(r, 0, box_w - r, box_h, fill=bg_color, outline=bg_color)
+            canvas.create_rectangle(0, r, box_w, box_h - r, fill=bg_color, outline=bg_color)
+
+            canvas.create_arc(0, 0, 2*r, 2*r, start=90, extent=90, style="arc", outline=border_color, width=1)
+            canvas.create_arc(box_w - 2*r, 0, box_w, 2*r, start=0, extent=90, style="arc", outline=border_color, width=1)
+            canvas.create_arc(box_w - 2*r, box_h - 2*r, box_w, box_h, start=270, extent=90, style="arc", outline=border_color, width=1)
+            canvas.create_arc(0, box_h - 2*r, 2*r, box_h, start=180, extent=90, style="arc", outline=border_color, width=1)
+            canvas.create_line(r, 0, box_w - r, 0, fill=border_color, width=1)
+            canvas.create_line(r, box_h - 1, box_w - r, box_h - 1, fill=border_color, width=1)
+            canvas.create_line(0, r, 0, box_h - r, fill=border_color, width=1)
+            canvas.create_line(box_w - 1, r, box_w - 1, box_h - r, fill=border_color, width=1)
+
+            canvas.create_text(
+                pad_x,
+                pad_y,
+                anchor="nw",
+                text=text,
+                fill="#f0f3f6",
+                font=("Microsoft JhengHei UI", 9),
+                width=wraplen,
+            )
+        else:
+            label = tk.Label(
+                tw,
+                text=text,
+                justify="left",
+                background="#20242a",
+                foreground="#f0f3f6",
+                relief="solid",
+                border=1,
+                wraplength=wraplen,
+                font=("Microsoft JhengHei UI", 9),
+                padx=pad_x,
+                pady=pad_y,
+            )
+            label.pack()
 
         tw.update_idletasks()
         sw = tw.winfo_screenwidth()
