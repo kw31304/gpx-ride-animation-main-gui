@@ -69,28 +69,42 @@ def choose_map_style():
 
 
 def _fetch_raster(west: float, south: float, east: float, north: float, map_style, zoom, use_cache: bool | None = None) -> RasterMap:
-    """下載指定 EPSG:3857 bbox 的 raster。contextily 會自行快取底層 tiles。"""
+    """下載指定 EPSG:3857 bbox 的 raster。帶有 ConnectionResetError 指數退避重試保護機制。"""
     if use_cache is None:
         use_cache = config.MAP_USE_CACHE
     if getattr(sys, "frozen", False) and use_cache and config.MAP_CONNECTIONS > 1:
-        print("[INFO] Frozen EXE 底圖下載：使用 threads，停用 contextily/joblib process cache。")
         use_cache = False
-    img_np, extent = cx.bounds2img(
-        west,
-        south,
-        east,
-        north,
-        zoom=zoom,
-        source=map_style,
-        ll=False,
-        wait=0,
-        max_retries=2,
-        n_connections=config.MAP_CONNECTIONS,
-        use_cache=use_cache,
-    )
-    left, right, bottom, top = map(float, extent)
-    image = Image.fromarray(np.asarray(img_np)).convert("RGB")
-    return RasterMap(image, left, right, bottom, top)
+
+    max_attempts = 4
+    last_exc = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            img_np, extent = cx.bounds2img(
+                west,
+                south,
+                east,
+                north,
+                zoom=zoom,
+                source=map_style,
+                ll=False,
+                wait=1,
+                max_retries=3,
+                n_connections=config.MAP_CONNECTIONS,
+                use_cache=use_cache,
+            )
+            left, right, bottom, top = map(float, extent)
+            image = Image.fromarray(np.asarray(img_np)).convert("RGB")
+            return RasterMap(image, left, right, bottom, top)
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_attempts:
+                import time
+                time.sleep(1.0 * (2 ** (attempt - 1)))
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("底圖下載失敗。")
 
 
 def build_overview_raster_map(data: RideData, map_style) -> RasterMap:
