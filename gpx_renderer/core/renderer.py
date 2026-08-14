@@ -291,7 +291,7 @@ class RideRenderer:
         a = self.camera_alpha
 
         is_3d = (getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain")
-        target_pitch = float(getattr(config, "CAMERA_PITCH_DEG", 50.0)) if is_3d else 0.0
+        target_pitch = float(getattr(config, "CAMERA_PITCH_DEG", 42.0)) if is_3d else 0.0
         base_margin = float(config.VIEW_MARGIN)
         target_margin = base_margin * 1.35 if is_3d else base_margin
         start_margin = target_margin * 1.5 if is_3d else target_margin
@@ -374,7 +374,7 @@ class RideRenderer:
         if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:
             from gpx_renderer.core.terrain_3d import Camera3D, project_3d_points
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
-            cam_alt = margin * 0.7
+            cam_alt = margin * 0.85
             cam = Camera3D(
                 x=view_x, y=view_y, z=(z * exaggeration) + cam_alt,
                 heading_rad=heading_rad, pitch_deg=pitch_deg, exaggeration=exaggeration
