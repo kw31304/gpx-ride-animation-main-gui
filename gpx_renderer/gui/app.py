@@ -21,7 +21,7 @@ from gpx_renderer.utils import _background_subprocess_kwargs, _self_subprocess_c
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
 from gpx_renderer.gui.help import help_button, show_setting_help
-from gpx_renderer.gui.components import add_check_with_help
+from gpx_renderer.gui.components import add_check_with_help, CollapsibleWorkerDashboard
 
 
 def launch_gui():
@@ -517,33 +517,98 @@ def launch_gui():
     ttk.Progressbar(progress_box, variable=progress_var, maximum=100).grid(row=0, column=0, sticky="ew", padx=(0, 10))
     ttk.Label(progress_box, textvariable=status_var, width=30).grid(row=0, column=1, sticky="e")
 
-    log_box = ttk.LabelFrame(outer, text="即時 Log", padding=6)
-    log_box.grid(row=3, column=0, sticky="nsew", pady=(10, 0))
-    log_box.rowconfigure(0, weight=1); log_box.columnconfigure(0, weight=1)
-    log = tk.Text(log_box, wrap="word", height=14, state="disabled")
-    scroll = ttk.Scrollbar(log_box, command=log.yview)
-    log.configure(yscrollcommand=scroll.set)
-    log.grid(row=0, column=0, sticky="nsew")
-    scroll.grid(row=0, column=1, sticky="ns")
+    # ---------- Worker Dashboard & ETA (Collapsible Container) ----------
+    worker_dashboard = CollapsibleWorkerDashboard(outer, worker_count=workers_var.get())
+    worker_dashboard.grid(row=3, column=0, sticky="ew", pady=(8, 0))
 
     buttons = ttk.Frame(outer)
     buttons.grid(row=4, column=0, sticky="ew", pady=(10, 0))
     buttons.columnconfigure(0, weight=1)
 
+    def refresh_config_summary(*args):
+        try:
+            cfg = collect_config()
+            worker_dashboard.update_config_summary(cfg)
+        except Exception:
+            pass
+
+    for var in (
+        width_var, height_var, fps_var, duration_var, auto_duration_var,
+        map_var, camera_mode_var, workers_var, chunks_var, parallel_var,
+        disable_parallel_cache_var, bitrate_var, preset_var, enable_media_var,
+    ):
+        try: var.trace_add("write", refresh_config_summary)
+        except Exception: pass
+
+    def _on_workers_var_changed(*args):
+        try:
+            w_count = int(workers_var.get())
+            worker_dashboard.reset(new_worker_count=w_count)
+            refresh_config_summary()
+        except Exception:
+            pass
+    workers_var.trace_add("write", _on_workers_var_changed)
+    root.after(200, refresh_config_summary)
+
+    def get_log_file_path(mode: str = "app") -> Path:
+        from gpx_renderer.utils import application_dir
+        from datetime import datetime
+        log_dir = application_dir() / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return log_dir / f"{mode}_{ts_str}.log"
+
     def append_log(line: str):
-        log.configure(state="normal")
-        log.insert("end", line.rstrip() + "\n")
-        log.see("end")
-        log.configure(state="disabled")
+        if line.startswith("[PROGRESS_JSON]"):
+            return
+        log_path = state.get("current_log_path")
+        if not log_path:
+            log_path = get_log_file_path("session")
+            state["current_log_path"] = log_path
+        try:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(log_path, "a", encoding="utf-8", errors="replace") as f:
+                f.write(f"[{timestamp}] {line.rstrip()}\n")
+        except Exception:
+            pass
 
     def parse_progress(line: str):
+        if line.startswith("[PROGRESS_JSON]"):
+            try:
+                data = json.loads(line[len("[PROGRESS_JSON]"):].strip())
+                pct = float(data.get("pct", 0.0))
+                progress_var.set(pct)
+                status_var.set(f"主動畫 {pct:.1f}%")
+
+                eta_sec = data.get("eta_seconds")
+                live_fps = float(data.get("fps", 0.0))
+                rendered = int(data.get("rendered", 0))
+                total = int(data.get("total", 0))
+                worker_dashboard.update_eta(eta_sec, live_fps, rendered, total)
+
+                workers_data = data.get("workers", [])
+                if len(workers_data) != len(worker_dashboard.worker_rows):
+                    worker_dashboard.set_worker_count(len(workers_data))
+
+                for w in workers_data:
+                    wid = int(w.get("id", 1)) - 1
+                    wpct = float(w.get("pct", 0.0))
+                    wstatus = str(w.get("status", ""))
+                    worker_dashboard.update_worker(wid, wpct, wstatus)
+                return
+            except Exception:
+                pass
+
         bm = re.search(r"效能測試\s+\[(\d+)/(\d+)\]", line)
         if bm:
             current, total = int(bm.group(1)), max(1, int(bm.group(2)))
             pct = max(0.0, min(100.0, (current - 1) * 100.0 / total))
             progress_var.set(pct)
             status_var.set(f"Auto Tune {current}/{total}")
+            worker_dashboard.update_eta(None, 0.0, current, total)
             return
+
         m = re.search(r"主動畫\s+([0-9.]+)%", line)
         if m:
             pct = max(0.0, min(100.0, float(m.group(1))))
@@ -555,6 +620,7 @@ def launch_gui():
             progress_var.set(99.0); status_var.set("合併影片")
         elif line.startswith("[DONE] 完成："):
             progress_var.set(100.0); status_var.set("完成")
+            worker_dashboard.update_eta(0, 0, 100, 100)
 
     def collect_config():
         try:
@@ -763,9 +829,12 @@ def launch_gui():
         cfg["BENCHMARK_CANDIDATES"] = _default_benchmark_candidates(cfg.get("RENDER_WORKERS"))
         cfg["BENCHMARK_FRAMES"] = max(240, min(360, int(round(int(cfg["FPS"]) * 5.0))))
         state["benchmark_result"] = None
+        state["current_log_path"] = get_log_file_path("benchmark")
         benchmark_result_var.set("Auto Tune：測試中…")
         apply_benchmark_btn.configure(state="disabled")
         progress_var.set(0.0); status_var.set("Auto Tune 啟動中")
+        worker_dashboard.reset(new_worker_count=len(cfg["BENCHMARK_CANDIDATES"]))
+        worker_dashboard.update_config_summary(cfg)
         append_log("=" * 72)
         append_log(
             "[TEST] Auto Tune：將測試 " + ", ".join(str(x) for x in cfg["BENCHMARK_CANDIDATES"]) +
@@ -793,7 +862,10 @@ def launch_gui():
             cfg["output_filename"] += ".mp4"
             out_var.set(cfg["output_filename"])
 
+        state["current_log_path"] = get_log_file_path("render")
         progress_var.set(0.0); status_var.set("啟動中")
+        worker_dashboard.reset(new_worker_count=int(cfg["RENDER_WORKERS"]))
+        worker_dashboard.update_config_summary(cfg)
         append_log("=" * 72)
         try:
             cmd = _spawn_job(cfg, "render")
@@ -827,11 +899,25 @@ def launch_gui():
             try: proc.terminate()
             except Exception: pass
 
+    def open_log_folder():
+        from gpx_renderer.utils import application_dir
+        log_dir = application_dir() / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            if os.name == "nt":
+                os.startfile(str(log_dir))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(log_dir)])
+            else:
+                subprocess.Popen(["xdg-open", str(log_dir)])
+        except Exception as exc:
+            messagebox.showerror("開啟失敗", f"無法開啟 Log 資料夾：\n{log_dir}\n{exc}")
+
     start_btn = ttk.Button(buttons, text="開始渲染", command=start_render)
     start_btn.pack(side="left")
     stop_btn = ttk.Button(buttons, text="停止", command=stop_render, state="disabled")
     stop_btn.pack(side="left", padx=(8, 0))
-    ttk.Button(buttons, text="清除 Log", command=lambda: (log.configure(state="normal"), log.delete("1.0", "end"), log.configure(state="disabled"))).pack(side="left", padx=(8, 0))
+    ttk.Button(buttons, text="📁 開啟 Log 資料夾", command=open_log_folder).pack(side="left", padx=(8, 0))
 
     def on_close():
         if state.get("proc") is not None:

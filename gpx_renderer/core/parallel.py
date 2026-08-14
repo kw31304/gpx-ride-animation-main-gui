@@ -536,6 +536,7 @@ def encode_video_parallel(
     chunk_totals = {t.segment_index: t.end_frame - t.start_frame for t in tasks}
     completed_paths = {}
     worker_status = {i: "啟動中" for i in range(workers)}
+    worker_pct = {i: 0.0 for i in range(workers)}
     finished_chunks = 0
 
     try:
@@ -563,11 +564,15 @@ def encode_video_parallel(
 
             if kind == "ready":
                 worker_status[worker_id] = "待命"
+                worker_pct[worker_id] = 0.0
             elif kind == "start":
                 worker_status[worker_id] = f"C{chunk_idx + 1}/{len(tasks)} 0%"
+                worker_pct[worker_id] = 0.0
             elif kind == "progress":
                 chunk_progress[chunk_idx] = max(chunk_progress.get(chunk_idx, 0), int(done_local))
-                worker_status[worker_id] = f"C{chunk_idx + 1}/{len(tasks)} {100.0 * done_local / max(total,1):.0f}%"
+                local_pct = 100.0 * done_local / max(total, 1)
+                worker_status[worker_id] = f"C{chunk_idx + 1}/{len(tasks)} {local_pct:.0f}%"
+                worker_pct[worker_id] = local_pct
             elif kind == "done":
                 chunk_progress[chunk_idx] = int(total)
                 completed_paths[chunk_idx] = tasks[chunk_idx].output_path
@@ -575,9 +580,11 @@ def encode_video_parallel(
                 elapsed = float(payload) if payload else 0.0
                 fps_done = total / elapsed if elapsed > 0 else 0.0
                 worker_status[worker_id] = "拿下一塊…" if finished_chunks < len(tasks) else "完成"
+                worker_pct[worker_id] = 100.0
                 print(f"\n[OK] Chunk {chunk_idx + 1}/{len(tasks)} 完成：{total} frames | {fps_done:.1f} frame/s | Worker {worker_id + 1}")
             elif kind == "exit":
                 worker_status[worker_id] = "完成"
+                worker_pct[worker_id] = 100.0
             elif kind == "error":
                 raise RuntimeError(f"Worker {worker_id + 1} / chunk {chunk_idx + 1 if chunk_idx >= 0 else '?'} 失敗：\n{payload}")
 
@@ -595,6 +602,22 @@ def encode_video_parallel(
                     f"等效 {live_fps:6.1f} frame/s | ETA {eta_text} | " + " ".join(parts),
                     end="", flush=True,
                 )
+                progress_payload = {
+                    "pct": round(pct, 2),
+                    "rendered": rendered,
+                    "total": main_frames,
+                    "fps": round(live_fps, 1),
+                    "eta_seconds": round(eta, 1) if math.isfinite(eta) else None,
+                    "workers": [
+                        {
+                            "id": i + 1,
+                            "status": worker_status[i],
+                            "pct": round(worker_pct[i], 1),
+                        }
+                        for i in range(workers)
+                    ],
+                }
+                print("\n[PROGRESS_JSON]" + json.dumps(progress_payload, ensure_ascii=False), flush=True)
                 last_progress_print = now
 
             for idx, proc in enumerate(processes):

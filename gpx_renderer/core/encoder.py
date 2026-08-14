@@ -10,6 +10,7 @@ import math
 import time
 import shutil
 import subprocess
+import json
 from pathlib import Path
 
 from gpx_renderer import config
@@ -195,6 +196,21 @@ def encode_video(renderer, ffmpeg: str, encoder: str, output: str):
                     end="",
                     flush=True,
                 )
+                progress_payload = {
+                    "pct": round(pct, 2),
+                    "rendered": done,
+                    "total": renderer.total_frames,
+                    "fps": round(render_fps, 1),
+                    "eta_seconds": round(eta, 1) if math.isfinite(eta) else None,
+                    "workers": [
+                        {
+                            "id": 1,
+                            "status": f"{done}/{renderer.total_frames} frames",
+                            "pct": round(pct, 1),
+                        }
+                    ],
+                }
+                print("\n[PROGRESS_JSON]" + json.dumps(progress_payload, ensure_ascii=False), flush=True)
                 last_report = now
 
         process.stdin.close()
