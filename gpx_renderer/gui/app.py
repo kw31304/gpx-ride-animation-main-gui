@@ -77,6 +77,7 @@ def launch_gui():
     hide_end_var = tk.DoubleVar(value=config.HIDE_END_DISTANCE_KM)
     real_speed_var = tk.BooleanVar(value=config.USE_REAL_SPEED)
     camera_mode_var = tk.StringVar(value=getattr(config, "CAMERA_MODE", "North-Up"))
+    track_color_var = tk.StringVar(value=getattr(config, "TRACK_COLOR_SCHEME", "Strava 經典橘 (Strava Orange)"))
     progress_var = tk.DoubleVar(value=0.0)
     status_var = tk.StringVar(value="就緒")
     benchmark_result_var = tk.StringVar(value="Auto Tune：尚未測試")
@@ -275,28 +276,34 @@ def launch_gui():
     for c in range(6):
         settings.columnconfigure(c, weight=1 if c in (1, 3, 5) else 0)
 
-    # --- Row 0: 地圖風格, 視角模式, 預設模式 ---
+    # --- Row 0: 地圖風格, 軌跡顏色, 視角模式 ---
     map_labels = [f"{k}. {v[0]}" for k, v in config.MAP_STYLE_OPTIONS.items()]
     map_combo_var = tk.StringVar(value=map_labels[0])
     lbl_map = ttk.Label(settings, text="地圖風格")
     lbl_map.grid(row=0, column=0, sticky="e", padx=(8, 4), pady=4)
-    map_combo = ttk.Combobox(settings, textvariable=map_combo_var, values=map_labels, state="readonly", width=22)
-    map_combo.grid(row=0, column=1, sticky="w", padx=(0, 14), pady=4)
+    map_combo = ttk.Combobox(settings, textvariable=map_combo_var, values=map_labels, state="readonly", width=20)
+    map_combo.grid(row=0, column=1, sticky="w", padx=(0, 10), pady=4)
     add_tooltip((lbl_map, map_combo), "map_style")
     def on_map_change(_=None):
         map_var.set(map_combo_var.get().split(".", 1)[0])
     map_combo.bind("<<ComboboxSelected>>", on_map_change)
 
+    lbl_tc = ttk.Label(settings, text="軌跡顏色")
+    lbl_tc.grid(row=0, column=2, sticky="e", padx=(8, 4), pady=4)
+    track_color_combo = ttk.Combobox(settings, textvariable=track_color_var, values=config.TRACK_COLOR_OPTIONS, state="readonly", width=20)
+    track_color_combo.grid(row=0, column=3, sticky="w", padx=(0, 10), pady=4)
+    add_tooltip((lbl_tc, track_color_combo), "track_color")
+
     CAMERA_MODE_LABELS = {
         "North-Up": "正北朝上 (North-Up)",
-        "Heading-Up": "跟隨行進方向 (Heading-Up)",
+        "Heading-Up": "跟隨行進 (Heading-Up)",
         "3D-Terrain": "3D 真地形 (3D-Terrain)",
     }
     camera_mode_combo_var = tk.StringVar(value=CAMERA_MODE_LABELS.get(camera_mode_var.get(), "正北朝上 (North-Up)"))
     lbl_cam = ttk.Label(settings, text="視角模式")
-    lbl_cam.grid(row=0, column=2, sticky="e", padx=(8, 4), pady=4)
-    camera_mode_combo = ttk.Combobox(settings, textvariable=camera_mode_combo_var, values=list(CAMERA_MODE_LABELS.values()), state="readonly", width=22)
-    camera_mode_combo.grid(row=0, column=3, sticky="w", padx=(0, 14), pady=4)
+    lbl_cam.grid(row=0, column=4, sticky="e", padx=(8, 4), pady=4)
+    camera_mode_combo = ttk.Combobox(settings, textvariable=camera_mode_combo_var, values=list(CAMERA_MODE_LABELS.values()), state="readonly", width=20)
+    camera_mode_combo.grid(row=0, column=5, sticky="w", padx=(0, 8), pady=4)
     add_tooltip((lbl_cam, camera_mode_combo), "camera_mode")
     def on_camera_mode_change(_=None):
         sel = camera_mode_combo_var.get()
@@ -307,12 +314,6 @@ def launch_gui():
         else:
             camera_mode_var.set("North-Up")
     camera_mode_combo.bind("<<ComboboxSelected>>", on_camera_mode_change)
-
-    lbl_prof = ttk.Label(settings, text="預設模式")
-    lbl_prof.grid(row=0, column=4, sticky="e", padx=(8, 4), pady=4)
-    profile_combo = ttk.Combobox(settings, textvariable=profile_var, values=["快速", "平衡", "高畫質"], state="readonly", width=14)
-    profile_combo.grid(row=0, column=5, sticky="w", padx=(0, 8), pady=4)
-    add_tooltip((lbl_prof, profile_combo), "profile")
 
     # --- Row 1: 解析度預設, 自訂尺寸, FPS ---
     RESOLUTION_PRESETS = [
@@ -697,6 +698,7 @@ def launch_gui():
             "HIDE_START_DISTANCE_KM": float(hide_start_var.get()),
             "HIDE_END_DISTANCE_KM": float(hide_end_var.get()),
             "CAMERA_MODE": camera_mode_var.get(),
+            "TRACK_COLOR_SCHEME": track_color_var.get(),
         }
 
     def set_running(running: bool):
