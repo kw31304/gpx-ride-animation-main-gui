@@ -79,6 +79,18 @@ def project_3d_points(
     return px, py, dist_safe
 
 
+def _fill_sky_gradient(out_arr: np.ndarray):
+    """將背景填充為天空藍至地平線淺藍的漸層 (Atmospheric Sky Blue Gradient)。"""
+    H, W = out_arr.shape[:2]
+    ys = np.linspace(0.0, 1.0, H, dtype=np.float32)[:, None]
+    r = (135.0 + ys * (210.0 - 135.0)).astype(np.uint8)
+    g = (185.0 + ys * (232.0 - 185.0)).astype(np.uint8)
+    b = (235.0 + ys * (250.0 - 235.0)).astype(np.uint8)
+    out_arr[:, :, 0] = r
+    out_arr[:, :, 1] = g
+    out_arr[:, :, 2] = b
+
+
 def render_3d_terrain_frame(
     local_rm: RasterMap,
     view_x: float,
@@ -89,6 +101,7 @@ def render_3d_terrain_frame(
     exaggeration: float = 1.5,
     grid_res: int = 48,
     out_buffer: np.ndarray | None = None,
+    rider_z: float | None = None,
 ) -> Image.Image:
     """渲染帶有 3D 山脈地形起伏與透視投影的地圖畫格。"""
     W = config.FRAME_WIDTH
@@ -96,9 +109,9 @@ def render_3d_terrain_frame(
 
     if out_buffer is not None and out_buffer.shape == (H, W, 3):
         out_arr = out_buffer
-        out_arr.fill(17)
     else:
-        out_arr = np.full((H, W, 3), 17, dtype=np.uint8)
+        out_arr = np.empty((H, W, 3), dtype=np.uint8)
+    _fill_sky_gradient(out_arr)
 
     # 1. 取得該區域的高程 DEM 網格 (優先使用已預先計算好的塊陣列，並適應 grid_res)
     if local_rm.dem_grid is not None:
@@ -112,12 +125,13 @@ def render_3d_terrain_frame(
     else:
         dem_grid = get_elevation_grid(local_rm.west, local_rm.south, local_rm.east, local_rm.north, rows=grid_res, cols=grid_res)
     avg_z = float(np.mean(dem_grid))
+    z_ref = float(rider_z) if (rider_z is not None and not math.isnan(rider_z)) else avg_z
     cam_alt = margin * 0.85
 
     camera = Camera3D(
         x=view_x,
         y=view_y,
-        z=(avg_z * exaggeration) + cam_alt,
+        z=(z_ref * exaggeration) + cam_alt,
         heading_rad=heading_rad,
         pitch_deg=pitch_deg,
         exaggeration=exaggeration,

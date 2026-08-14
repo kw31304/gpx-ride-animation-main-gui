@@ -404,7 +404,7 @@ class RideRenderer:
         rgba = cmap(normalized, bytes=True)
         return [tuple(map(int, c[:3])) for c in rgba]
 
-    def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0) -> Image.Image:
+    def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0, rider_z: float | None = None) -> Image.Image:
         if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:
             from gpx_renderer.core.terrain_3d import render_3d_terrain_frame
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
@@ -412,6 +412,7 @@ class RideRenderer:
                 rm, view_x, view_y, margin, heading_rad,
                 pitch_deg=pitch_deg, exaggeration=exaggeration,
                 out_buffer=self._terrain_out_buffer,
+                rider_z=rider_z,
             )
 
         margin_x, margin_y = _get_aspect_margins(margin)
@@ -449,7 +450,7 @@ class RideRenderer:
                 (config.FRAME_WIDTH, config.FRAME_HEIGHT),
                 flags=cv2.INTER_LINEAR,
                 borderMode=cv2.BORDER_CONSTANT,
-                borderValue=(17, 17, 17),
+                borderValue=(135, 185, 235),
             )
             return Image.fromarray(out)
 
@@ -465,11 +466,11 @@ class RideRenderer:
             Image.Transform.AFFINE,
             (a, b, c, d, e, f),
             resample=config.MAP_RESAMPLE,
-            fillcolor=(17, 17, 17),
+            fillcolor=(135, 185, 235),
         )
 
-    def _draw_visible_track(self, frame: Image.Image, idx: int, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0) -> Image.Image:
-        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+    def _draw_visible_track(self, frame: Image.Image, idx: int, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0) -> Image.Image:
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:
             return frame
 
         seg_count = min(max(int(idx), 0), len(self.seg_x0))
@@ -947,7 +948,7 @@ class RideRenderer:
         current_margin = float(self.camera_m[i])
 
         local_rm = self.local_maps.get(view_x, view_y, idx)
-        frame = self._crop_raster(local_rm, view_x, view_y, current_margin, heading_rad=heading_rad, pitch_deg=pitch_deg)
+        frame = self._crop_raster(local_rm, view_x, view_y, current_margin, heading_rad=heading_rad, pitch_deg=pitch_deg, rider_z=float(d.eles[idx]))
 
         draw = ImageDraw.Draw(frame)
         px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, current_margin, heading_rad=heading_rad, z=float(d.eles[idx]), pitch_deg=pitch_deg)
@@ -998,8 +999,8 @@ class RideRenderer:
 
         if self.rm is None:
             raise RuntimeError("render_end_frame 需要 overview_map。")
-        frame = self._crop_raster(self.rm, view_x, view_y, margin, heading_rad=heading_rad, pitch_deg=current_pitch)
-        frame = self._draw_visible_track(frame, d.total_points - 1, view_x, view_y, margin, heading_rad=heading_rad)
+        frame = self._crop_raster(self.rm, view_x, view_y, margin, heading_rad=heading_rad, pitch_deg=current_pitch, rider_z=float(d.eles[-1]))
+        frame = self._draw_visible_track(frame, d.total_points - 1, view_x, view_y, margin, heading_rad=heading_rad, pitch_deg=current_pitch)
         draw = ImageDraw.Draw(frame)
 
         sx, sy = self._world_to_frame_px(float(d.xs[0]), float(d.ys[0]), view_x, view_y, margin, heading_rad=heading_rad, z=float(d.eles[0]), pitch_deg=current_pitch)
