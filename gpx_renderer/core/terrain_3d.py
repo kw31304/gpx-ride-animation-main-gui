@@ -79,6 +79,41 @@ def project_3d_points(
     return px, py, dist_safe
 
 
+def sample_dem_elevation(local_rm: RasterMap, x: float, y: float) -> float:
+    """從 local_rm 的 dem_grid 網格雙線性插值求出 (x, y) 點精準的 DEM 地貌高度 (公尺)。"""
+    if local_rm is None or local_rm.dem_grid is None:
+        return 0.0
+
+    grid = local_rm.dem_grid
+    rows, cols = grid.shape
+
+    dx = max(local_rm.east - local_rm.west, 1e-9)
+    dy = max(local_rm.north - local_rm.south, 1e-9)
+
+    u = (x - local_rm.west) / dx * (cols - 1)
+    v = (local_rm.north - y) / dy * (rows - 1)
+
+    u = max(0.0, min(cols - 1.0001, u))
+    v = max(0.0, min(rows - 1.0001, v))
+
+    u0 = int(math.floor(u))
+    v0 = int(math.floor(v))
+    u1 = min(cols - 1, u0 + 1)
+    v1 = min(rows - 1, v0 + 1)
+
+    du = u - u0
+    dv = v - v0
+
+    z00 = float(grid[v0, u0])
+    z01 = float(grid[v0, u1])
+    z10 = float(grid[v1, u0])
+    z11 = float(grid[v1, u1])
+
+    top = z00 + du * (z01 - z00)
+    bot = z10 + du * (z11 - z10)
+    return top + dv * (bot - top)
+
+
 def _fill_sky_gradient(out_arr: np.ndarray):
     """將背景填充為天空藍至地平線淺藍的漸層 (Atmospheric Sky Blue Gradient)。"""
     H, W = out_arr.shape[:2]

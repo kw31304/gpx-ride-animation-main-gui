@@ -989,10 +989,17 @@ class RideRenderer:
         current_margin = float(self.camera_m[i])
 
         local_rm = self.local_maps.get(view_x, view_y, idx)
-        frame = self._crop_raster(local_rm, view_x, view_y, current_margin, heading_rad=heading_rad, pitch_deg=pitch_deg, rider_z=float(d.eles[idx]))
+
+        if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain":
+            from gpx_renderer.core.terrain_3d import sample_dem_elevation
+            rider_z = sample_dem_elevation(local_rm, float(d.xs[idx]), float(d.ys[idx]))
+        else:
+            rider_z = float(d.eles[idx])
+
+        frame = self._crop_raster(local_rm, view_x, view_y, current_margin, heading_rad=heading_rad, pitch_deg=pitch_deg, rider_z=rider_z)
 
         draw = ImageDraw.Draw(frame)
-        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, current_margin, heading_rad=heading_rad, z=float(d.eles[idx]), pitch_deg=pitch_deg)
+        px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, current_margin, heading_rad=heading_rad, z=rider_z, pitch_deg=pitch_deg)
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
         hud = self._get_hud(i, idx)
