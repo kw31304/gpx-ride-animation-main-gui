@@ -253,8 +253,10 @@ class LocalBasemapCache:
         margin_x, _ = _get_max_view_margins()
         src_ppm_x = (rm.width - 1) / max(rm.east - rm.west, 1e-9)
         out_ppm_x = config.FRAME_WIDTH / max(2.0 * margin_x, 1e-9)
-        width = config.TRACK_LINE_WIDTH * src_ppm_x / max(out_ppm_x, 1e-9)
-        return max(1, int(round(width)))
+        ui_scale = min(config.FRAME_WIDTH, config.FRAME_HEIGHT) / 1000.0
+        effective_line_w = max(2.0, float(config.TRACK_LINE_WIDTH) * ui_scale)
+        width = effective_line_w * src_ppm_x / max(out_ppm_x, 1e-9)
+        return max(2, int(round(width)))
 
     def _ensure_track(self, state: LocalChunkState, idx: int):
         rm = state.raster

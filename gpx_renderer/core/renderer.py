@@ -252,6 +252,7 @@ class RideRenderer:
 
         ui_scale = min(config.FRAME_WIDTH, config.FRAME_HEIGHT) / 1000.0
         self.ui_scale = ui_scale
+        self.track_line_width = max(2, int(round(config.TRACK_LINE_WIDTH * ui_scale)))
         self.font_hud_kicker = load_font(max(10, int(round(11 * ui_scale))), bold=True)
         self.font_hud_speed = load_font(max(28, int(round(43 * ui_scale))), bold=True)
         self.font_hud_unit = load_font(max(11, int(round(14 * ui_scale))), bold=True)
@@ -520,7 +521,7 @@ class RideRenderer:
                     (int(px0[j]), int(py0[j])),
                     (int(px1[j]), int(py1[j])),
                     self.track_colors[int(seg_id)],
-                    thickness=5,
+                    thickness=self.track_line_width,
                     lineType=cv2.LINE_AA,
                 )
             return Image.fromarray(arr)
@@ -528,7 +529,7 @@ class RideRenderer:
         draw = ImageDraw.Draw(frame)
         for j, seg_id in enumerate(ids):
             i = int(seg_id)
-            draw.line([(int(px0[j]), int(py0[j])), (int(px1[j]), int(py1[j]))], fill=self.track_colors[i], width=5)
+            draw.line([(int(px0[j]), int(py0[j])), (int(px1[j]), int(py1[j]))], fill=self.track_colors[i], width=self.track_line_width)
         return frame
 
     # ---------- HUD ----------
