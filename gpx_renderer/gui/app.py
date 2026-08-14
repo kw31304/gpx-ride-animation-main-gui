@@ -505,8 +505,16 @@ def launch_gui():
     benchmark_lbl.grid(row=0, column=1, sticky="w", padx=(12, 12))
     add_tooltip(benchmark_lbl, "autotune")
 
+    prof_frame = ttk.Frame(tune_row)
+    prof_frame.grid(row=0, column=2, sticky="e", padx=(0, 10))
+    lbl_prof = ttk.Label(prof_frame, text="預設範本 ")
+    lbl_prof.pack(side="left")
+    profile_combo = ttk.Combobox(prof_frame, textvariable=profile_var, values=["快速", "平衡", "高畫質"], state="readonly", width=8)
+    profile_combo.pack(side="left")
+    add_tooltip((lbl_prof, profile_combo), "profile")
+
     apply_benchmark_btn = ttk.Button(tune_row, text="套用建議", command=lambda: apply_benchmark_recommendation(), state="disabled")
-    apply_benchmark_btn.grid(row=0, column=2, sticky="e", padx=(10, 0))
+    apply_benchmark_btn.grid(row=0, column=3, sticky="e")
 
     def apply_profile(_=None):
         mode = profile_var.get()
