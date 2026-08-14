@@ -19,43 +19,31 @@ def add_check_with_help(parent, root, text, variable, key):
     return box
 
 
-class CollapsibleWorkerDashboard(ttk.Frame):
+class RenderProgressDashboard(ttk.LabelFrame):
     """
-    可摺疊收合的 Worker 子進度條儀表板與 ETA 預估完成時間容器。
+    常駐渲染進度儀表板，包含：
+    1. 渲染設定摘要卡片
+    2. 置頂的主進度條與整體 ETA / 完成時刻資訊
+    3. 各 Worker 的子進度條列表
     """
-    def __init__(self, parent, worker_count: int = 6, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-        self.is_expanded = True
+    def __init__(
+        self,
+        parent,
+        worker_count: int = 6,
+        progress_var: tk.DoubleVar | None = None,
+        status_var: tk.StringVar | None = None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(parent, text="渲染進度儀表板", padding=8, *args, **kwargs)
         self.worker_rows = []
+        self.progress_var = progress_var if progress_var is not None else tk.DoubleVar(value=0.0)
+        self.status_var = status_var if status_var is not None else tk.StringVar(value="就緒")
 
-        # ---------- 標題欄 (可點擊收合/展開) ----------
-        self.header_frame = ttk.Frame(self)
-        self.header_frame.pack(fill="x", expand=True)
+        self.columnconfigure(0, weight=1)
 
-        self.toggle_btn = ttk.Button(
-            self.header_frame,
-            text="▼ 各 Worker 渲染儀表板與預估完成時間 (ETA)",
-            command=self.toggle,
-            width=42,
-        )
-        self.toggle_btn.pack(side="left", padx=(0, 10))
-
-        self.header_summary_var = tk.StringVar(value="預估完成時間: -- | 渲染速度: -- fps")
-        self.header_summary_label = ttk.Label(
-            self.header_frame,
-            textvariable=self.header_summary_var,
-            font=("Microsoft JhengHei UI", 9),
-            foreground="#555555",
-        )
-        self.header_summary_label.pack(side="left", fill="x", expand=True)
-
-        # ---------- 可摺疊主體內容 ----------
-        self.body = ttk.LabelFrame(self, text="Worker 狀態與預估時間", padding=8)
-        self.body.pack(fill="x", expand=True, pady=(4, 0))
-        self.body.columnconfigure(0, weight=1)
-
-        # 0. 渲染設定參數摘要區
-        self.summary_card = ttk.LabelFrame(self.body, text="渲染設定摘要", padding=6)
+        # 0. 渲染設定參數摘要區 (最上方)
+        self.summary_card = ttk.LabelFrame(self, text="渲染設定摘要", padding=6)
         self.summary_card.pack(fill="x", expand=True, pady=(0, 6))
         self.summary_card.columnconfigure(0, weight=1)
         self.summary_card.columnconfigure(1, weight=1)
@@ -75,9 +63,21 @@ class CollapsibleWorkerDashboard(ttk.Frame):
         ttk.Label(f_right, textvariable=self.cfg_perf_var, font=("Microsoft JhengHei UI", 9)).pack(anchor="w")
         ttk.Label(f_right, textvariable=self.cfg_enc_var, font=("Microsoft JhengHei UI", 9)).pack(anchor="w")
 
-        # 1. ETA 資訊卡片區
-        self.eta_card = ttk.Frame(self.body, padding=4)
-        self.eta_card.pack(fill="x", expand=True, pady=(0, 6))
+        # 1. 主進度條與整體 ETA 卡片區 (置頂於子進度條)
+        self.main_progress_card = ttk.LabelFrame(self, text="主進度與整體 ETA", padding=6)
+        self.main_progress_card.pack(fill="x", expand=True, pady=(0, 6))
+        self.main_progress_card.columnconfigure(0, weight=1)
+
+        # 主進度條與狀態列
+        main_pbar_frame = ttk.Frame(self.main_progress_card)
+        main_pbar_frame.pack(fill="x", expand=True, pady=(0, 4))
+        main_pbar_frame.columnconfigure(0, weight=1)
+        ttk.Progressbar(main_pbar_frame, variable=self.progress_var, maximum=100).grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        ttk.Label(main_pbar_frame, textvariable=self.status_var, width=24, anchor="e", font=("Microsoft JhengHei UI", 9, "bold")).grid(row=0, column=1, sticky="e")
+
+        # ETA 詳細資訊
+        self.eta_card = ttk.Frame(self.main_progress_card, padding=2)
+        self.eta_card.pack(fill="x", expand=True)
 
         self.eta_var = tk.StringVar(value="預估剩餘時間: --")
         self.clock_var = tk.StringVar(value="預計完成時刻: --:--:--")
@@ -89,25 +89,15 @@ class CollapsibleWorkerDashboard(ttk.Frame):
         ttk.Label(self.eta_card, textvariable=self.fps_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 15))
         ttk.Label(self.eta_card, textvariable=self.frame_stat_var, font=("Microsoft JhengHei UI", 9)).pack(side="right")
 
-        # 分隔線
-        ttk.Separator(self.body, orient="horizontal").pack(fill="x", pady=(2, 6))
-
-        # 2. 各 Worker 子進度條容器
-        self.workers_frame = ttk.Frame(self.body)
+        # 2. 各 Worker 子進度條區塊 (在主進度條下方)
+        self.workers_card = ttk.LabelFrame(self, text="各 Worker 子進度條", padding=6)
+        self.workers_card.pack(fill="x", expand=True)
+        
+        self.workers_frame = ttk.Frame(self.workers_card)
         self.workers_frame.pack(fill="x", expand=True)
         self.workers_frame.columnconfigure(1, weight=1)
 
         self.set_worker_count(worker_count)
-
-    def toggle(self):
-        """展開/收合切換"""
-        self.is_expanded = not self.is_expanded
-        if self.is_expanded:
-            self.body.pack(fill="x", expand=True, pady=(4, 0))
-            self.toggle_btn.configure(text="▼ 各 Worker 渲染儀表板與預估完成時間 (ETA)")
-        else:
-            self.body.pack_forget()
-            self.toggle_btn.configure(text="▶ 各 Worker 渲染儀表板與預估完成時間 (ETA)")
 
     def set_worker_count(self, count: int):
         """根據指定的 Worker 數量動態建立/重建子進度條"""
@@ -169,16 +159,13 @@ class CollapsibleWorkerDashboard(ttk.Frame):
 
             self.eta_var.set(f"預估剩餘時間: {eta_str}")
             self.clock_var.set(f"預計完成時刻: {clock_str}")
-            self.header_summary_var.set(f"預估剩餘: {eta_str} ({clock_str} 完成) | 速度: {live_fps:.1f} fps")
         else:
             if rendered >= total and total > 0:
                 self.eta_var.set("預估剩餘時間: 已完成")
                 self.clock_var.set(f"完成時刻: {datetime.now().strftime('%H:%M:%S')}")
-                self.header_summary_var.set(f"渲染完成 | 平均速度: {live_fps:.1f} fps")
             else:
                 self.eta_var.set("預估剩餘時間: 計算中…")
                 self.clock_var.set("預計完成時刻: --:--:--")
-                self.header_summary_var.set(f"計算中… | 速度: {live_fps:.1f} fps")
 
     def reset(self, new_worker_count: int | None = None):
         """重置所有 Worker 進度條與 ETA 狀態"""
@@ -192,7 +179,6 @@ class CollapsibleWorkerDashboard(ttk.Frame):
         self.clock_var.set("預計完成時刻: --:--:--")
         self.fps_var.set("渲染速度: -- frame/s")
         self.frame_stat_var.set("已完成幀數: 0 / 0")
-        self.header_summary_var.set("預估完成時間: -- | 渲染速度: -- fps")
 
     def update_config_summary(self, cfg: dict):
         """根據傳入的設定字典更新摘要資訊卡片"""
@@ -220,5 +206,10 @@ class CollapsibleWorkerDashboard(ttk.Frame):
         preset = cfg.get("NVENC_PRESET", "--")
         media = "媒體 Overlay [開啟]" if cfg.get("ENABLE_MEDIA") else "無媒體 Overlay"
         self.cfg_enc_var.set(f"編碼設定: NVENC {bitrate} (preset: {preset}) | {media}")
+
+
+# 相容舊類別名稱
+CollapsibleWorkerDashboard = RenderProgressDashboard
+
 
 

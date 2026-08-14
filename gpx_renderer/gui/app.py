@@ -21,7 +21,7 @@ from gpx_renderer.utils import _background_subprocess_kwargs, _self_subprocess_c
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
 from gpx_renderer.gui.help import help_button, show_setting_help
-from gpx_renderer.gui.components import add_check_with_help, CollapsibleWorkerDashboard
+from gpx_renderer.gui.components import add_check_with_help, RenderProgressDashboard
 
 
 def launch_gui():
@@ -84,7 +84,7 @@ def launch_gui():
     outer = ttk.Frame(root, padding=12)
     outer.pack(fill="both", expand=True)
     outer.columnconfigure(0, weight=1)
-    outer.rowconfigure(3, weight=1)
+    outer.rowconfigure(2, weight=1)
 
     # ---------- GPX distance / auto duration ----------
     def _apply_cached_auto_duration():
@@ -510,19 +510,15 @@ def launch_gui():
     duration_entry.configure(state="disabled" if auto_duration_var.get() else "normal")
     root.after(150, refresh_gpx_distance)
 
-    # ---------- progress / controls ----------
-    progress_box = ttk.Frame(outer)
-    progress_box.grid(row=2, column=0, sticky="ew", pady=(10, 0))
-    progress_box.columnconfigure(0, weight=1)
-    ttk.Progressbar(progress_box, variable=progress_var, maximum=100).grid(row=0, column=0, sticky="ew", padx=(0, 10))
-    ttk.Label(progress_box, textvariable=status_var, width=30).grid(row=0, column=1, sticky="e")
-
-    # ---------- Worker Dashboard & ETA (Collapsible Container) ----------
-    worker_dashboard = CollapsibleWorkerDashboard(outer, worker_count=workers_var.get())
-    worker_dashboard.grid(row=3, column=0, sticky="ew", pady=(8, 0))
+    # ---------- Render Progress Dashboard (包含置頂主進度條、ETA 與各 Worker 子進度) ----------
+    worker_dashboard = RenderProgressDashboard(
+        outer, worker_count=workers_var.get(),
+        progress_var=progress_var, status_var=status_var,
+    )
+    worker_dashboard.grid(row=2, column=0, sticky="ew", pady=(10, 0))
 
     buttons = ttk.Frame(outer)
-    buttons.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+    buttons.grid(row=3, column=0, sticky="ew", pady=(10, 0))
     buttons.columnconfigure(0, weight=1)
 
     def refresh_config_summary(*args):
