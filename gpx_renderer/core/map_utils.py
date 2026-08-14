@@ -69,38 +69,49 @@ def choose_map_style():
 
 
 def _fetch_raster(west: float, south: float, east: float, north: float, map_style, zoom, use_cache: bool | None = None) -> RasterMap:
-    """下載指定 EPSG:3857 bbox 的 raster。帶有 ConnectionResetError 指數退避重試保護機制。"""
+    """下載指定 EPSG:3857 bbox 的 raster。帶有自動降階 (Zoom Fallback) 與指數退避重試保護機制。"""
     if use_cache is None:
         use_cache = config.MAP_USE_CACHE
     if getattr(sys, "frozen", False) and use_cache and config.MAP_CONNECTIONS > 1:
         use_cache = False
 
-    max_attempts = 4
+    target_zooms = []
+    if isinstance(zoom, int):
+        target_zooms.append(zoom)
+        if zoom > 1:
+            target_zooms.append(zoom - 1)
+        if zoom > 2:
+            target_zooms.append(zoom - 2)
+    else:
+        target_zooms.append(zoom)
+
     last_exc = None
 
-    for attempt in range(1, max_attempts + 1):
-        try:
-            img_np, extent = cx.bounds2img(
-                west,
-                south,
-                east,
-                north,
-                zoom=zoom,
-                source=map_style,
-                ll=False,
-                wait=1,
-                max_retries=3,
-                n_connections=config.MAP_CONNECTIONS,
-                use_cache=use_cache,
-            )
-            left, right, bottom, top = map(float, extent)
-            image = Image.fromarray(np.asarray(img_np)).convert("RGB")
-            return RasterMap(image, left, right, bottom, top)
-        except Exception as exc:
-            last_exc = exc
-            if attempt < max_attempts:
-                import time
-                time.sleep(1.0 * (2 ** (attempt - 1)))
+    for z_try in target_zooms:
+        max_attempts = 3 if z_try == target_zooms[0] else 2
+        for attempt in range(1, max_attempts + 1):
+            try:
+                img_np, extent = cx.bounds2img(
+                    west,
+                    south,
+                    east,
+                    north,
+                    zoom=z_try,
+                    source=map_style,
+                    ll=False,
+                    wait=1,
+                    max_retries=3,
+                    n_connections=config.MAP_CONNECTIONS,
+                    use_cache=use_cache,
+                )
+                left, right, bottom, top = map(float, extent)
+                image = Image.fromarray(np.asarray(img_np)).convert("RGB")
+                return RasterMap(image, left, right, bottom, top)
+            except Exception as exc:
+                last_exc = exc
+                if attempt < max_attempts:
+                    import time
+                    time.sleep(0.8 * (2 ** (attempt - 1)))
 
     if last_exc is not None:
         raise last_exc
