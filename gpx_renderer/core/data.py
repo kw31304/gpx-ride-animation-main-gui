@@ -110,8 +110,17 @@ def quick_gpx_distance_km(path: str | Path) -> float:
     if not path.exists():
         raise FileNotFoundError(f"找不到 GPX：{path.resolve()}")
 
-    with path.open("r", encoding="utf-8") as f:
-        gpx = gpxpy.parse(f)
+    content = None
+    for enc in ["utf-8-sig", "utf-8", "big5", "latin1"]:
+        try:
+            content = path.read_text(encoding=enc, errors="replace")
+            break
+        except Exception:
+            continue
+    if content is None:
+        content = path.read_text(encoding="utf-8", errors="replace")
+
+    gpx = gpxpy.parse(content)
 
     lats = []
     lons = []
