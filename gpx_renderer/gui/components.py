@@ -83,13 +83,15 @@ class RenderProgressDashboard(ttk.LabelFrame):
         self.eta_var = tk.StringVar(value="預估剩餘時間: --")
         self.clock_var = tk.StringVar(value="預計完成時刻: --:--:--")
         self.elapsed_var = tk.StringVar(value="已耗時: --")
-        self.fps_var = tk.StringVar(value="渲染速度: -- frame/s")
+        self.fps_var = tk.StringVar(value="即時速度: -- frame/s")
+        self.avg_fps_var = tk.StringVar(value="平均速度: -- frame/s")
         self.frame_stat_var = tk.StringVar(value="已完成幀數: 0 / 0")
 
-        ttk.Label(self.eta_card, textvariable=self.eta_var, font=("Microsoft JhengHei UI", 9, "bold")).pack(side="left", padx=(0, 12))
-        ttk.Label(self.eta_card, textvariable=self.clock_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 12))
-        ttk.Label(self.eta_card, textvariable=self.elapsed_var, font=("Microsoft JhengHei UI", 9, "bold"), foreground="#0078d4").pack(side="left", padx=(0, 12))
-        ttk.Label(self.eta_card, textvariable=self.fps_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 12))
+        ttk.Label(self.eta_card, textvariable=self.eta_var, font=("Microsoft JhengHei UI", 9, "bold")).pack(side="left", padx=(0, 10))
+        ttk.Label(self.eta_card, textvariable=self.clock_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 10))
+        ttk.Label(self.eta_card, textvariable=self.elapsed_var, font=("Microsoft JhengHei UI", 9, "bold"), foreground="#0078d4").pack(side="left", padx=(0, 10))
+        ttk.Label(self.eta_card, textvariable=self.fps_var, font=("Microsoft JhengHei UI", 9)).pack(side="left", padx=(0, 10))
+        ttk.Label(self.eta_card, textvariable=self.avg_fps_var, font=("Microsoft JhengHei UI", 9, "bold"), foreground="#107c41").pack(side="left", padx=(0, 10))
         ttk.Label(self.eta_card, textvariable=self.frame_stat_var, font=("Microsoft JhengHei UI", 9)).pack(side="right")
 
         # 2. 各 Worker 子進度條區塊 (在主進度條下方)
@@ -150,18 +152,24 @@ class RenderProgressDashboard(ttk.LabelFrame):
     def update_eta(self, eta_seconds: float | None, live_fps: float, rendered: int, total: int):
         """更新整體 ETA 與速度統計資訊"""
         if live_fps > 0:
-            self.fps_var.set(f"渲染速度: {live_fps:.1f} frame/s")
+            self.fps_var.set(f"即時速度: {live_fps:.1f} frame/s")
         else:
-            self.fps_var.set("渲染速度: -- frame/s")
+            self.fps_var.set("即時速度: -- frame/s")
 
         self.frame_stat_var.set(f"已完成幀數: {rendered} / {total}")
 
+        avg_fps = 0.0
         if self.start_time is not None:
             elapsed = time.perf_counter() - self.start_time
+            if elapsed > 0 and rendered > 0:
+                avg_fps = rendered / elapsed
             if rendered >= total and total > 0:
                 self.elapsed_var.set(f"實際總耗時: {self._format_seconds_human(elapsed)}")
             else:
                 self.elapsed_var.set(f"已耗時: {self._format_seconds_human(elapsed)}")
+
+        if avg_fps > 0:
+            self.avg_fps_var.set(f"平均速度: {avg_fps:.1f} frame/s")
 
         if eta_seconds is not None and math.isfinite(eta_seconds) and eta_seconds >= 0:
             eta_sec = int(round(eta_seconds))
@@ -199,7 +207,8 @@ class RenderProgressDashboard(ttk.LabelFrame):
         self.eta_var.set("預估剩餘時間: --")
         self.clock_var.set("預計完成時刻: --:--:--")
         self.elapsed_var.set("已耗時: 0秒")
-        self.fps_var.set("渲染速度: -- frame/s")
+        self.fps_var.set("即時速度: -- frame/s")
+        self.avg_fps_var.set("平均速度: -- frame/s")
         self.frame_stat_var.set("已完成幀數: 0 / 0")
 
     def update_config_summary(self, cfg: dict):
