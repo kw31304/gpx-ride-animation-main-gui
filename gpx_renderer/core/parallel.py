@@ -138,8 +138,7 @@ def _benchmark_worker_entry(
         t0 = time.perf_counter()
         frames = 0
         for frame_idx in range(start_frame + 1, end_frame):
-            frame = renderer.render_main_frame(frame_idx)
-            ffmpeg_proc.stdin.write(frame.tobytes("raw", "RGB"))
+            ffmpeg_proc.stdin.write(renderer.render_frame_bytes(frame_idx))
             frames += 1
 
         ffmpeg_proc.stdin.close()
@@ -419,8 +418,7 @@ def _encode_chunk_with_renderer(renderer: RideRenderer, task: SegmentTask, ffmpe
     result_queue.put(("start", worker_id, task.segment_index, 0, total, ""))
     try:
         for frame_idx in range(task.start_frame, task.end_frame):
-            frame = renderer.render_main_frame(frame_idx)
-            process.stdin.write(frame.tobytes("raw", "RGB"))
+            process.stdin.write(renderer.render_frame_bytes(frame_idx))
             now = time.perf_counter()
             if now - last_progress_t >= 0.45:
                 done_local = frame_idx - task.start_frame + 1

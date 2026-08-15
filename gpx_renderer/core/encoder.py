@@ -11,6 +11,7 @@ import time
 import shutil
 import subprocess
 import json
+import numpy as np
 from pathlib import Path
 
 from gpx_renderer import config
@@ -293,7 +294,10 @@ def _encode_end_segment(renderer, ffmpeg: str, encoder: str, output: str):
     try:
         for i in range(end_count):
             frame = renderer.render_end_frame(i)
-            process.stdin.write(frame.tobytes("raw", "RGB"))
+            if isinstance(frame, np.ndarray):
+                process.stdin.write(memoryview(frame))
+            else:
+                process.stdin.write(frame.tobytes("raw", "RGB"))
         process.stdin.close()
         stderr = process.stderr.read().decode("utf-8", errors="replace") if process.stderr else ""
         rc = process.wait()

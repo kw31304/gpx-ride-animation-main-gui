@@ -278,6 +278,7 @@ class RideRenderer:
         self.cached_hud: Image.Image | None = None
         self.cached_hud_idx = -1
 
+        self._init_hud_static()
         self._init_minimap()
         self._init_elevation()
         self._init_summary()
@@ -575,13 +576,12 @@ class RideRenderer:
         return frame
 
     # ---------- HUD ----------
-    def _build_hud(self, idx: int) -> Image.Image:
-        d = self.d
+    def _init_hud_static(self):
         s = self.ui_scale
         w = max(300, int(round(config.FRAME_WIDTH * 0.355)))
         h = max(142, int(round(config.FRAME_HEIGHT * 0.175)))
-        hud = Image.new("RGBA", (w + int(10 * s), h + int(12 * s)), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(hud)
+        hud_base = Image.new("RGBA", (w + int(10 * s), h + int(12 * s)), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(hud_base)
 
         radius = max(16, int(round(22 * s)))
         draw.rounded_rectangle(
@@ -594,11 +594,45 @@ class RideRenderer:
 
         pad = int(round(18 * s))
         draw.text(
-            (pad, int(16*s)),
+            (pad, int(16 * s)),
             "SPEED",
             font=self.font_hud_kicker,
             fill=(205, 212, 220, 230),
         )
+
+        divider_y = int(round(h * 0.66))
+        draw.line(
+            (pad, divider_y, w - pad, divider_y),
+            fill=(255, 255, 255, 25),
+            width=max(1, int(round(s))),
+        )
+
+        inner_w = w - pad * 2
+        col_w = inner_w / 3.0
+        label_y = divider_y + int(10 * s)
+        labels = ["DISTANCE", "ELEVATION", "CLIMB"]
+        for i, label in enumerate(labels):
+            x = int(round(pad + i * col_w))
+            if i:
+                sep_x = int(round(pad + i * col_w - 8 * s))
+                draw.line(
+                    (sep_x, label_y, sep_x, h - int(12 * s)),
+                    fill=(255, 255, 255, 20),
+                    width=max(1, int(round(s))),
+                )
+            draw.text((x, label_y), label, font=self.font_hud_label, fill=(134, 145, 156, 235))
+
+        self.hud_pad = pad
+        self.hud_divider_y = divider_y
+        self.hud_col_w = col_w
+        self.hud_static_base = hud_base
+
+    def _build_hud(self, idx: int) -> Image.Image:
+        d = self.d
+        s = self.ui_scale
+        hud = self.hud_static_base.copy()
+        draw = ImageDraw.Draw(hud)
+        pad = self.hud_pad
 
         speed_text = f"{d.speeds[idx]:.1f}"
         speed_y = int(39 * s)
@@ -608,35 +642,19 @@ class RideRenderer:
         unit_y = sb[3] - int(20 * s)
         draw.text((unit_x, unit_y), "km/h", font=self.font_hud_unit, fill=(170, 180, 190, 235))
 
-        divider_y = int(round(h * 0.66))
-        draw.line(
-            (pad, divider_y, w - pad, divider_y),
-            fill=(255, 255, 255, 25),
-            width=max(1, int(round(s))),
-        )
-        metrics = [
-            ("DISTANCE", f"{d.distances[idx]:.1f}", "km"),
-            ("ELEVATION", f"{d.eles[idx]:.0f}", "m"),
-            ("CLIMB", f"+{d.elevation_gain[idx]:.0f}", "m"),
-        ]
-        inner_w = w - pad * 2
-        col_w = inner_w / 3.0
-        label_y = divider_y + int(10 * s)
+        label_y = self.hud_divider_y + int(10 * s)
         value_y = label_y + int(15 * s)
-        for i, (label, value, unit) in enumerate(metrics):
-            x = int(round(pad + i * col_w))
-            if i:
-                sep_x = int(round(pad + i * col_w - 8 * s))
-                draw.line(
-                    (sep_x, label_y, sep_x, h - int(12*s)),
-                    fill=(255, 255, 255, 20),
-                    width=max(1, int(round(s))),
-                )
-            draw.text((x, label_y), label, font=self.font_hud_label, fill=(134, 145, 156, 235))
+        metrics = [
+            (f"{d.distances[idx]:.1f}", "km"),
+            (f"{d.eles[idx]:.0f}", "m"),
+            (f"+{d.elevation_gain[idx]:.0f}", "m"),
+        ]
+        for i, (value, unit) in enumerate(metrics):
+            x = int(round(pad + i * self.hud_col_w))
             draw.text((x, value_y), value, font=self.font_hud_metric, fill=(245, 247, 250, 255))
             vb = draw.textbbox((x, value_y), value, font=self.font_hud_metric)
             draw.text(
-                (vb[2] + int(4*s), value_y + int(4*s)),
+                (vb[2] + int(4 * s), value_y + int(4 * s)),
                 unit,
                 font=self.font_hud_label,
                 fill=(150, 160, 170, 225),
@@ -713,6 +731,8 @@ class RideRenderer:
         self.mini_progress_layer = self.mini_layer.copy()
         self.mini_draw = ImageDraw.Draw(self.mini_progress_layer)
         self.mini_last_idx = 0
+        self.cached_mini_idx = -1
+        self.cached_mini_img = None
 
     def _advance_minimap(self, idx: int):
         idx = min(max(int(idx), 0), self.d.total_points - 1)
@@ -726,6 +746,9 @@ class RideRenderer:
 
     def _compose_minimap(self, idx: int) -> Image.Image:
         self._advance_minimap(idx)
+        if idx == self.cached_mini_idx and self.cached_mini_img is not None:
+            return self.cached_mini_img
+
         mini = self.mini_progress_layer.copy()
         draw = ImageDraw.Draw(mini)
         x = int(round(self.mini_px_x[idx]))
@@ -733,6 +756,8 @@ class RideRenderer:
         r = max(4, int(round(5 * self.ui_scale)))
         draw.ellipse((x-r-2, y-r-2, x+r+2, y+r+2), fill=(255, 255, 255, 235))
         draw.ellipse((x-r, y-r, x+r, y+r), fill=config.ORANGE + (255,))
+        self.cached_mini_idx = idx
+        self.cached_mini_img = mini
         return mini
 
     # ---------- elevation ----------
@@ -781,13 +806,24 @@ class RideRenderer:
             pdraw.polygon(poly, fill=config.ORANGE + (48,))
             pdraw.line(full_pts, fill=config.ORANGE + (235,), width=max(2, int(round(2*self.ui_scale))))
 
+        self.elev_full_composite = self.elev_base.copy()
+        if len(full_pts) >= 2:
+            self.elev_full_composite.alpha_composite(self.elev_progress_full)
+        self.cached_elev_reveal_x = -1
+        self.cached_elev_img = None
+
     def _compose_elevation(self, idx: int) -> Image.Image:
-        panel = self.elev_base.copy()
         reveal_x = int(round(self.elev_px_x[idx]))
         reveal_x = min(max(reveal_x, 0), self.elev_w - 1)
+        if reveal_x == self.cached_elev_reveal_x and self.cached_elev_img is not None:
+            return self.cached_elev_img
+
+        panel = self.elev_base.copy()
         if reveal_x > 0:
-            crop = self.elev_progress_full.crop((0, 0, reveal_x + 1, self.elev_h))
-            panel.alpha_composite(crop, (0, 0))
+            crop = self.elev_full_composite.crop((0, 0, reveal_x + 1, self.elev_h))
+            panel.paste(crop, (0, 0))
+        self.cached_elev_reveal_x = reveal_x
+        self.cached_elev_img = panel
         return panel
 
     # ---------- summary ----------
@@ -1063,10 +1099,12 @@ class RideRenderer:
             self.cached_hold_frame = frame.copy()
         return frame
 
-    def render_frame_bytes(self, frame_idx: int) -> bytes:
+    def render_frame_bytes(self, frame_idx: int) -> bytes | memoryview:
         if frame_idx < self.main_frames:
             frame = self.render_main_frame(frame_idx)
         else:
             frame = self.render_end_frame(frame_idx - self.main_frames)
 
+        if isinstance(frame, np.ndarray):
+            return memoryview(frame)
         return frame.tobytes("raw", "RGB")

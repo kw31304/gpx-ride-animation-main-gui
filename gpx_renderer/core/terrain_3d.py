@@ -20,6 +20,31 @@ except Exception:
 from gpx_renderer import config
 from gpx_renderer.core.map_utils import RasterMap
 from gpx_renderer.core.dem_utils import get_elevation_grid
+_3D_REMAPPING_CACHE = {}
+
+
+def _get_remap_buffers(H: int, W: int, grid_res: int):
+    key = (H, W, grid_res)
+    if key not in _3D_REMAPPING_CACHE:
+        grid_x_px, grid_y_px = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32))
+        id_map_buf = np.full((H, W), -1, dtype=np.int32)
+        map_x_buf = np.full((H, W), -1.0, dtype=np.float32)
+        map_y_buf = np.full((H, W), -1.0, dtype=np.float32)
+
+        r_idx, c_idx = np.meshgrid(np.arange(grid_res - 1), np.arange(grid_res - 1), indexing="ij")
+        r_idx = r_idx.ravel()
+        c_idx = c_idx.ravel()
+
+        _3D_REMAPPING_CACHE[key] = {
+            "grid_x_px": grid_x_px,
+            "grid_y_px": grid_y_px,
+            "id_map_buf": id_map_buf,
+            "map_x_buf": map_x_buf,
+            "map_y_buf": map_y_buf,
+            "r_idx": r_idx,
+            "c_idx": c_idx,
+        }
+    return _3D_REMAPPING_CACHE[key]
 
 
 @dataclass
@@ -188,68 +213,103 @@ def render_3d_terrain_frame(
     src_y_grid = np.linspace(0, src_h - 1, grid_res, dtype=np.float32)
     src_mesh_x, src_mesh_y = np.meshgrid(src_x_grid, src_y_grid)
 
-    out_arr = np.full((H, W, 3), 17, dtype=np.uint8)
-
     if HAVE_CV2 and cv2 is not None:
-        # 分塊 3D 透視三角面片極速無縫貼圖 (Triangle Masked Affine Blending)
-        for r in range(grid_res - 1):
-            for c in range(grid_res - 1):
-                dst_pts1 = np.float32([
-                    [px_grid[r, c], py_grid[r, c]],
-                    [px_grid[r, c + 1], py_grid[r, c + 1]],
-                    [px_grid[r + 1, c], py_grid[r + 1, c]],
-                ])
-                src_pts1 = np.float32([
-                    [src_mesh_x[r, c], src_mesh_y[r, c]],
-                    [src_mesh_x[r, c + 1], src_mesh_y[r, c + 1]],
-                    [src_mesh_x[r + 1, c], src_mesh_y[r + 1, c]],
-                ])
+        buf = _get_remap_buffers(H, W, grid_res)
+        id_map = buf["id_map_buf"]
+        map_x = buf["map_x_buf"]
+        map_y = buf["map_y_buf"]
+        grid_x_px = buf["grid_x_px"]
+        grid_y_px = buf["grid_y_px"]
+        r_idx, c_idx = buf["r_idx"], buf["c_idx"]
 
-                bx0 = max(0, int(math.floor(float(np.min(dst_pts1[:, 0])))))
-                bx1 = min(W, int(math.ceil(float(np.max(dst_pts1[:, 0])))))
-                by0 = max(0, int(math.floor(float(np.min(dst_pts1[:, 1])))))
-                by1 = min(H, int(math.ceil(float(np.max(dst_pts1[:, 1])))))
+        id_map.fill(-1)
+        map_x.fill(-1.0)
+        map_y.fill(-1.0)
 
-                if bx1 > bx0 and by1 > by0:
-                    pw, ph = bx1 - bx0, by1 - by0
-                    dst1_loc = dst_pts1 - np.float32([bx0, by0])
-                    try:
-                        M1 = cv2.getAffineTransform(src_pts1, dst1_loc)
-                        warped1 = cv2.warpAffine(src_img, M1, (pw, ph), flags=cv2.INTER_LINEAR)
-                        mask1 = np.zeros((ph, pw), dtype=np.uint8)
-                        cv2.fillConvexPoly(mask1, np.int32(np.round(dst1_loc)), 255)
-                        patch1 = out_arr[by0:by1, bx0:bx1]
-                        cv2.copyTo(warped1, mask1, patch1)
-                    except Exception:
-                        pass
+        p0_x, p0_y = px_grid[r_idx, c_idx], py_grid[r_idx, c_idx]
+        p1_x, p1_y = px_grid[r_idx, c_idx + 1], py_grid[r_idx, c_idx + 1]
+        p2_x, p2_y = px_grid[r_idx + 1, c_idx], py_grid[r_idx + 1, c_idx]
 
-                dst_pts2 = np.float32([
-                    [px_grid[r, c + 1], py_grid[r, c + 1]],
-                    [px_grid[r + 1, c + 1], py_grid[r + 1, c + 1]],
-                    [px_grid[r + 1, c], py_grid[r + 1, c]],
-                ])
-                src_pts2 = np.float32([
-                    [src_mesh_x[r, c + 1], src_mesh_y[r, c + 1]],
-                    [src_mesh_x[r + 1, c + 1], src_mesh_y[r + 1, c + 1]],
-                    [src_mesh_x[r + 1, c], src_mesh_y[r + 1, c]],
-                ])
+        q0_x, q0_y = px_grid[r_idx, c_idx + 1], py_grid[r_idx, c_idx + 1]
+        q1_x, q1_y = px_grid[r_idx + 1, c_idx + 1], py_grid[r_idx + 1, c_idx + 1]
+        q2_x, q2_y = px_grid[r_idx + 1, c_idx], py_grid[r_idx + 1, c_idx]
 
-                bx0 = max(0, int(math.floor(float(np.min(dst_pts2[:, 0])))))
-                bx1 = min(W, int(math.ceil(float(np.max(dst_pts2[:, 0])))))
-                by0 = max(0, int(math.floor(float(np.min(dst_pts2[:, 1])))))
-                by1 = min(H, int(math.ceil(float(np.max(dst_pts2[:, 1])))))
+        dst_x0 = np.concatenate([p0_x, q0_x])
+        dst_y0 = np.concatenate([p0_y, q0_y])
+        dst_x1 = np.concatenate([p1_x, q1_x])
+        dst_y1 = np.concatenate([p1_y, q1_y])
+        dst_x2 = np.concatenate([p2_x, q2_x])
+        dst_y2 = np.concatenate([p2_y, q2_y])
 
-                if bx1 > bx0 and by1 > by0:
-                    pw, ph = bx1 - bx0, by1 - by0
-                    dst2_loc = dst_pts2 - np.float32([bx0, by0])
-                    try:
-                        M2 = cv2.getAffineTransform(src_pts2, dst2_loc)
-                        warped2 = cv2.warpAffine(src_img, M2, (pw, ph), flags=cv2.INTER_LINEAR)
-                        mask2 = np.zeros((ph, pw), dtype=np.uint8)
-                        cv2.fillConvexPoly(mask2, np.int32(np.round(dst2_loc)), 255)
-                        patch2 = out_arr[by0:by1, bx0:bx1]
-                        cv2.copyTo(warped2, mask2, patch2)
-                    except Exception:
-                        pass
+        s0_x, s0_y = src_mesh_x[r_idx, c_idx], src_mesh_y[r_idx, c_idx]
+        s1_x, s1_y = src_mesh_x[r_idx, c_idx + 1], src_mesh_y[r_idx, c_idx + 1]
+        s2_x, s2_y = src_mesh_x[r_idx + 1, c_idx], src_mesh_y[r_idx + 1, c_idx]
+
+        ts0_x, ts0_y = src_mesh_x[r_idx, c_idx + 1], src_mesh_y[r_idx, c_idx + 1]
+        ts1_x, ts1_y = src_mesh_x[r_idx + 1, c_idx + 1], src_mesh_y[r_idx + 1, c_idx + 1]
+        ts2_x, ts2_y = src_mesh_x[r_idx + 1, c_idx], src_mesh_y[r_idx + 1, c_idx]
+
+        src_x0 = np.concatenate([s0_x, ts0_x])
+        src_y0 = np.concatenate([s0_y, ts0_y])
+        src_x1 = np.concatenate([s1_x, ts1_x])
+        src_y1 = np.concatenate([s1_y, ts1_y])
+        src_x2 = np.concatenate([s2_x, ts2_x])
+        src_y2 = np.concatenate([s2_y, ts2_y])
+
+        min_x = np.minimum.reduce([dst_x0, dst_x1, dst_x2])
+        max_x = np.maximum.reduce([dst_x0, dst_x1, dst_x2])
+        min_y = np.minimum.reduce([dst_y0, dst_y1, dst_y2])
+        max_y = np.maximum.reduce([dst_y0, dst_y1, dst_y2])
+
+        valid_tri = (max_x >= 0) & (min_x < W) & (max_y >= 0) & (min_y < H)
+        valid_indices = np.flatnonzero(valid_tri)
+
+        if valid_indices.size > 0:
+            det = (dst_x0[valid_indices] * (dst_y1[valid_indices] - dst_y2[valid_indices]) +
+                   dst_x1[valid_indices] * (dst_y2[valid_indices] - dst_y0[valid_indices]) +
+                   dst_x2[valid_indices] * (dst_y0[valid_indices] - dst_y1[valid_indices]))
+
+            nonzero_det = np.abs(det) > 1e-5
+            valid_indices = valid_indices[nonzero_det]
+            det = det[nonzero_det]
+
+            if valid_indices.size > 0:
+                x0, y0 = dst_x0[valid_indices], dst_y0[valid_indices]
+                x1, y1 = dst_x1[valid_indices], dst_y1[valid_indices]
+                x2, y2 = dst_x2[valid_indices], dst_y2[valid_indices]
+
+                sx0, sy0 = src_x0[valid_indices], src_y0[valid_indices]
+                sx1, sy1 = src_x1[valid_indices], src_y1[valid_indices]
+                sx2, sy2 = src_x2[valid_indices], src_y2[valid_indices]
+
+                inv_det = 1.0 / det
+                a = inv_det * (sx0 * (y1 - y2) + sx1 * (y2 - y0) + sx2 * (y0 - y1))
+                b = inv_det * (sx0 * (x2 - x1) + sx1 * (x0 - x2) + sx2 * (x1 - x0))
+                c = inv_det * (sx0 * (x1 * y2 - x2 * y1) + sx1 * (x2 * y0 - x0 * y2) + sx2 * (x0 * y1 - x1 * y0))
+
+                d_coef = inv_det * (sy0 * (y1 - y2) + sy1 * (y2 - y0) + sy2 * (y0 - y1))
+                e_coef = inv_det * (sy0 * (x2 - x1) + sy1 * (x0 - x2) + sy2 * (x1 - x0))
+                f_coef = inv_det * (sy0 * (x1 * y2 - x2 * y1) + sy1 * (x2 * y0 - x0 * y2) + sy2 * (x0 * y1 - x1 * y0))
+
+                poly_pts = np.stack([
+                    np.stack([np.round(x0), np.round(y0)], axis=1),
+                    np.stack([np.round(x1), np.round(y1)], axis=1),
+                    np.stack([np.round(x2), np.round(y2)], axis=1),
+                ], axis=1).astype(np.int32)
+
+                for i in range(len(valid_indices)):
+                    cv2.fillConvexPoly(id_map, poly_pts[i], i)
+
+                mask = (id_map >= 0)
+                if np.any(mask):
+                    k = id_map[mask]
+                    gx = grid_x_px[mask]
+                    gy = grid_y_px[mask]
+
+                    map_x[mask] = a[k] * gx + b[k] * gy + c[k]
+                    map_y[mask] = d_coef[k] * gx + e_coef[k] * gy + f_coef[k]
+
+        out_arr = cv2.remap(src_img, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(17, 17, 17))
 
     return Image.fromarray(out_arr)
+
