@@ -113,9 +113,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ]
         self.worker_bars = [b for b in self.worker_bars if b is not None]
 
+        self.worker_status_labels = [
+            getattr(self, f"lbl_worker_status_{i}", None) for i in range(1, 7)
+        ]
+        self.worker_status_labels = [l for l in self.worker_status_labels if l is not None]
+
         self._init_combos()
         self._init_default_values()
         self._connect_signals()
+        self._update_dashboard_summary()
 
         # 隱藏進階設定 (預設折疊)
         if hasattr(self, "groupBox"):
@@ -125,6 +131,48 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 開局自動刷新 GPX 距離
         QTimer.singleShot(200, self.refresh_gpx_distance)
+
+    def set_status_message(self, msg: str):
+        if hasattr(self, "lbl_main_status"):
+            self.lbl_main_status.setText(msg)
+        if hasattr(self, "groupBox_main_progress"):
+            self.groupBox_main_progress.setTitle(f"主進度與整體 ETA - {msg}")
+        self.statusBar().showMessage(msg)
+
+    def _update_dashboard_summary(self):
+        try:
+            w, h = self.spin_width.value(), self.spin_height.value()
+            fps = self.spin_fps.value()
+            dur_text = self.lineEdit_duration.text().strip()
+            dur = float(dur_text) if dur_text else 30.0
+            is_auto = self.chk_auto_duration.isChecked()
+            dur_mode = f"自動時長 {dur:.1f}s" if is_auto else f"手動時長 {dur:.1f}s"
+            if hasattr(self, "label_cfg_res"):
+                self.label_cfg_res.setText(f"畫面規格: {w}x{h} @ {fps} FPS ({dur_mode})")
+
+            map_raw = self.combo_map_style_2.currentText()
+            map_key = map_raw.split(".", 1)[0].strip()
+            map_label = config.MAP_STYLE_OPTIONS.get(map_key, ("", ""))[0]
+            cam_mode = self.combo_camera_mode_2.currentText()
+            zoom = self.combo_local_zoom.currentText()
+            if hasattr(self, "label_cfg_map"):
+                self.label_cfg_map.setText(f"地圖視角: 風格 [{map_key}] {map_label} | {cam_mode} | Zoom: {zoom}")
+
+            bitrate = self.combo_bitrate.currentText().strip()
+            preset = self.combo_preset.currentText().strip()
+            has_media = "有媒體卡片" if self.chk_enable_media_2.isChecked() and self.lineEdit_media.text().strip() else "無媒體 Overlay"
+            if hasattr(self, "label_cfg_enc"):
+                self.label_cfg_enc.setText(f"編碼設定: NVENC {bitrate} (preset: {preset}) | {has_media}")
+
+            parallel = self.chk_parallel_2.isChecked()
+            workers = self.spin_workers.value()
+            chunks = self.spin_chunks.value()
+            cache_info = "停用 Cache" if self.chk_disable_parallel_cache.isChecked() else "啟用 Cache"
+            perf_text = f"多程序 ({workers} Workers × {chunks} chunks) | {cache_info}" if parallel else f"單程序渲染 | {cache_info}"
+            if hasattr(self, "label_cfg_perf"):
+                self.label_cfg_perf.setText(f"效能模式: {perf_text}")
+        except Exception:
+            pass
 
     def _init_combos(self):
         # 1. 預設模式
@@ -212,9 +260,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.spin_width.valueChanged.connect(self.on_custom_dim_change)
         self.spin_height.valueChanged.connect(self.on_custom_dim_change)
+        self.spin_fps.valueChanged.connect(lambda: self._update_dashboard_summary())
+
+        self.combo_local_zoom.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
+        self.combo_preset.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
+        self.combo_bitrate.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
+        self.chk_parallel_2.toggled.connect(lambda: self._update_dashboard_summary())
+        self.spin_workers.valueChanged.connect(lambda: self._update_dashboard_summary())
+        self.spin_chunks.valueChanged.connect(lambda: self._update_dashboard_summary())
+        self.chk_disable_parallel_cache.toggled.connect(lambda: self._update_dashboard_summary())
+        self.chk_enable_media_2.toggled.connect(lambda: self._update_dashboard_summary())
+        self.lineEdit_media.textChanged.connect(lambda: self._update_dashboard_summary())
 
         self.chk_auto_duration.toggled.connect(self.on_auto_duration_toggle)
         self.spin_seconds_per_100km.valueChanged.connect(self.on_duration_rate_change)
+        self.lineEdit_duration.textChanged.connect(lambda: self._update_dashboard_summary())
 
         # 加入 400ms Debounce 防抖，避免連續輸入字元快速開線程
         self.gpx_debounce_timer = QTimer(self)
@@ -228,6 +288,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.btn_stop_render.clicked.connect(self.stop_render)
         self.btn_open_log_folder.clicked.connect(self.open_log_folder)
 
+        if hasattr(self, "btn_autotune"):
+            self.btn_autotune.clicked.connect(self.start_benchmark)
         if hasattr(self, "btn_benchmark"):
             self.btn_benchmark.clicked.connect(self.start_benchmark)
         if hasattr(self, "btn_apply_benchmark"):
@@ -452,6 +514,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def set_running(self, running: bool):
         self.btn_start_render.setEnabled(not running)
+        if hasattr(self, "btn_autotune"): self.btn_autotune.setEnabled(not running)
         if hasattr(self, "btn_benchmark"): self.btn_benchmark.setEnabled(not running)
         self.btn_stop_render.setEnabled(running)
 
@@ -466,7 +529,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(self, "找不到 GPX 檔案", cfg["gpx_filename"]); return
 
         self.progressBar_main.setValue(0)
-        self.lbl_main_status.setText("啟動渲染程序中…")
+        for bar in self.worker_bars:
+            bar.setValue(0)
+        for lbl in self.worker_status_labels:
+            lbl.setText("待命")
+
+        if hasattr(self, "label_eta_time"): self.label_eta_time.setText("預估剩餘時間: --")
+        if hasattr(self, "label_eta_clock"): self.label_eta_clock.setText("預計完成時刻: --:--:--")
+        if hasattr(self, "label_eta_speed"): self.label_eta_speed.setText("渲染速度: -- frame/s")
+        if hasattr(self, "label_eta_frames"): self.label_eta_frames.setText("已完成幀數: 0 / 0")
+
+        self._update_dashboard_summary()
+        self.set_status_message("啟動渲染程序中…")
         self._spawn_job(cfg, "render")
 
     def start_benchmark(self):
@@ -476,10 +550,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "設定錯誤", str(exc)); return
 
+        if not Path(cfg["gpx_filename"]).is_file():
+            QMessageBox.critical(self, "找不到 GPX 檔案", cfg["gpx_filename"]); return
+
         cfg["BENCHMARK_CANDIDATES"] = _default_benchmark_candidates(cfg.get("RENDER_WORKERS"))
         cfg["BENCHMARK_FRAMES"] = max(240, min(360, int(round(int(cfg["FPS"]) * 5.0))))
         self.progressBar_main.setValue(0)
-        self.lbl_main_status.setText("Auto Tune 效能測試中…")
+        for bar in self.worker_bars:
+            bar.setValue(0)
+        for lbl in self.worker_status_labels:
+            lbl.setText("待命")
+
+        if hasattr(self, "label_autotune_result"):
+            self.label_autotune_result.setText("測試中…")
+        self.set_status_message("Auto Tune 效能測試中…")
         self._spawn_job(cfg, "benchmark")
 
     def _spawn_job(self, cfg: dict, mode: str):
@@ -515,7 +599,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         proc = self.state.get("proc")
         if proc and proc.poll() is None:
             proc.terminate()
-            self.lbl_main_status.setText("已發送停止訊號…")
+            self.set_status_message("已發送停止訊號…")
 
     def open_log_folder(self):
         log_dir = Path("logs").resolve()
@@ -525,19 +609,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _parse_process_line(self, line: str):
         print(line)  # log to console
         # 解析進度 JSON
-        if "PROGRESS_JSON:" in line:
+        if "[PROGRESS_JSON]" in line or "PROGRESS_JSON:" in line:
             try:
-                data = json.loads(line.split("PROGRESS_JSON:", 1)[1].strip())
-                pct = float(data.get("progress_percent", 0.0))
-                self.progressBar_main.setValue(int(pct))
+                sep = "[PROGRESS_JSON]" if "[PROGRESS_JSON]" in line else "PROGRESS_JSON:"
+                json_str = line.split(sep, 1)[1].strip()
+                data = json.loads(json_str)
+                pct = float(data.get("pct", data.get("progress_percent", 0.0)))
+                self.progressBar_main.setValue(int(round(pct)))
+
+                rendered = data.get("rendered")
+                total = data.get("total")
+                if rendered is not None and total is not None:
+                    if hasattr(self, "label_eta_frames"):
+                        self.label_eta_frames.setText(f"已完成幀數: {rendered} / {total}")
+
+                fps = data.get("fps")
+                if fps is not None:
+                    if hasattr(self, "label_eta_speed"):
+                        self.label_eta_speed.setText(f"渲染速度: {fps:.1f} frame/s")
+
+                eta_sec = data.get("eta_seconds")
+                if eta_sec is not None and eta_sec >= 0:
+                    if hasattr(self, "label_eta_time"):
+                        self.label_eta_time.setText(f"預估剩餘時間: {format_seconds_human(eta_sec)}")
+                    eta_finish = time.strftime("%H:%M:%S", time.localtime(time.time() + eta_sec))
+                    if hasattr(self, "label_eta_clock"):
+                        self.label_eta_clock.setText(f"預計完成時刻: {eta_finish}")
+                else:
+                    if hasattr(self, "label_eta_time"):
+                        self.label_eta_time.setText("預估剩餘時間: --")
+                    if hasattr(self, "label_eta_clock"):
+                        self.label_eta_clock.setText("預計完成時刻: --:--:--")
+
                 status = str(data.get("status", "渲染中"))
-                self.lbl_main_status.setText(f"{status} ({pct:.1f}%)")
+                self.set_status_message(f"{status} ({pct:.1f}%)")
 
                 # 解析每位 Worker 的進度
                 workers_data = data.get("workers", [])
-                for i, w_pct in enumerate(workers_data):
+                for i, w_item in enumerate(workers_data):
+                    if isinstance(w_item, dict):
+                        w_pct = float(w_item.get("pct", 0.0))
+                        w_status = str(w_item.get("status", "待命"))
+                    else:
+                        w_pct = float(w_item)
+                        w_status = f"{w_pct:.0f}%"
+
                     if i < len(self.worker_bars):
-                        self.worker_bars[i].setValue(int(w_pct))
+                        self.worker_bars[i].setValue(int(round(w_pct)))
+                    if i < len(self.worker_status_labels):
+                        self.worker_status_labels[i].setText(w_status)
             except Exception:
                 pass
 
@@ -547,10 +667,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 rec = int(res["recommended_workers"])
                 peak = float(res.get("peak_fps", 0.0))
                 self.state["benchmark_result"] = res
+                result_text = f"建議 {rec} Workers | 峰值 {peak:.1f} FPS"
+                if hasattr(self, "label_autotune_result"):
+                    self.label_autotune_result.setText(result_text)
                 if hasattr(self, "lbl_benchmark_result"):
-                    self.lbl_benchmark_result.setText(f"建議 {rec} Workers | 峰值 {peak:.1f} FPS")
+                    self.lbl_benchmark_result.setText(result_text)
                 if hasattr(self, "btn_apply_benchmark"):
                     self.btn_apply_benchmark.setEnabled(True)
+                self.set_status_message(f"Auto Tune 完成：建議 {rec} Workers")
             except Exception:
                 pass
 
@@ -572,10 +696,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if returncode == 0:
             self.progressBar_main.setValue(100)
-            self.lbl_main_status.setText("完成！")
+            for bar in self.worker_bars:
+                bar.setValue(100)
+            for lbl in self.worker_status_labels:
+                lbl.setText("完成")
+            self.set_status_message("完成！")
             QMessageBox.information(self, "完成", "程序已成功執行完成！")
         else:
-            self.lbl_main_status.setText(f"失敗 (退出碼 {returncode})")
+            self.set_status_message(f"失敗 (退出碼 {returncode})")
 
 
 def launch_qt_gui():
