@@ -21,23 +21,21 @@ from PySide6.QtWidgets import (
 
 from gpx_renderer import config
 from gpx_renderer.gui.ui_main_window import Ui_MainWindow
-from gpx_renderer.utils import _self_subprocess_command
+from gpx_renderer.utils import _self_subprocess_command, application_dir
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
 
 
 RESOLUTION_PRESETS = [
-    ("1080p 直式 9:16 (1080×1920) - 社群媒體", 1080, 1920),
-    ("1080p 橫式 16:9 (1920×1080) - YouTube", 1920, 1080),
-    ("1080p 正方形 1:1 (1080×1080) - 標準方形", 1080, 1080),
-    ("720p  直式 9:16 (720×1280)  - 社群媒體", 720, 1280),
-    ("720p  橫式 16:9 (1280×720)", 1280, 720),     
-    ("IG 貼文直式 4:5 (1080×1350)", 1080, 1350),
-    ("1440p 正方形 1:1 (1440×1440) - 高畫質方形", 1440, 1440),
-    ("2K 橫式 16:9 (2560×1440)", 2560, 1440),
-    ("640×360  超低 16:9 測試 (極速)", 640, 360),
-    ("480×480  超低 1:1  測試 (極速)", 480, 480),
-    ("360×640  超低 直式 測試 (極速)", 360, 640),
+    ("1080p 直式 (1080×1920)", 1080, 1920),
+    ("1080p 橫式 (1920×1080)", 1920, 1080),
+    ("1080p 正方形 (1080×1080)", 1080, 1080),
+    ("1440p 正方形 (1440×1440)", 1440, 1440),
+    ("2K 橫式 (2560×1440)", 2560, 1440),
+    ("720p 直式 (720×1280)", 720, 1280),
+    ("720p 橫式 (1280×720)", 1280, 720),
+    ("IG 貼文 (1080×1350)", 1080, 1350),
+    ("極速測試 (640×360)", 640, 360),
     ("自訂解析度...", None, None),
 ]
 
@@ -105,7 +103,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             "proc": None, "proc_mode": None, "config_path": None,
             "gpx_distance_km": None, "gpx_distance_path": None,
             "benchmark_result": None, "media_overrides_json": "{}",
-            "reader_thread": None,
+            "reader_thread": None, "log_file": None, "log_path": None,
         }
 
         self.worker_bars: List[QProgressBar] = [
@@ -154,7 +152,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _update_dashboard_summary(self):
         try:
-            w, h = self.spin_width.value(), self.spin_height.value()
+            w, h = self.get_current_resolution()
             fps = self.spin_fps.value()
             dur_text = self.lineEdit_duration.text().strip()
             dur = float(dur_text) if dur_text else 30.0
@@ -205,7 +203,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 4. 解析度預設
         self.combo_resolution_2.clear()
         self.combo_resolution_2.addItems([p[0] for p in RESOLUTION_PRESETS])
-        self.combo_resolution_2.setCurrentIndex(6)  # 1440p 正方形 1:1
+        self._set_resolution_by_dim(1440, 1440)
 
         # 5. 軌跡顏色
         self.combo_track_color_2.clear()
@@ -230,6 +228,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.lineEdit_gpx.setText(str(Path(config.gpx_filename).resolve()))
         self.lineEdit_output.setText(str(Path(config.output_filename).resolve()))
         self.lineEdit_media.setText(config.MEDIA_PATH)
+
+        self.spin_width.setRange(240, 7680)
+        self.spin_height.setRange(240, 7680)
+        self.spin_width.setSingleStep(2)
+        self.spin_height.setSingleStep(2)
+        self.spin_width.setToolTip("自訂畫面寬度 (240 ~ 7680 px，建議偶數)")
+        self.spin_height.setToolTip("自訂畫面高度 (240 ~ 7680 px，建議偶數)")
 
         self.spin_width.setValue(config.FRAME_WIDTH)
         self.spin_height.setValue(config.FRAME_HEIGHT)
@@ -295,7 +300,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gpx_debounce_timer.timeout.connect(self.refresh_gpx_distance)
         self.lineEdit_gpx.textChanged.connect(lambda: self.gpx_debounce_timer.start(400))
 
-        self.btn_toggle_advanced_2.clicked.connect(self.toggle_advanced)
+        self.btn_toggle_advanced_2.clicked.connect(lambda: self.toggle_advanced())
 
         self.btn_start_render.clicked.connect(self.start_render)
         self.btn_stop_render.clicked.connect(self.stop_render)
@@ -309,11 +314,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.btn_apply_benchmark.clicked.connect(self.apply_benchmark_recommendation)
 
     # ---------- Slot Implementations ----------
-    def toggle_advanced(self):
+    def toggle_advanced(self, *args, show: Optional[bool] = None):
         is_visible = self.groupBox.isVisible()
-        next_state = not is_visible
+        next_state = not is_visible if show is None else bool(show)
+        if is_visible == next_state:
+            return
         self.groupBox.setVisible(next_state)
-        self.btn_toggle_advanced_2.setText("進階設定 ▲" if next_state else "進階設定 ▼")
+        if hasattr(self, "btn_toggle_advanced_2"):
+            self.btn_toggle_advanced_2.setText("進階設定 ▲" if next_state else "進階設定 ▼")
 
         # 重新計算 Layout 尺寸並自適應調整主視窗高度
         QApplication.processEvents()
@@ -389,39 +397,84 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_camera_mode_change(self):
         pass
 
-    def apply_profile(self):
-        mode = self.combo_profile_2.currentText()
-        if mode == "快速":
-            self.spin_width.setValue(1000); self.spin_height.setValue(1000)
-            self.combo_local_zoom.setCurrentText("auto")
-            self.combo_bitrate.setCurrentText("12M"); self.combo_preset.setCurrentText("p3")
-            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
-        elif mode == "高畫質":
-            self.spin_width.setValue(1440); self.spin_height.setValue(1440)
-            self.combo_local_zoom.setCurrentText("17")
-            self.combo_bitrate.setCurrentText("30M"); self.combo_preset.setCurrentText("p5")
-            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
-        else:
-            self.spin_width.setValue(1080); self.spin_height.setValue(1080)
-            self.combo_local_zoom.setCurrentText("16")
-            self.combo_bitrate.setCurrentText("20M"); self.combo_preset.setCurrentText("p4")
-            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
-
-    def on_res_preset_change(self):
-        sel = self.combo_resolution_2.currentText()
-        for label, w, h in RESOLUTION_PRESETS:
-            if label == sel and w is not None and h is not None:
-                self.spin_width.setValue(w)
-                self.spin_height.setValue(h)
-                break
-
-    def on_custom_dim_change(self):
-        w, h = self.spin_width.value(), self.spin_height.value()
+    def _set_resolution_by_dim(self, w: int, h: int):
+        """依寬高自動選擇對應的解析度預設項目"""
         for label, pw, ph in RESOLUTION_PRESETS:
             if pw == w and ph == h:
                 self.combo_resolution_2.setCurrentText(label)
                 return
-        self.combo_resolution_2.setCurrentText("✏️ 自訂解析度...")
+
+    def apply_profile(self):
+        mode = self.combo_profile_2.currentText()
+        if mode == "快速":
+            self._set_resolution_by_dim(1280, 720)
+            self.combo_local_zoom.setCurrentText("auto")
+            self.combo_bitrate.setCurrentText("12M"); self.combo_preset.setCurrentText("p3")
+            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
+        elif mode == "高畫質":
+            self._set_resolution_by_dim(1440, 1440)
+            self.combo_local_zoom.setCurrentText("17")
+            self.combo_bitrate.setCurrentText("30M"); self.combo_preset.setCurrentText("p5")
+            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
+        else:
+            self._set_resolution_by_dim(1080, 1080)
+            self.combo_local_zoom.setCurrentText("16")
+            self.combo_bitrate.setCurrentText("20M"); self.combo_preset.setCurrentText("p4")
+            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
+
+    def get_current_resolution(self) -> tuple[int, int]:
+        """解析度優先採用一般設定的下拉選單；選「自訂解析度」才採用進階設定的自訂寬高。"""
+        sel = self.combo_resolution_2.currentText()
+        for label, pw, ph in RESOLUTION_PRESETS:
+            if label == sel and pw is not None and ph is not None:
+                return pw, ph
+        # 若為「自訂解析度...」，才採用進階設定中的 spin_width 與 spin_height
+        w = max(240, min(7680, self.spin_width.value()))
+        h = max(240, min(7680, self.spin_height.value()))
+        # 確保為偶數 (H.264 / NVENC 編碼要求)
+        w = (w // 2) * 2
+        h = (h // 2) * 2
+        return w, h
+
+    def on_res_preset_change(self):
+        sel = self.combo_resolution_2.currentText()
+        is_custom = False
+        for label, w, h in RESOLUTION_PRESETS:
+            if label == sel:
+                if w is not None and h is not None:
+                    self.spin_width.blockSignals(True)
+                    self.spin_height.blockSignals(True)
+                    self.spin_width.setValue(w)
+                    self.spin_height.setValue(h)
+                    self.spin_width.blockSignals(False)
+                    self.spin_height.blockSignals(False)
+                else:
+                    is_custom = True
+                break
+
+        if is_custom:
+            self.toggle_advanced(show=True)
+            self.spin_width.setFocus()
+            self.spin_width.selectAll()
+
+        self._update_dashboard_summary()
+
+    def on_custom_dim_change(self):
+        w, h = self.spin_width.value(), self.spin_height.value()
+        matched = False
+        self.combo_resolution_2.blockSignals(True)
+        for label, pw, ph in RESOLUTION_PRESETS:
+            if pw == w and ph == h:
+                self.combo_resolution_2.setCurrentText(label)
+                matched = True
+                break
+        if not matched:
+            for label, pw, ph in RESOLUTION_PRESETS:
+                if pw is None and ph is None:
+                    self.combo_resolution_2.setCurrentText(label)
+                    break
+        self.combo_resolution_2.blockSignals(False)
+        self._update_dashboard_summary()
 
     def on_auto_duration_toggle(self):
         is_auto = self.chk_auto_duration.isChecked()
@@ -497,13 +550,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         elif "Heading" in cam_sel: cam_mode = "Heading-Up"
 
         dur = float(dict_self.lineEdit_duration.text()) if dict_self.lineEdit_duration.text() else 30.0
+        frame_w, frame_h = dict_self.get_current_resolution()
 
         return {
             "gpx_filename": dict_self.lineEdit_gpx.text().strip(),
             "output_filename": dict_self.lineEdit_output.text().strip(),
             "map_style_key": map_key,
-            "FRAME_WIDTH": dict_self.spin_width.value(),
-            "FRAME_HEIGHT": dict_self.spin_height.value(),
+            "FRAME_WIDTH": frame_w,
+            "FRAME_HEIGHT": frame_h,
             "FPS": dict_self.spin_fps.value(),
             "VIDEO_DURATION": dur,
             "AUTO_DURATION_ENABLED": dict_self.chk_auto_duration.isChecked(),
@@ -589,7 +643,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_status_message("Auto Tune 效能測試中…")
         self._spawn_job(cfg, "benchmark")
 
+    def _write_log(self, text: str):
+        """將訊息寫入根目錄 logs 資料夾中的 log 檔案 (附加時間戳記並即時同步硬碟)"""
+        f = self.state.get("log_file")
+        if f and not f.closed:
+            try:
+                ts = time.strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"[{ts}] {text}\n")
+                f.flush()
+                os.fsync(f.fileno())  # 強制將快取即時寫入實體硬碟，讓 VS Code 等編輯器可逐行即時刷新
+            except Exception:
+                pass
+
     def _spawn_job(self, cfg: dict, mode: str):
+        # 建立根目錄 logs 資料夾與本次執行之 log 檔案
+        log_dir = (application_dir() / "logs").resolve()
+        log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+        log_path = log_dir / f"{mode}_{timestamp_str}.log"
+        try:
+            log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+        except Exception:
+            log_file = None
+        self.state["log_file"] = log_file
+        self.state["log_path"] = log_path
+
         fd, cfg_path = tempfile.mkstemp(prefix=f"gpx_renderer_{mode}_", suffix=".json")
         os.close(fd)
         Path(cfg_path).write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -598,9 +676,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         flag = "--benchmark-config" if mode == "benchmark" else "--render-config"
         cmd = _self_subprocess_command(flag, cfg_path)
 
+        self._write_log("=" * 72)
+        self._write_log(f"[INFO] 啟動 {'Auto Tune 效能測試' if mode == 'benchmark' else '渲染'}：{' '.join(cmd)}")
+
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUTF8"] = "1"
+        env["PYTHONUNBUFFERED"] = "1"
         kwargs = dict(
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             encoding="utf-8", errors="replace", bufsize=1, env=env,
@@ -621,16 +703,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def stop_render(self):
         proc = self.state.get("proc")
         if proc and proc.poll() is None:
+            self._write_log("[WARN] 使用者要求終止程序。")
             proc.terminate()
             self.set_status_message("已發送停止訊號…")
 
     def open_log_folder(self):
-        log_dir = Path("logs").resolve()
-        log_dir.mkdir(exist_ok=True)
-        os.startfile(log_dir)
+        log_dir = (application_dir() / "logs").resolve()
+        log_dir.mkdir(parents=True, exist_ok=True)
+        if os.name == "nt":
+            os.startfile(log_dir)
+        else:
+            subprocess.Popen(["xdg-open", str(log_dir)])
 
     def _parse_process_line(self, line: str):
-        print(line)  # log to console
+        # 寫入 logs 檔案 (過濾掉純 JSON 傳輸字串，保留人類可讀 Log)
+        if not ("[PROGRESS_JSON]" in line or "PROGRESS_JSON:" in line):
+            self._write_log(line)
+
         # 解析進度 JSON
         if "[PROGRESS_JSON]" in line or "PROGRESS_JSON:" in line:
             try:
@@ -717,7 +806,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             try: Path(cfg_p).unlink(missing_ok=True)
             except Exception: pass
 
+        self._write_log("=" * 72)
         if returncode == 0:
+            self._write_log("[OK] 程序執行成功完成。")
             self.progressBar_main.setValue(100)
             for bar in self.worker_bars:
                 bar.setValue(100)
@@ -726,7 +817,38 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_status_message("完成！")
             QMessageBox.information(self, "完成", "程序已成功執行完成！")
         else:
+            self._write_log(f"[ERROR] 程序執行失敗 (退出碼 {returncode})。")
             self.set_status_message(f"失敗 (退出碼 {returncode})")
+
+        f = self.state.get("log_file")
+        if f and not f.closed:
+            try:
+                f.flush()
+                f.close()
+            except Exception:
+                pass
+        self.state["log_file"] = None
+
+    def closeEvent(self, event):
+        proc = self.state.get("proc")
+        if proc and proc.poll() is None:
+            mode_name = "效能測試" if self.state.get("proc_mode") == "benchmark" else "渲染"
+            reply = QMessageBox.question(
+                self, "關閉確認",
+                f"{mode_name}仍在執行中。確定要中止並退出嗎？",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                event.ignore()
+                return
+            self.stop_render()
+        f = self.state.get("log_file")
+        if f and not f.closed:
+            try:
+                f.close()
+            except Exception:
+                pass
+        event.accept()
 
 
 def launch_qt_gui():

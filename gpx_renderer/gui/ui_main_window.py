@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_windowWYXjup.ui'
+## Form generated from reading UI file 'main_windowuyhANI.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.11.0
 ##
@@ -688,6 +688,11 @@ class Ui_MainWindow(object):
 
         self.groupBox_files = QGroupBox(self.centralwidget)
         self.groupBox_files.setObjectName(u"groupBox_files")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.groupBox_files.sizePolicy().hasHeightForWidth())
+        self.groupBox_files.setSizePolicy(sizePolicy3)
         self.gridLayout_files = QGridLayout(self.groupBox_files)
         self.gridLayout_files.setObjectName(u"gridLayout_files")
         self.lbl_gpx = QLabel(self.groupBox_files)
@@ -752,11 +757,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_actions.setObjectName(u"horizontalLayout_actions")
         self.btn_start_render = QPushButton(self.centralwidget)
         self.btn_start_render.setObjectName(u"btn_start_render")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.btn_start_render.sizePolicy().hasHeightForWidth())
-        self.btn_start_render.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.btn_start_render.sizePolicy().hasHeightForWidth())
+        self.btn_start_render.setSizePolicy(sizePolicy4)
         self.btn_start_render.setMinimumSize(QSize(0, 50))
         font = QFont()
         font.setPointSize(12)
@@ -767,8 +772,8 @@ class Ui_MainWindow(object):
         self.btn_stop_render = QPushButton(self.centralwidget)
         self.btn_stop_render.setObjectName(u"btn_stop_render")
         self.btn_stop_render.setEnabled(False)
-        sizePolicy3.setHeightForWidth(self.btn_stop_render.sizePolicy().hasHeightForWidth())
-        self.btn_stop_render.setSizePolicy(sizePolicy3)
+        sizePolicy4.setHeightForWidth(self.btn_stop_render.sizePolicy().hasHeightForWidth())
+        self.btn_stop_render.setSizePolicy(sizePolicy4)
         self.btn_stop_render.setMinimumSize(QSize(0, 50))
         self.btn_stop_render.setFont(font)
 
@@ -780,11 +785,11 @@ class Ui_MainWindow(object):
 
         self.btn_open_log_folder = QPushButton(self.centralwidget)
         self.btn_open_log_folder.setObjectName(u"btn_open_log_folder")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.btn_open_log_folder.sizePolicy().hasHeightForWidth())
-        self.btn_open_log_folder.setSizePolicy(sizePolicy4)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.btn_open_log_folder.sizePolicy().hasHeightForWidth())
+        self.btn_open_log_folder.setSizePolicy(sizePolicy5)
         self.btn_open_log_folder.setMinimumSize(QSize(0, 50))
         self.btn_open_log_folder.setFont(font)
 
@@ -798,7 +803,7 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.groupBox_settings_2.sizePolicy().hasHeightForWidth())
         self.groupBox_settings_2.setSizePolicy(sizePolicy)
         self.groupBox_settings_2.setMinimumSize(QSize(0, 0))
-        self.groupBox_settings_2.setMaximumSize(QSize(16777215, 180))
+        self.groupBox_settings_2.setMaximumSize(QSize(16777215, 16777215))
         self.gridLayout = QGridLayout(self.groupBox_settings_2)
         self.gridLayout.setObjectName(u"gridLayout")
         self.horizontalLayout_9 = QHBoxLayout()
@@ -906,11 +911,11 @@ class Ui_MainWindow(object):
         self.btn_toggle_advanced_2 = QPushButton(self.centralwidget)
         self.btn_toggle_advanced_2.setObjectName(u"btn_toggle_advanced_2")
         self.btn_toggle_advanced_2.setEnabled(True)
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.btn_toggle_advanced_2.sizePolicy().hasHeightForWidth())
-        self.btn_toggle_advanced_2.setSizePolicy(sizePolicy5)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.btn_toggle_advanced_2.sizePolicy().hasHeightForWidth())
+        self.btn_toggle_advanced_2.setSizePolicy(sizePolicy6)
         self.btn_toggle_advanced_2.setMinimumSize(QSize(0, 0))
         self.btn_toggle_advanced_2.setMaximumSize(QSize(16777215, 16777215))
         self.btn_toggle_advanced_2.setAutoFillBackground(False)

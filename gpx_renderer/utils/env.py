@@ -33,12 +33,13 @@ def _force_utf8_stdio():
                 )
             setattr(sys, stream_name, stream)
         try:
-            stream.reconfigure(encoding="utf-8", errors="replace", write_through=True)
+            stream.reconfigure(encoding="utf-8", errors="replace", write_through=True, line_buffering=True)
         except (AttributeError, ValueError, OSError):
             pass
 
     os.environ["PYTHONIOENCODING"] = "utf-8"
     os.environ["PYTHONUTF8"] = "1"
+    os.environ["PYTHONUNBUFFERED"] = "1"
 
 
 def _background_subprocess_kwargs():

@@ -97,10 +97,10 @@ AUTO_SECONDS_PER_100KM = 60.0
 AUTO_DURATION_MIN_SECONDS = 20.0
 
 MAP_STYLE_OPTIONS = {
-    "1": ("CartoDB.DarkMatter（深色，彩色軌跡對比最強）", cx.providers.CartoDB.DarkMatter),
-    "2": ("CartoDB.Voyager（全彩，接近 Relive / Google Maps 質感）", cx.providers.CartoDB.Voyager),
-    "3": ("CartoDB.Positron（淺灰白，極簡）", cx.providers.CartoDB.Positron),
-    "4": ("Esri.WorldImagery（衛星空拍）", cx.providers.Esri.WorldImagery),
+    "1": ("深色夜間（高對比）", cx.providers.CartoDB.DarkMatter),
+    "2": ("全彩導航（標準彩色）", cx.providers.CartoDB.Voyager),
+    "3": ("簡約淺灰（極簡淺色）", cx.providers.CartoDB.Positron),
+    "4": ("衛星影像（實景空拍）", cx.providers.Esri.WorldImagery),
 }
 
 # 路線媒體照片/影片

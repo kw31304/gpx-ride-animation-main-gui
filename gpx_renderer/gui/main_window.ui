@@ -973,6 +973,12 @@
     </item>
     <item row="0" column="0" rowspan="2" colspan="4">
      <widget class="QGroupBox" name="groupBox_files">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="title">
        <string>檔案</string>
       </property>
@@ -1166,7 +1172,7 @@
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>180</height>
+        <height>16777215</height>
        </size>
       </property>
       <property name="title">
