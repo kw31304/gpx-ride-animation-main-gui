@@ -97,7 +97,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.setWindowTitle("GPX Ride Renderer V1.2.1")
+        self.setWindowTitle("GPX Ride Renderer V1.3.0")
 
         self.state = {
             "proc": None, "proc_mode": None, "config_path": None,
