@@ -427,7 +427,7 @@ class RideRenderer:
         return int(round(px)), int(round(py))
 
     def _build_track_colors(self):
-        scheme = getattr(config, "TRACK_COLOR_SCHEME", "Strava 經典橘 (Strava Orange)")
+        scheme = getattr(config, "TRACK_COLOR_SCHEME", "Strava 經典橘")
         n_points = max(1, len(self.d.speeds) - 1)
 
         if "Strava" in scheme:

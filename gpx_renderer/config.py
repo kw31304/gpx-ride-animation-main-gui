@@ -57,13 +57,13 @@ MAP_USE_CACHE = True
 MAP_RESAMPLE = Image.Resampling.BILINEAR
 USE_OPENCV_FAST_PATH = True
 TRACK_LINE_WIDTH = 3
-TRACK_COLOR_SCHEME = "Strava 經典橘 (Strava Orange)"
+TRACK_COLOR_SCHEME = "Strava 經典橘"
 TRACK_COLOR_OPTIONS = [
-    "Strava 經典橘 (Strava Orange)",
-    "速度漸層熱圖 (Speed Rainbow)",
-    "螢光綠 (Neon Green)",
-    "電光藍 (Electric Blue)",
-    "熾熱紅 (Hot Red)",
+    "Strava 經典橘",
+    "速度漸層",
+    "螢光綠",
+    "電光藍",
+    "熾熱紅",
 ]
 
 # 多程序渲染
