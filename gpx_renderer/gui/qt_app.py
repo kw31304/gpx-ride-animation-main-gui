@@ -322,6 +322,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.adjustSize()
         else:
             self.adjustSize()
+            self.center_on_screen()
 
     def browse_gpx(self):
         p, _ = QFileDialog.getOpenFileName(self, "選擇 GPX 檔案", "", "GPX 檔案 (*.gpx);;所有檔案 (*.*)")
