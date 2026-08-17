@@ -129,8 +129,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "btn_toggle_advanced_2"):
             self.btn_toggle_advanced_2.setText("進階設定 ▼")
 
+        # 初始適應精簡高度並置中螢幕
+        self.adjustSize()
+        self.center_on_screen()
+
         # 開局自動刷新 GPX 距離
         QTimer.singleShot(200, self.refresh_gpx_distance)
+
+    def center_on_screen(self):
+        """將視窗定位至螢幕工作區域中央"""
+        screen = QApplication.primaryScreen()
+        if screen:
+            screen_geo = screen.availableGeometry()
+            win_geo = self.frameGeometry()
+            win_geo.moveCenter(screen_geo.center())
+            self.move(win_geo.topLeft())
 
     def set_status_message(self, msg: str):
         if hasattr(self, "lbl_main_status"):
@@ -298,8 +311,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # ---------- Slot Implementations ----------
     def toggle_advanced(self):
         is_visible = self.groupBox.isVisible()
-        self.groupBox.setVisible(not is_visible)
-        self.btn_toggle_advanced_2.setText("進階設定 ▲" if not is_visible else "進階設定 ▼")
+        next_state = not is_visible
+        self.groupBox.setVisible(next_state)
+        self.btn_toggle_advanced_2.setText("進階設定 ▲" if next_state else "進階設定 ▼")
+
+        # 重新計算 Layout 尺寸並自適應調整主視窗高度
+        QApplication.processEvents()
+        if not next_state:
+            self.resize(self.width(), self.sizeHint().height())
+            self.adjustSize()
+        else:
+            self.adjustSize()
 
     def browse_gpx(self):
         p, _ = QFileDialog.getOpenFileName(self, "選擇 GPX 檔案", "", "GPX 檔案 (*.gpx);;所有檔案 (*.*)")
