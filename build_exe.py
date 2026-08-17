@@ -51,7 +51,17 @@ def main():
             ffmpeg_src = Path(system_ffmpeg)
             print(f"[OK] 找到系統 FFmpeg 核心：{ffmpeg_src}")
 
-    # 3. 檢查與準備 PyInstaller .spec 設定檔
+    # 3. 處理 Conda 虛擬環境相容性（消除 PyInstaller conda-meta 警告）
+    venv_dir = project_root / ".venv"
+    if venv_dir.exists():
+        conda_meta_dir = venv_dir / "conda-meta"
+        if not conda_meta_dir.exists():
+            try:
+                conda_meta_dir.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+
+    # 4. 檢查與準備 PyInstaller .spec 設定檔
     spec_file = project_root / "GPX_Ride_Renderer.spec"
     dist_dir = project_root / "dist"
 
