@@ -258,25 +258,64 @@ class RideRenderer:
 
         ui_scale = min(config.FRAME_WIDTH, config.FRAME_HEIGHT) / 1000.0
         self.ui_scale = ui_scale
-        self.track_line_width = max(2, int(round(config.TRACK_LINE_WIDTH * ui_scale)))
-        self.font_hud_kicker = load_font(max(10, int(round(11 * ui_scale))), bold=True)
-        self.font_hud_speed = load_font(max(28, int(round(43 * ui_scale))), bold=True)
-        self.font_hud_unit = load_font(max(11, int(round(14 * ui_scale))), bold=True)
-        self.font_hud_label = load_font(max(9, int(round(10 * ui_scale))), bold=True)
-        self.font_hud_metric = load_font(max(13, int(round(18 * ui_scale))), bold=True)
-        self.font_panel_label = load_font(max(9, int(round(10 * ui_scale))), bold=True)
-        self.font_panel_metric = load_font(max(12, int(round(16 * ui_scale))), bold=True)
+        aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
 
-        self.font_summary_title = load_font(max(22, int(round(30 * ui_scale))), bold=True)
-        self.font_summary_label = load_font(max(9, int(round(11 * ui_scale))), bold=True)
-        self.font_summary_value = load_font(max(20, int(round(29 * ui_scale))), bold=True)
-        self.font_summary_unit = load_font(max(10, int(round(12 * ui_scale))), bold=True)
-        self.font_caption = load_font(max(18, int(round(25 * ui_scale))), bold=True)
+        self.track_line_width = max(2, int(round(config.TRACK_LINE_WIDTH * ui_scale)))
+        self.font_hud_kicker = load_font(max(8, int(round(10 * ui_scale))), bold=True)
+        self.font_hud_speed = load_font(max(20, int(round(38 * ui_scale))), bold=True)
+        self.font_hud_unit = load_font(max(9, int(round(13 * ui_scale))), bold=True)
+        self.font_hud_label = load_font(max(8, int(round(9.5 * ui_scale))), bold=True)
+        self.font_hud_metric = load_font(max(10, int(round(15 * ui_scale))), bold=True)
+        self.font_hud_metric_unit = load_font(max(8, int(round(9.5 * ui_scale))), bold=True)
+        self.font_panel_label = load_font(max(8, int(round(10 * ui_scale))), bold=True)
+        self.font_panel_metric = load_font(max(10, int(round(15 * ui_scale))), bold=True)
+
+        self.font_summary_title = load_font(max(16, int(round(26 * ui_scale))), bold=True)
+        self.font_summary_label = load_font(max(8, int(round(10 * ui_scale))), bold=True)
+        self.font_summary_value = load_font(max(14, int(round(24 * ui_scale))), bold=True)
+        self.font_summary_unit = load_font(max(8, int(round(11 * ui_scale))), bold=True)
+        self.font_caption = load_font(max(12, int(round(22 * ui_scale))), bold=True)
 
         self.hud_update_every = max(1, int(round(self.fps / max(1, config.HUD_UPDATE_HZ))))
 
         self.cached_hud: Image.Image | None = None
         self.cached_hud_idx = -1
+
+        # 頂部雙面板與底部高度剖面圖幾何計算
+        margin_x = max(14, int(round(24 * ui_scale)))
+        margin_y = max(14, int(round(22 * ui_scale)))
+
+        # 頂部面板高度 (速度面板與路線縮圖高度完全對齊)
+        top_panel_h = max(110, int(round(136 * ui_scale)))
+
+        # 速度面板 (左上角)
+        if aspect >= 1.3:
+            hud_w_ratio = 0.25
+        elif aspect <= 0.75:
+            hud_w_ratio = 0.44
+        else:
+            t = (aspect - 0.75) / (1.3 - 0.75)
+            hud_w_ratio = 0.44 + (0.25 - 0.44) * t
+        self.hud_x = margin_x
+        self.hud_y = margin_y
+        self.hud_w = int(round(config.FRAME_WIDTH * hud_w_ratio))
+        self.hud_w = max(int(round(240 * ui_scale)), min(int(round(620 * ui_scale)), self.hud_w))
+        self.hud_h = top_panel_h
+
+        # 路線縮圖 (右上角，與速度面板頂部 Y 及高度完全對齊)
+        if aspect <= 0.75:
+            self.mini_w = self.hud_w
+        else:
+            self.mini_w = max(int(round(200 * ui_scale)), int(round(top_panel_h * 1.35)))
+        self.mini_h = top_panel_h
+        self.mini_x = config.FRAME_WIDTH - self.mini_w - margin_x
+        self.mini_y = margin_y
+
+        # 海拔高度剖面圖 (置中於下方並向兩側填滿)
+        self.elev_x = margin_x
+        self.elev_w = config.FRAME_WIDTH - 2 * margin_x
+        self.elev_h = max(80, int(round(105 * ui_scale))) if aspect > 0.75 else max(90, int(round(115 * ui_scale)))
+        self.elev_y = config.FRAME_HEIGHT - self.elev_h - margin_y
 
         self._init_hud_static()
         self._init_minimap()
@@ -578,51 +617,53 @@ class RideRenderer:
     # ---------- HUD ----------
     def _init_hud_static(self):
         s = self.ui_scale
-        w = max(300, int(round(config.FRAME_WIDTH * 0.355)))
-        h = max(142, int(round(config.FRAME_HEIGHT * 0.175)))
-        hud_base = Image.new("RGBA", (w + int(10 * s), h + int(12 * s)), (0, 0, 0, 0))
+        w = self.hud_w
+        h = self.hud_h
+        hud_base = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(hud_base)
 
-        radius = max(16, int(round(22 * s)))
+        radius = max(10, int(round(16 * s)))
         draw.rounded_rectangle(
             (0, 0, w - 1, h - 1),
             radius=radius,
-            fill=(9, 13, 18, 205),
-            outline=(255, 255, 255, 36),
+            fill=(9, 13, 18, 195),
+            outline=(255, 255, 255, 32),
             width=max(1, int(round(s))),
         )
 
-        pad = int(round(18 * s))
+        pad_x = max(10, int(round(16 * s)))
+        pad_y = max(8, int(round(12 * s)))
         draw.text(
-            (pad, int(16 * s)),
+            (pad_x, pad_y),
             "SPEED",
             font=self.font_hud_kicker,
-            fill=(205, 212, 220, 230),
+            fill=(172, 182, 192, 230),
         )
 
-        divider_y = int(round(h * 0.66))
+        divider_y = int(round(h * 0.60))
         draw.line(
-            (pad, divider_y, w - pad, divider_y),
-            fill=(255, 255, 255, 25),
+            (pad_x, divider_y, w - pad_x, divider_y),
+            fill=(255, 255, 255, 22),
             width=max(1, int(round(s))),
         )
 
-        inner_w = w - pad * 2
+        inner_w = w - pad_x * 2
         col_w = inner_w / 3.0
-        label_y = divider_y + int(10 * s)
+        label_y = divider_y + max(4, int(round(6 * s)))
         labels = ["DISTANCE", "ELEVATION", "CLIMB"]
         for i, label in enumerate(labels):
-            x = int(round(pad + i * col_w))
+            x = int(round(pad_x + i * col_w))
             if i:
-                sep_x = int(round(pad + i * col_w - 8 * s))
+                sep_x = int(round(pad_x + i * col_w - 6 * s))
                 draw.line(
-                    (sep_x, label_y, sep_x, h - int(12 * s)),
-                    fill=(255, 255, 255, 20),
+                    (sep_x, label_y, sep_x, h - pad_y),
+                    fill=(255, 255, 255, 18),
                     width=max(1, int(round(s))),
                 )
             draw.text((x, label_y), label, font=self.font_hud_label, fill=(134, 145, 156, 235))
 
-        self.hud_pad = pad
+        self.hud_pad_x = pad_x
+        self.hud_pad_y = pad_y
         self.hud_divider_y = divider_y
         self.hud_col_w = col_w
         self.hud_static_base = hud_base
@@ -632,31 +673,32 @@ class RideRenderer:
         s = self.ui_scale
         hud = self.hud_static_base.copy()
         draw = ImageDraw.Draw(hud)
-        pad = self.hud_pad
+        pad_x = self.hud_pad_x
+        pad_y = self.hud_pad_y
 
         speed_text = f"{d.speeds[idx]:.1f}"
-        speed_y = int(39 * s)
-        draw.text((pad, speed_y), speed_text, font=self.font_hud_speed, fill=(250, 252, 255, 255))
-        sb = draw.textbbox((pad, speed_y), speed_text, font=self.font_hud_speed)
-        unit_x = sb[2] + int(8 * s)
-        unit_y = sb[3] - int(20 * s)
+        speed_y = pad_y + max(12, int(round(14 * s)))
+        draw.text((pad_x, speed_y), speed_text, font=self.font_hud_speed, fill=(250, 252, 255, 255))
+        sb = draw.textbbox((pad_x, speed_y), speed_text, font=self.font_hud_speed)
+        unit_x = sb[2] + max(4, int(round(6 * s)))
+        unit_y = sb[3] - max(12, int(round(16 * s)))
         draw.text((unit_x, unit_y), "km/h", font=self.font_hud_unit, fill=(170, 180, 190, 235))
 
-        label_y = self.hud_divider_y + int(10 * s)
-        value_y = label_y + int(15 * s)
+        label_y = self.hud_divider_y + max(4, int(round(6 * s)))
+        value_y = label_y + max(10, int(round(13 * s)))
         metrics = [
             (f"{d.distances[idx]:.1f}", "km"),
             (f"{d.eles[idx]:.0f}", "m"),
             (f"+{d.elevation_gain[idx]:.0f}", "m"),
         ]
         for i, (value, unit) in enumerate(metrics):
-            x = int(round(pad + i * self.hud_col_w))
+            x = int(round(pad_x + i * self.hud_col_w))
             draw.text((x, value_y), value, font=self.font_hud_metric, fill=(245, 247, 250, 255))
             vb = draw.textbbox((x, value_y), value, font=self.font_hud_metric)
             draw.text(
-                (vb[2] + int(4 * s), value_y + int(4 * s)),
+                (vb[2] + max(2, int(round(3 * s))), value_y + max(2, int(round(3 * s)))),
                 unit,
-                font=self.font_hud_label,
+                font=self.font_hud_metric_unit,
                 fill=(150, 160, 170, 225),
             )
         return hud
@@ -676,15 +718,8 @@ class RideRenderer:
         d = self.d
         s = self.ui_scale
 
-        self.mini_w = max(220, int(round(280 * s)))
-        self.mini_h = max(150, int(round(180 * s)))
-        margin_right = max(16, int(round(20 * s)))
-        margin_top = max(16, int(round(20 * s)))
-        self.mini_x = config.FRAME_WIDTH - self.mini_w - margin_right
-        self.mini_y = margin_top + self.mini_h
-
         self.mini_pad = max(10, int(round(14 * s)))
-        label_h = max(16, int(round(20 * s)))
+        label_h = max(14, int(round(18 * s)))
 
         avail_w = max(self.mini_w - 2 * self.mini_pad, 1)
         avail_h = max(self.mini_h - 2 * self.mini_pad - label_h, 1)
@@ -697,8 +732,8 @@ class RideRenderer:
         route_w = max(max_x - min_x, 1.0)
         route_h = max(max_y - min_y, 1.0)
 
-        scale_x = (avail_w * 0.85) / route_w
-        scale_y = (avail_h * 0.85) / route_h
+        scale_x = (avail_w * 0.88) / route_w
+        scale_y = (avail_h * 0.88) / route_h
         scale = min(scale_x, scale_y)
 
         center_px_x = self.mini_pad + avail_w * 0.5
@@ -709,16 +744,16 @@ class RideRenderer:
 
         self.mini_layer = Image.new("RGBA", (self.mini_w, self.mini_h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(self.mini_layer)
-        radius = max(14, int(round(20 * self.ui_scale)))
+        radius = max(10, int(round(16 * self.ui_scale)))
         draw.rounded_rectangle(
             (0, 0, self.mini_w - 1, self.mini_h - 1),
             radius=radius,
-            fill=(9, 13, 18, 172),
-            outline=(255, 255, 255, 30),
+            fill=(9, 13, 18, 195),
+            outline=(255, 255, 255, 32),
             width=max(1, int(round(self.ui_scale))),
         )
         draw.text(
-            (self.mini_pad, self.mini_pad - int(2*self.ui_scale)),
+            (self.mini_pad, self.mini_pad - int(2 * self.ui_scale)),
             "ROUTE",
             font=self.font_panel_label,
             fill=(172, 182, 192, 235),
@@ -726,7 +761,7 @@ class RideRenderer:
 
         full_pts = [(int(round(x)), int(round(y))) for x, y in zip(self.mini_px_x, self.mini_px_y)]
         if len(full_pts) >= 2:
-            draw.line(full_pts, fill=(255, 255, 255, 72), width=max(1, int(round(2*self.ui_scale))))
+            draw.line(full_pts, fill=(255, 255, 255, 65), width=max(1, int(round(2 * self.ui_scale))))
 
         self.mini_progress_layer = self.mini_layer.copy()
         self.mini_draw = ImageDraw.Draw(self.mini_progress_layer)
@@ -741,7 +776,7 @@ class RideRenderer:
         for seg_end in range(self.mini_last_idx + 1, idx + 1):
             p0 = (int(round(self.mini_px_x[seg_end - 1])), int(round(self.mini_px_y[seg_end - 1])))
             p1 = (int(round(self.mini_px_x[seg_end])), int(round(self.mini_px_y[seg_end])))
-            self.mini_draw.line([p0, p1], fill=config.ORANGE + (255,), width=max(2, int(round(3*self.ui_scale))))
+            self.mini_draw.line([p0, p1], fill=config.ORANGE + (255,), width=max(2, int(round(3 * self.ui_scale))))
         self.mini_last_idx = idx
 
     def _compose_minimap(self, idx: int) -> Image.Image:
@@ -754,8 +789,8 @@ class RideRenderer:
         x = int(round(self.mini_px_x[idx]))
         y = int(round(self.mini_px_y[idx]))
         r = max(4, int(round(5 * self.ui_scale)))
-        draw.ellipse((x-r-2, y-r-2, x+r+2, y+r+2), fill=(255, 255, 255, 235))
-        draw.ellipse((x-r, y-r, x+r, y+r), fill=config.ORANGE + (255,))
+        draw.ellipse((x - r - 2, y - r - 2, x + r + 2, y + r + 2), fill=(255, 255, 255, 235))
+        draw.ellipse((x - r, y - r, x + r, y + r), fill=config.ORANGE + (255,))
         self.cached_mini_idx = idx
         self.cached_mini_img = mini
         return mini
@@ -763,12 +798,9 @@ class RideRenderer:
     # ---------- elevation ----------
     def _init_elevation(self):
         d = self.d
-        self.elev_x = int(round(config.FRAME_WIDTH * 0.045))
-        self.elev_w = int(round(config.FRAME_WIDTH * 0.91))
-        self.elev_h = int(round(config.FRAME_HEIGHT * 0.155))
-        self.elev_y = int(round(config.FRAME_HEIGHT * 0.80))
-        pad = max(12, int(round(15 * self.ui_scale)))
-        label_h = max(18, int(round(22 * self.ui_scale)))
+        s = self.ui_scale
+        pad = max(10, int(round(14 * s)))
+        label_h = max(14, int(round(18 * s)))
 
         xmin = float(d.distances.min())
         xmax = max(float(d.distances.max()), xmin + 0.001)
@@ -779,32 +811,32 @@ class RideRenderer:
 
         left, right = pad, self.elev_w - pad
         top, bottom = pad + label_h, self.elev_h - pad
-        ex = left + (d.distances - xmin) / (xmax - xmin) * max(right-left, 1)
-        ey = top + (ymax - d.eles) / (ymax - ymin) * max(bottom-top, 1)
+        ex = left + (d.distances - xmin) / (xmax - xmin) * max(right - left, 1)
+        ey = top + (ymax - d.eles) / (ymax - ymin) * max(bottom - top, 1)
         self.elev_px_x = ex
         self.elev_px_y = ey
         full_pts = [(int(round(x)), int(round(y))) for x, y in zip(ex, ey)]
 
         self.elev_base = Image.new("RGBA", (self.elev_w, self.elev_h), (0, 0, 0, 0))
         bdraw = ImageDraw.Draw(self.elev_base)
-        radius = max(14, int(round(20 * self.ui_scale)))
+        radius = max(10, int(round(16 * s)))
         bdraw.rounded_rectangle(
             (0, 0, self.elev_w - 1, self.elev_h - 1),
             radius=radius,
-            fill=(9, 13, 18, 172),
-            outline=(255, 255, 255, 30),
-            width=max(1, int(round(self.ui_scale))),
+            fill=(9, 13, 18, 195),
+            outline=(255, 255, 255, 32),
+            width=max(1, int(round(s))),
         )
-        bdraw.text((pad, pad-int(2*self.ui_scale)), "ELEVATION", font=self.font_panel_label, fill=(172, 182, 192, 235))
+        bdraw.text((pad, pad - int(2 * s)), "ELEVATION", font=self.font_panel_label, fill=(172, 182, 192, 235))
         if len(full_pts) >= 2:
-            bdraw.line(full_pts, fill=(255, 255, 255, 52), width=max(1, int(round(2*self.ui_scale))))
+            bdraw.line(full_pts, fill=(255, 255, 255, 52), width=max(1, int(round(2 * s))))
 
         self.elev_progress_full = Image.new("RGBA", (self.elev_w, self.elev_h), (0, 0, 0, 0))
         pdraw = ImageDraw.Draw(self.elev_progress_full)
         if len(full_pts) >= 2:
             poly = [(full_pts[0][0], bottom)] + full_pts + [(full_pts[-1][0], bottom)]
             pdraw.polygon(poly, fill=config.ORANGE + (48,))
-            pdraw.line(full_pts, fill=config.ORANGE + (235,), width=max(2, int(round(2*self.ui_scale))))
+            pdraw.line(full_pts, fill=config.ORANGE + (235,), width=max(2, int(round(2 * s))))
 
         self.elev_full_composite = self.elev_base.copy()
         if len(full_pts) >= 2:
@@ -1038,14 +1070,17 @@ class RideRenderer:
         px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, current_margin, heading_rad=heading_rad, z=rider_z, pitch_deg=pitch_deg)
         self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
-        hud = self._get_hud(i, idx)
-        frame.paste(hud, (int(config.FRAME_WIDTH * 0.05), int(config.FRAME_HEIGHT * 0.08)), hud)
+        if getattr(config, "SHOW_SPEED_HUD", True):
+            hud = self._get_hud(i, idx)
+            frame.paste(hud, (self.hud_x, self.hud_y), hud)
 
-        mini = self._compose_minimap(idx)
-        frame.paste(mini, (self.mini_x, self.mini_y - self.mini_h), mini)
+        if getattr(config, "SHOW_MINIMAP", True):
+            mini = self._compose_minimap(idx)
+            frame.paste(mini, (self.mini_x, self.mini_y), mini)
 
-        elev = self._compose_elevation(idx)
-        frame.paste(elev, (self.elev_x, self.elev_y), elev)
+        if getattr(config, "SHOW_ELEVATION", True):
+            elev = self._compose_elevation(idx)
+            frame.paste(elev, (self.elev_x, self.elev_y), elev)
 
         # 媒體卡片與背景暗化遮罩放置於最頂層 (無法被 HUD / 小地圖 / 海拔圖遮擋)
         self._draw_media_popups(frame, frame_idx, view_x, view_y, current_margin)

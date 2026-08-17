@@ -260,6 +260,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chk_contextily_cache.setChecked(config.MAP_USE_CACHE)
         self.chk_disable_parallel_cache.setChecked(config.PARALLEL_DISABLE_TILE_CACHE)
 
+        self.chk_show_speed.setChecked(getattr(config, "SHOW_SPEED_HUD", True))
+        self.chk_show_minimap.setChecked(getattr(config, "SHOW_MINIMAP", True))
+        self.chk_show_elevation.setChecked(getattr(config, "SHOW_ELEVATION", True))
+
         self.spin_hide_start.setValue(config.HIDE_START_DISTANCE_KM)
         self.spin_hide_end.setValue(config.HIDE_END_DISTANCE_KM)
 
@@ -284,6 +288,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.combo_preset.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
         self.combo_bitrate.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
         self.chk_parallel_2.toggled.connect(lambda: self._update_dashboard_summary())
+        self.chk_show_speed.toggled.connect(lambda: self._update_dashboard_summary())
+        self.chk_show_minimap.toggled.connect(lambda: self._update_dashboard_summary())
+        self.chk_show_elevation.toggled.connect(lambda: self._update_dashboard_summary())
         self.spin_workers.valueChanged.connect(lambda: self._update_dashboard_summary())
         self.spin_chunks.valueChanged.connect(lambda: self._update_dashboard_summary())
         self.chk_disable_parallel_cache.toggled.connect(lambda: self._update_dashboard_summary())
@@ -583,6 +590,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             "MEDIA_TIME_OFFSET_SEC": 0.0,
             "MEDIA_OVERRIDES_JSON": dict_self.state.get("media_overrides_json", "{}"),
             "USE_REAL_SPEED": dict_self.chk_real_speed_2.isChecked(),
+            "SHOW_SPEED_HUD": dict_self.chk_show_speed.isChecked(),
+            "SHOW_MINIMAP": dict_self.chk_show_minimap.isChecked(),
+            "SHOW_ELEVATION": dict_self.chk_show_elevation.isChecked(),
             "HIDE_START_DISTANCE_KM": dict_self.spin_hide_start.value(),
             "HIDE_END_DISTANCE_KM": dict_self.spin_hide_end.value(),
             "CAMERA_MODE": cam_mode,

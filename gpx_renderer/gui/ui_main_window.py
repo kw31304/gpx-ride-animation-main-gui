@@ -901,10 +901,28 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addLayout(self.horizontalLayout_8, 4, 0, 1, 1)
 
-        self.verticalSpacer = QSpacerItem(20, 16, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.horizontalLayout_panels = QHBoxLayout()
+        self.horizontalLayout_panels.setObjectName(u"horizontalLayout_panels")
+        self.lbl_panels = QLabel(self.groupBox_settings_2)
+        self.lbl_panels.setObjectName(u"lbl_panels")
+        self.horizontalLayout_panels.addWidget(self.lbl_panels)
 
-        self.gridLayout.addItem(self.verticalSpacer, 4, 1, 1, 1)
+        self.chk_show_speed = QCheckBox(self.groupBox_settings_2)
+        self.chk_show_speed.setObjectName(u"chk_show_speed")
+        self.chk_show_speed.setChecked(True)
+        self.horizontalLayout_panels.addWidget(self.chk_show_speed)
 
+        self.chk_show_minimap = QCheckBox(self.groupBox_settings_2)
+        self.chk_show_minimap.setObjectName(u"chk_show_minimap")
+        self.chk_show_minimap.setChecked(True)
+        self.horizontalLayout_panels.addWidget(self.chk_show_minimap)
+
+        self.chk_show_elevation = QCheckBox(self.groupBox_settings_2)
+        self.chk_show_elevation.setObjectName(u"chk_show_elevation")
+        self.chk_show_elevation.setChecked(True)
+        self.horizontalLayout_panels.addWidget(self.chk_show_elevation)
+
+        self.gridLayout.addLayout(self.horizontalLayout_panels, 5, 0, 1, 2)
 
         self.gridLayout_4.addWidget(self.groupBox_settings_2, 0, 4, 1, 1)
 
@@ -1163,6 +1181,10 @@ class Ui_MainWindow(object):
 "\u2022 \u4eae\u7da0\u3001\u9ec3\u3001\u7d05\u55ae\u8272\n"
 "\u2022 \u9a0e\u4e58\u901f\u5ea6\u6f38\u5c64", None))
 #endif // QT_CONFIG(tooltip)
+        self.lbl_panels.setText(QCoreApplication.translate("MainWindow", u"\u8cc7\u8a0a\u9762\u677f", None))
+        self.chk_show_speed.setText(QCoreApplication.translate("MainWindow", u"\u901f\u5ea6\u9762\u677f", None))
+        self.chk_show_minimap.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u7e2e\u5716", None))
+        self.chk_show_elevation.setText(QCoreApplication.translate("MainWindow", u"\u6d77\u62d4\u5716", None))
 #if QT_CONFIG(tooltip)
         self.btn_toggle_advanced_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u9ede\u64ca\u5c55\u958b\u6216\u6298\u758a\u9032\u968e\u8a2d\u5b9a\u9078\u55ae\uff08\u542b\u81ea\u8a02\u5c3a\u5bf8\u3001FPS\u3001NVENC \u78bc\u7387\u3001Local Zoom\u3001Workers \u8207 Auto Tune \u6e2c\u8a66\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
