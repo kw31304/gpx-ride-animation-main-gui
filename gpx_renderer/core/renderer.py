@@ -369,8 +369,43 @@ class RideRenderer:
                 rx_arr[i] = rx_arr[i - 1] + (tx[i] - rx_arr[i - 1]) * a
                 ry_arr[i] = ry_arr[i - 1] + (ty[i] - ry_arr[i - 1]) * a
 
-        # 2. Camera pitch (cp) & margin (cm)
+        # 2. Dynamic Speed Zoom (速度動態鏡頭縮放倍率計算)
+        enable_speed_zoom = bool(getattr(config, "ENABLE_DYNAMIC_SPEED_ZOOM", True))
+        if enable_speed_zoom and self.d.speeds is not None and len(self.d.speeds) > 0:
+            min_scale = float(getattr(config, "SPEED_ZOOM_MIN_SCALE", 0.75))
+            max_scale = float(getattr(config, "SPEED_ZOOM_MAX_SCALE", 1.40))
+            smooth_base = min(max(float(getattr(config, "SPEED_ZOOM_SMOOTH", 0.035)), 1e-6), 1.0)
+            zoom_alpha = 1.0 - (1.0 - smooth_base) ** (60.0 / float(self.fps))
+
+            def _speed_to_scale(spd: float) -> float:
+                if not np.isfinite(spd) or spd < 0:
+                    return 1.0
+                if spd <= 10.0:
+                    t = max(0.0, spd / 10.0)
+                    base_10 = min_scale + (1.0 - min_scale) * 0.15
+                    return min_scale + t * (base_10 - min_scale)
+                elif spd <= 25.0:
+                    base_10 = min_scale + (1.0 - min_scale) * 0.15
+                    t = (spd - 10.0) / 15.0
+                    return base_10 + t * (1.0 - base_10)
+                elif spd <= 55.0:
+                    t = (spd - 25.0) / 30.0
+                    return 1.0 + t * (max_scale - 1.0)
+                else:
+                    excess = spd - 55.0
+                    return min(max_scale + 0.12 * (1.0 - math.exp(-excess / 20.0)), max_scale * 1.15)
+
+            raw_scales = np.array([_speed_to_scale(float(self.d.speeds[idx])) for idx in self.main_indices], dtype=np.float64)
+            speed_zoom_scales = np.empty(self.main_frames, dtype=np.float64)
+            speed_zoom_scales[0] = raw_scales[0]
+            for i in range(1, self.main_frames):
+                speed_zoom_scales[i] = speed_zoom_scales[i - 1] + (raw_scales[i] - speed_zoom_scales[i - 1]) * zoom_alpha
+        else:
+            speed_zoom_scales = np.ones(self.main_frames, dtype=np.float64)
+
+        # 3. Camera pitch (cp) & margin (cm)
         for i in range(self.main_frames):
+            cur_target_margin = target_margin * speed_zoom_scales[i]
             if is_3d:
                 if i < intro_hold_f:
                     cp_arr[i] = 0.0
@@ -379,20 +414,20 @@ class RideRenderer:
                     t = (i - intro_hold_f) / float(intro_trans_f)
                     alpha = ease_smoothstep(t)
                     cp_arr[i] = alpha * target_pitch
-                    cm_arr[i] = start_margin + alpha * (target_margin - start_margin)
+                    cm_arr[i] = start_margin + alpha * (cur_target_margin - start_margin)
                 elif i >= self.main_frames - outro_trans_f and outro_trans_f > 0:
                     t = (i - (self.main_frames - outro_trans_f)) / float(outro_trans_f)
                     alpha = ease_smoothstep(t)
                     cp_arr[i] = target_pitch * (1.0 - alpha)
-                    cm_arr[i] = target_margin + alpha * (start_margin - target_margin)
+                    cm_arr[i] = cur_target_margin + alpha * (start_margin - cur_target_margin)
                 else:
                     cp_arr[i] = target_pitch
-                    cm_arr[i] = target_margin
+                    cm_arr[i] = cur_target_margin
             else:
                 cp_arr[i] = 0.0
-                cm_arr[i] = target_margin
+                cm_arr[i] = cur_target_margin
 
-        # 3. Camera heading (ch)
+        # 4. Camera heading (ch)
         if has_headings:
             target_h = self.d.headings[self.main_indices]
             initial_route_heading = float(target_h[intro_total_f if is_3d else 0])

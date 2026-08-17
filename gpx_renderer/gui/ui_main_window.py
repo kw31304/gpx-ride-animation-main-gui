@@ -901,6 +901,12 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addLayout(self.horizontalLayout_8, 4, 0, 1, 1)
 
+        self.chk_dynamic_speed_zoom = QCheckBox(self.groupBox_settings_2)
+        self.chk_dynamic_speed_zoom.setObjectName(u"chk_dynamic_speed_zoom")
+        self.chk_dynamic_speed_zoom.setChecked(True)
+
+        self.gridLayout.addWidget(self.chk_dynamic_speed_zoom, 4, 1, 1, 1)
+
         self.horizontalLayout_panels = QHBoxLayout()
         self.horizontalLayout_panels.setObjectName(u"horizontalLayout_panels")
         self.lbl_panels = QLabel(self.groupBox_settings_2)
@@ -1181,6 +1187,10 @@ class Ui_MainWindow(object):
 "\u2022 \u4eae\u7da0\u3001\u9ec3\u3001\u7d05\u55ae\u8272\n"
 "\u2022 \u9a0e\u4e58\u901f\u5ea6\u6f38\u5c64", None))
 #endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.chk_dynamic_speed_zoom.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6839\u64da\u7576\u524d GPX \u9a0e\u4e58\u901f\u5ea6\u52d5\u614b\u7e2e\u653e\u93e1\u982d\uff08\u9ad8\u901f\u62c9\u9060\u3001\u4f4e\u901f\u62c9\u8fd1\uff09\uff0c\u5982\u540c\u8eca\u7528\u5c0e\u822a\u8996\u89ba\u6548\u679c\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_dynamic_speed_zoom.setText(QCoreApplication.translate("MainWindow", u"\u901f\u5ea6\u52d5\u614b\u93e1\u982d", None))
         self.lbl_panels.setText(QCoreApplication.translate("MainWindow", u"\u8cc7\u8a0a\u9762\u677f", None))
         self.chk_show_speed.setText(QCoreApplication.translate("MainWindow", u"\u901f\u5ea6\u9762\u677f", None))
         self.chk_show_minimap.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u7e2e\u5716", None))

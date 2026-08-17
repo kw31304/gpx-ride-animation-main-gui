@@ -1339,19 +1339,19 @@
         </layout>
        </item>
        <item row="4" column="1">
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Orientation::Vertical</enum>
+        <widget class="QCheckBox" name="chk_dynamic_speed_zoom">
+         <property name="toolTip">
+          <string>用途：根據當前 GPX 騎乘速度動態縮放鏡頭（高速拉遠、低速拉近），如同車用導航視覺效果。</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>16</height>
-          </size>
+         <property name="text">
+          <string>速度動態鏡頭</string>
          </property>
-        </spacer>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
-        <item row="5" column="0" colspan="2">
+       <item row="5" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout_panels">
           <item>
            <widget class="QLabel" name="lbl_panels">
