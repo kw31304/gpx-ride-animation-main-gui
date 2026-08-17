@@ -1351,6 +1351,59 @@
          </property>
         </spacer>
        </item>
+        <item row="5" column="0" colspan="2">
+         <layout class="QHBoxLayout" name="horizontalLayout_panels">
+          <item>
+           <widget class="QLabel" name="lbl_panels">
+            <property name="toolTip">
+             <string>用途：控制是否在動畫主畫面中顯示速度儀表、路線縮圖或海拔高度剖面圖。</string>
+            </property>
+            <property name="text">
+             <string>資訊面板</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_show_speed">
+            <property name="toolTip">
+             <string>用途：控制是否在畫面左上角顯示即時速度與數據面板。</string>
+            </property>
+            <property name="text">
+             <string>速度面板</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_show_minimap">
+            <property name="toolTip">
+             <string>用途：控制是否在畫面右上角顯示路線縮圖與進度面板。</string>
+            </property>
+            <property name="text">
+             <string>路線縮圖</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_show_elevation">
+            <property name="toolTip">
+             <string>用途：控制是否在畫面下方顯示全景高度剖面圖。</string>
+            </property>
+            <property name="text">
+             <string>海拔圖</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
       </layout>
      </widget>
     </item>
