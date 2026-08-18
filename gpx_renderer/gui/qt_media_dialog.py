@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 PySide6 (Qt) 原生媒體管理與照片預覽/文字標籤對齊視窗 (QtMediaManagerDialog)。
-包含動態路線向量預覽圖表 (QtRoutePreviewWidget)、相片/影片即時縮圖預覽卡片、EXIF 拍攝資訊面板與文字標籤編輯器。
+包含動態路線向量預覽圖表 (QtRoutePreviewWidget)、Google Map 衛星/街道底圖載入、相片/影片即時縮圖預覽卡片、EXIF 拍攝資訊面板與文字標籤編輯器。
 """
 
 from __future__ import annotations
@@ -13,8 +13,9 @@ from datetime import datetime
 
 import numpy as np
 from PIL import Image, ImageOps
+import contextily as cx
 
-from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QUrl, QSize
+from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QUrl, QSize, QObject
 from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPixmap, QImage, QDesktopServices, QCursor
 )
@@ -22,7 +23,7 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QLineEdit, QDoubleSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QGroupBox, QMessageBox, QSplitter, QFrame, QScrollArea,
-    QSizePolicy, QCheckBox
+    QSizePolicy, QCheckBox, QComboBox
 )
 
 from gpx_renderer.core.media import (
@@ -31,8 +32,52 @@ from gpx_renderer.core.media import (
 from gpx_renderer.core.data import RideData
 
 
+MAP_PROVIDERS = {
+    "Google 混合衛星 (Hybrid)": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    "Google 街道地圖 (Roadmap)": "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+    "Google 地形圖 (Terrain)": "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
+    "深色高對比 (Dark Matter)": cx.providers.CartoDB.DarkMatter,
+}
+
+
+class MapTileWorker(QObject):
+    """背景非同步下載 Google Map / 瓦片底圖的背景工作元件 (daemon thread)。"""
+    tile_ready = Signal(object, float, float, float, float)  # (QImage, left, right, bottom, top)
+    fetch_failed = Signal(str)
+
+    def fetch_async(self, west: float, south: float, east: float, north: float, source, zoom="auto"):
+        import threading
+        def _task():
+            try:
+                img_np, extent = cx.bounds2img(
+                    west, south, east, north,
+                    zoom=zoom,
+                    source=source,
+                    ll=False,
+                    use_cache=True,
+                    max_retries=2,
+                )
+                if img_np is None:
+                    return
+
+                if img_np.ndim == 3 and img_np.shape[2] == 4:
+                    rgb = np.ascontiguousarray(img_np[:, :, :3])
+                else:
+                    rgb = np.ascontiguousarray(img_np)
+
+                h, w, ch = rgb.shape
+                qimg = QImage(rgb.data, w, h, w * ch, QImage.Format_RGB888).copy()
+                left, right, bottom, top = map(float, extent)
+                self.tile_ready.emit(qimg, left, right, bottom, top)
+            except Exception as exc:
+                self.fetch_failed.emit(str(exc))
+
+        t = threading.Thread(target=_task, daemon=True)
+        t.start()
+
+
 class QtRoutePreviewWidget(QWidget):
-    """PySide6 向量路線預覽 Canvas，支援滑鼠滾輪縮放、平移與動態媒體標記點連動。"""
+    """PySide6 向量路線預覽 Canvas，支援 Google Map 底圖、滑鼠滾輪縮放、平移與動態媒體標記點連動。"""
     item_selected = Signal(int)
 
     def __init__(self, ride_data: RideData, parent=None):
@@ -54,13 +99,56 @@ class QtRoutePreviewWidget(QWidget):
         self.drag_start_pos: Optional[QPointF] = None
         self.is_dragging = False
 
+        # 底圖狀態
+        self.map_source = MAP_PROVIDERS["Google 混合衛星 (Hybrid)"]
+        self.map_qimage: Optional[QImage] = None
+        self.map_extent: Optional[tuple[float, float, float, float]] = None
+        self.is_loading_map = False
+
+        self.map_worker = MapTileWorker(self)
+        self.map_worker.tile_ready.connect(self._on_map_tile_ready)
+        self.map_worker.fetch_failed.connect(self._on_map_fetch_failed)
+
         # 抽樣軌跡點以提升畫圖效率
         step = max(1, len(ride_data.xs) // 600)
         self.sampled_xs = ride_data.xs[::step]
         self.sampled_ys = ride_data.ys[::step]
 
         self.setMouseTracking(True)
-        self.setMinimumSize(320, 320)
+        self.setMinimumSize(320, 240)
+
+        # 初始非同步下載 Google Map 底圖
+        self.load_basemap()
+
+    def load_basemap(self, source_url: Optional[str] = None):
+        """非同步下載涵蓋目前路線邊界之 Google Map 底圖。"""
+        if source_url:
+            self.map_source = source_url
+
+        span_x = self.route_w
+        span_y = self.route_h
+        max_span = max(span_x, span_y, 400.0)
+        pad = max_span * 0.4
+
+        west = float(self.ride_data.xs.min()) - pad
+        east = float(self.ride_data.xs.max()) + pad
+        south = float(self.ride_data.ys.min()) - pad
+        north = float(self.ride_data.ys.max()) + pad
+
+        self.is_loading_map = True
+        self.update()
+
+        self.map_worker.fetch_async(west, south, east, north, self.map_source, zoom="auto")
+
+    def _on_map_tile_ready(self, qimg: QImage, left: float, right: float, bottom: float, top: float):
+        self.map_qimage = qimg
+        self.map_extent = (left, right, bottom, top)
+        self.is_loading_map = False
+        self.update()
+
+    def _on_map_fetch_failed(self, err: str):
+        self.is_loading_map = False
+        self.update()
 
     def reset_view(self):
         cw = max(self.width(), 200)
@@ -101,15 +189,29 @@ class QtRoutePreviewWidget(QWidget):
         if self.scale == 1.0 and self.width() > 10 and self.height() > 10:
             self.reset_view()
 
-        # 1. 繪製軌跡主線段
-        pen_route = QPen(QColor("#00bcd4"), 3)
-        painter.setPen(pen_route)
+        # 1. 繪製 Google Map 底圖
+        if self.map_qimage and self.map_extent:
+            left, right, bottom, top = self.map_extent
+            px_l, py_t = self._world_to_canvas(left, top)
+            px_r, py_b = self._world_to_canvas(right, bottom)
+            dest_rect = QRectF(px_l, py_t, px_r - px_l, py_b - py_t)
+            painter.drawImage(dest_rect, self.map_qimage)
 
+        # 2. 繪製軌跡主線段 (底層黑邊光暈 + 頂層青色高亮)
         pts = []
         for x, y in zip(self.sampled_xs, self.sampled_ys):
             px, py = self._world_to_canvas(x, y)
             pts.append(QPointF(px, py))
 
+        # 2.1 黑色外框 (保證在衛星或淺色底圖上極高辨識度)
+        pen_outline = QPen(QColor(0, 0, 0, 180), 5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        painter.setPen(pen_outline)
+        for i in range(len(pts) - 1):
+            painter.drawLine(pts[i], pts[i + 1])
+
+        # 2.2 青色核心軌跡
+        pen_route = QPen(QColor("#00e5ff"), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        painter.setPen(pen_route)
         for i in range(len(pts) - 1):
             painter.drawLine(pts[i], pts[i + 1])
 
@@ -118,14 +220,17 @@ class QtRoutePreviewWidget(QWidget):
             spx, spy = pts[0].x(), pts[0].y()
             epx, epy = pts[-1].x(), pts[-1].y()
 
-            painter.setPen(Qt.NoPen)
+            # 起點
+            painter.setPen(QPen(QColor("#ffffff"), 1.8))
             painter.setBrush(QBrush(QColor("#4caf50")))
-            painter.drawEllipse(QPointF(spx, spy), 6, 6)
+            painter.drawEllipse(QPointF(spx, spy), 7, 7)
 
+            # 終點
+            painter.setPen(QPen(QColor("#ffffff"), 1.8))
             painter.setBrush(QBrush(QColor("#f44336")))
-            painter.drawEllipse(QPointF(epx, epy), 6, 6)
+            painter.drawEllipse(QPointF(epx, epy), 7, 7)
 
-        # 2. 繪製所有媒體標記點
+        # 3. 繪製所有媒體標記點
         for i, item in enumerate(self.media_items):
             km = item.current_km
             dists = np.abs(self.ride_data.distances - km)
@@ -137,35 +242,55 @@ class QtRoutePreviewWidget(QWidget):
             color = QColor("#ff9800") if not is_sel else QColor("#ff5722")
             radius = 6 if not is_sel else 9
 
+            # 黑色外光暈底
+            painter.setPen(QPen(QColor(0, 0, 0, 160), 3))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(QPointF(px, py), radius + 1, radius + 1)
+
+            # 實心標記
             painter.setPen(QPen(QColor("#ffffff"), 1.8 if is_sel else 1.2))
             painter.setBrush(QBrush(color))
             painter.drawEllipse(QPointF(px, py), radius, radius)
 
-        # 3. 高亮選取中的標記資訊框
+        # 4. 高亮選取中的標記資訊框
         if self.active_km >= 0 and len(self.ride_data.distances) > 0:
             dists = np.abs(self.ride_data.distances - self.active_km)
             idx = int(np.argmin(dists))
             wx, wy = float(self.ride_data.xs[idx]), float(self.ride_data.ys[idx])
             apx, apy = self._world_to_canvas(wx, wy)
 
-            painter.setPen(QPen(QColor("#ffab40"), 2))
+            painter.setPen(QPen(QColor("#ffab40"), 2.5))
             painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(QPointF(apx, apy), 14, 14)
+            painter.drawEllipse(QPointF(apx, apy), 15, 15)
 
             # Bubble text
             txt = f"{self.active_km:.1f} km"
-            bw = max(60, len(txt) * 9)
+            bw = max(64, len(txt) * 9)
             bh = 20
             bx = apx - bw / 2
             by = apy - 34
 
-            painter.setPen(QPen(QColor("#ff7043"), 1))
-            painter.setBrush(QBrush(QColor("#0a0f14")))
-            painter.drawRoundedRect(QRectF(bx, by, bw, bh), 4, 4)
+            painter.setPen(QPen(QColor("#ff7043"), 1.2))
+            painter.setBrush(QBrush(QColor(13, 17, 23, 235)))
+            painter.drawRoundedRect(QRectF(bx, by, bw, bh), 5, 5)
 
             painter.setPen(QPen(QColor("#ffffff")))
             painter.setFont(QFont("Segoe UI", 8, QFont.Bold))
             painter.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, txt)
+
+        # 5. 右上角底圖載入指示與左下角標籤
+        if self.is_loading_map:
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor(0, 0, 0, 180)))
+            painter.drawRoundedRect(QRectF(self.width() - 170, 8, 162, 24), 4, 4)
+            painter.setPen(QPen(QColor("#ffcc00")))
+            painter.setFont(QFont("Segoe UI", 8))
+            painter.drawText(QRectF(self.width() - 170, 8, 162, 24), Qt.AlignCenter, "📡 載入 Google Map 底圖中...")
+
+        # 水印
+        painter.setPen(QPen(QColor(255, 255, 255, 120)))
+        painter.setFont(QFont("Segoe UI", 7))
+        painter.drawText(QRectF(8, self.height() - 20, 150, 16), Qt.AlignLeft | Qt.AlignVCenter, "Google Maps Imagery")
 
     # --- 滑鼠互動事件 ---
     def wheelEvent(self, event):
@@ -188,7 +313,7 @@ class QtRoutePreviewWidget(QWidget):
                 px, py = self._world_to_canvas(wx, wy)
 
                 dist = math.hypot(click_pt.x() - px, click_pt.y() - py)
-                if dist <= 14:
+                if dist <= 15:
                     self.selected_index = i
                     self.active_km = km
                     self.item_selected.emit(i)
@@ -207,7 +332,6 @@ class QtRoutePreviewWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self.is_dragging = False
         self.drag_start_pos = None
-
 
 class ClickablePreviewLabel(QLabel):
     """支援點擊開啟原圖之預覽圖片標籤元件。"""
@@ -237,8 +361,8 @@ class QtMediaManagerDialog(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle("路線媒體管理器與照片標籤編輯器 (PySide6 Native)")
-        self.resize(1260, 720)
-        self.setMinimumSize(1060, 620)
+        self.resize(1280, 760)
+        self.setMinimumSize(1060, 640)
 
         self.media_items = media_items
         self.ride_data = ride_data
@@ -263,13 +387,13 @@ class QtMediaManagerDialog(QDialog):
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         # 1. 頂部控制列
         top_group = QGroupBox(" 媒體播放與相機時間校正 ")
         top_layout = QVBoxLayout(top_group)
-        top_layout.setSpacing(6)
+        top_layout.setSpacing(4)
 
         row1 = QHBoxLayout()
         lbl_title = QLabel("路線媒體管理器與照片標籤編輯器")
@@ -312,63 +436,105 @@ class QtMediaManagerDialog(QDialog):
 
         main_layout.addWidget(top_group)
 
-        # 2. 中間 Splitter (媒體清單 | 地圖預覽 | 右側照片預覽與編輯區)
-        splitter = QSplitter(Qt.Horizontal)
+        # 2. 中間水平 Splitter (左側：清單+地圖上下排列 | 右側：照片預覽與編輯區)
+        main_splitter = QSplitter(Qt.Horizontal)
 
-        # 2.1 左側：Table Widget (媒體清單)
+        # ==========================================
+        # 2.1 左側容器：垂直 Splitter (清單在上，路線地圖在下)
+        # ==========================================
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(4)
+        left_layout.setSpacing(0)
+
+        left_vsplitter = QSplitter(Qt.Vertical)
+
+        # 2.1.1 上半部：媒體清單列表
+        table_container = QWidget()
+        table_vbox = QVBoxLayout(table_container)
+        table_vbox.setContentsMargins(0, 0, 0, 4)
+        table_vbox.setSpacing(4)
 
         self.lbl_table_header = QLabel("媒體清單 (共 0 項)")
         self.lbl_table_header.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        left_layout.addWidget(self.lbl_table_header)
+        table_vbox.addWidget(self.lbl_table_header)
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["檔名", "類型", "拍攝時間", "匹配里程 (km)", "自訂說明"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        
+        # 欄位寬度自適應設置：類型、時間、里程依內容緊湊排版，檔名與自訂說明彈性伸展
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setStretchLastSection(True)
+        header.setMinimumSectionSize(60)
+
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setAlternatingRowColors(True)
         self.table.itemSelectionChanged.connect(self._on_table_select)
-        left_layout.addWidget(self.table)
-        splitter.addWidget(left_panel)
+        table_vbox.addWidget(self.table)
 
-        # 2.2 中央：路線與媒體標記預覽 Canvas
-        center_panel = QWidget()
-        center_layout = QVBoxLayout(center_panel)
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(4)
+        left_vsplitter.addWidget(table_container)
 
-        lbl_map_header = QLabel("路線軌跡與媒體分佈")
+        # 2.1.2 下半部：路線軌跡與 Google Map 底圖預覽
+        map_container = QWidget()
+        map_vbox = QVBoxLayout(map_container)
+        map_vbox.setContentsMargins(0, 4, 0, 0)
+        map_vbox.setSpacing(4)
+
+        map_toolbar = QHBoxLayout()
+        lbl_map_header = QLabel("路線軌跡與 Google Map 預覽")
         lbl_map_header.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        center_layout.addWidget(lbl_map_header)
+        map_toolbar.addWidget(lbl_map_header)
+
+        map_toolbar.addStretch()
+
+        map_toolbar.addWidget(QLabel("底圖風格："))
+        self.combo_map_type = QComboBox()
+        self.combo_map_type.addItems(list(MAP_PROVIDERS.keys()))
+        self.combo_map_type.setCurrentText("Google 混合衛星 (Hybrid)")
+        self.combo_map_type.currentIndexChanged.connect(self._on_map_style_changed)
+        map_toolbar.addWidget(self.combo_map_type)
+
+        btn_reset_view = QPushButton("🔄 視野置中")
+        btn_reset_view.setToolTip("重設視角至路線全景中央")
+        btn_reset_view.clicked.connect(lambda: self.preview_widget.reset_view())
+        map_toolbar.addWidget(btn_reset_view)
+
+        map_vbox.addLayout(map_toolbar)
 
         self.preview_widget = QtRoutePreviewWidget(self.ride_data)
         self.preview_widget.media_items = self.media_items
         self.preview_widget.item_selected.connect(self._on_canvas_select_item)
-        center_layout.addWidget(self.preview_widget)
+        map_vbox.addWidget(self.preview_widget)
 
         lbl_map_hint = QLabel("💡 滑鼠滾輪縮放 / 拖曳平移 / 點擊橘色標記選取照片")
         lbl_map_hint.setStyleSheet("color: #718096; font-size: 11px;")
         lbl_map_hint.setAlignment(Qt.AlignCenter)
-        center_layout.addWidget(lbl_map_hint)
+        map_vbox.addWidget(lbl_map_hint)
 
-        splitter.addWidget(center_panel)
+        left_vsplitter.addWidget(map_container)
 
-        # 2.3 右側：照片縮圖預覽卡片、EXIF 拍攝資訊與屬性編輯區
+        # 設定左側垂直 Splitter 上下比例 (清單約 260px，地圖約 320px)
+        left_vsplitter.setSizes([260, 320])
+        left_layout.addWidget(left_vsplitter)
+
+        main_splitter.addWidget(left_panel)
+
+        # ==========================================
+        # 2.2 右側容器：照片縮圖預覽卡片、EXIF 拍攝資訊與屬性編輯區
+        # ==========================================
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # 2.3.1 照片縮圖預覽卡片
+        # 2.2.1 照片縮圖預覽卡片
         preview_group = QGroupBox(" 媒體照片預覽 ")
         preview_vbox = QVBoxLayout(preview_group)
         preview_vbox.setContentsMargins(8, 8, 8, 8)
@@ -377,7 +543,7 @@ class QtMediaManagerDialog(QDialog):
         # 照片縮圖容器 (支援點擊開啟原圖)
         self.lbl_preview_image = ClickablePreviewLabel()
         self.lbl_preview_image.setAlignment(Qt.AlignCenter)
-        self.lbl_preview_image.setMinimumSize(260, 180)
+        self.lbl_preview_image.setMinimumSize(280, 190)
         self.lbl_preview_image.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.lbl_preview_image.setStyleSheet(
             "background-color: #1a202c; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;"
@@ -395,7 +561,7 @@ class QtMediaManagerDialog(QDialog):
 
         right_layout.addWidget(preview_group)
 
-        # 2.3.2 拍攝與 EXIF 詳細資訊卡片
+        # 2.2.2 拍攝與 EXIF 詳細資訊卡片
         info_group = QGroupBox(" 拍攝與 EXIF 資訊 ")
         info_layout = QGridLayout(info_group)
         info_layout.setContentsMargins(8, 8, 8, 8)
@@ -430,7 +596,7 @@ class QtMediaManagerDialog(QDialog):
 
         right_layout.addWidget(info_group)
 
-        # 2.3.3 屬性編輯卡片
+        # 2.2.3 屬性編輯卡片
         edit_group = QGroupBox(" 編輯選取相片屬性 ")
         edit_layout = QGridLayout(edit_group)
         edit_layout.setContentsMargins(8, 8, 8, 8)
@@ -461,10 +627,11 @@ class QtMediaManagerDialog(QDialog):
 
         right_layout.addWidget(edit_group)
         right_layout.addStretch()
-        splitter.addWidget(right_panel)
+        main_splitter.addWidget(right_panel)
 
-        splitter.setSizes([360, 480, 360])
-        main_layout.addWidget(splitter)
+        # 主水平分割器比例 (左側清單+地圖約 760px，右側約 440px)
+        main_splitter.setSizes([760, 440])
+        main_layout.addWidget(main_splitter)
 
         # 3. 底部動作按鈕
         bottom_bar = QHBoxLayout()
@@ -485,6 +652,12 @@ class QtMediaManagerDialog(QDialog):
         bottom_bar.addWidget(btn_cancel)
 
         main_layout.addLayout(bottom_bar)
+
+    def _on_map_style_changed(self):
+        style_name = self.combo_map_type.currentText()
+        source_url = MAP_PROVIDERS.get(style_name)
+        if source_url:
+            self.preview_widget.load_basemap(source_url)
 
     def _populate_tree(self):
         self.lbl_table_header.setText(f"媒體清單 (共 {len(self.media_items)} 項)")
@@ -517,6 +690,11 @@ class QtMediaManagerDialog(QDialog):
 
             item_cap = QTableWidgetItem(item.caption or "")
             self.table.setItem(i, 4, item_cap)
+
+        # 欄位內容自適應緊湊調整
+        self.table.resizeColumnToContents(1)
+        self.table.resizeColumnToContents(2)
+        self.table.resizeColumnToContents(3)
 
         self.table.blockSignals(False)
         self.preview_widget.update()
