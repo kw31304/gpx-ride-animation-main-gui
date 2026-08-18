@@ -311,5 +311,5 @@ def render_3d_terrain_frame(
 
         out_arr = cv2.remap(src_img, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(17, 17, 17))
 
-    return Image.fromarray(out_arr)
+    return out_arr
 

@@ -30,6 +30,31 @@ def _get_aspect_margins(margin: float):
     return margin, margin / aspect
 
 
+def _blend_rgba_overlay_np(canvas: np.ndarray, overlay: np.ndarray, x: int, y: int):
+    """將 (H, W, 4) 的 RGBA NumPy 陣列快速 Alpha 合成至 (H, W, 3) 的 RGB canvas NumPy 陣列。"""
+    ch, cw = canvas.shape[:2]
+    oh, ow = overlay.shape[:2]
+    if x >= cw or y >= ch or x + ow <= 0 or y + oh <= 0:
+        return
+
+    x0 = max(0, x)
+    y0 = max(0, y)
+    x1 = min(cw, x + ow)
+    y1 = min(ch, y + oh)
+    ox0 = x0 - x
+    oy0 = y0 - y
+    ox1 = ox0 + (x1 - x0)
+    oy1 = oy0 + (y1 - y0)
+
+    src = overlay[oy0:oy1, ox0:ox1]
+    dst = canvas[y0:y1, x0:x1]
+    alpha = src[:, :, 3:4].astype(np.float32) / 255.0
+    if np.all(alpha == 1.0):
+        dst[:] = src[:, :, :3]
+    elif np.any(alpha > 0.003):
+        dst[:] = np.clip(src[:, :, :3].astype(np.float32) * alpha + dst.astype(np.float32) * (1.0 - alpha), 0, 255).astype(np.uint8)
+
+
 class RideRenderer:
     def __init__(
         self,
@@ -568,7 +593,7 @@ class RideRenderer:
                 borderMode=cv2.BORDER_CONSTANT,
                 borderValue=(135, 185, 235),
             )
-            return Image.fromarray(out)
+            return out
 
         a = (Sx * cos_a) / kx
         b = (Sx * sin_a) / ky
@@ -585,7 +610,7 @@ class RideRenderer:
             fillcolor=(135, 185, 235),
         )
 
-    def _draw_visible_track(self, frame: Image.Image, idx: int, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0) -> Image.Image:
+    def _draw_visible_track(self, frame: Image.Image | np.ndarray, idx: int, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0) -> Image.Image | np.ndarray:
         if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:
             return frame
 
@@ -631,17 +656,35 @@ class RideRenderer:
         py1 = np.rint(H2 - ry1 * ky).astype(np.int32)
 
         if self.use_cv2:
-            arr = np.asarray(frame, dtype=np.uint8).copy()
-            for j, seg_id in enumerate(ids):
-                cv2.line(
-                    arr,
-                    (int(px0[j]), int(py0[j])),
-                    (int(px1[j]), int(py1[j])),
-                    self.track_colors[int(seg_id)],
-                    thickness=self.track_line_width,
-                    lineType=cv2.LINE_AA,
-                )
-            return Image.fromarray(arr)
+            arr = frame if isinstance(frame, np.ndarray) else np.asarray(frame, dtype=np.uint8).copy()
+            first_color = self.track_colors[int(ids[0])]
+            is_single_color = True
+            if len(ids) > 1:
+                for seg_id in ids[1:]:
+                    if self.track_colors[int(seg_id)] != first_color:
+                        is_single_color = False
+                        break
+
+            if is_single_color:
+                diffs = np.diff(ids)
+                break_pts = np.flatnonzero(diffs != 1)
+                splits = np.split(ids, break_pts + 1)
+                for chunk_ids in splits:
+                    if len(chunk_ids) == 0:
+                        continue
+                    pts = np.column_stack((px0[np.isin(ids, chunk_ids)], py0[np.isin(ids, chunk_ids)])).reshape((-1, 1, 2))
+                    cv2.polylines(arr, [pts], isClosed=False, color=first_color, thickness=self.track_line_width, lineType=cv2.LINE_AA)
+            else:
+                for j, seg_id in enumerate(ids):
+                    cv2.line(
+                        arr,
+                        (int(px0[j]), int(py0[j])),
+                        (int(px1[j]), int(py1[j])),
+                        self.track_colors[int(seg_id)],
+                        thickness=self.track_line_width,
+                        lineType=cv2.LINE_AA,
+                    )
+            return arr if isinstance(frame, np.ndarray) else Image.fromarray(arr)
 
         draw = ImageDraw.Draw(frame)
         for j, seg_id in enumerate(ids):
@@ -991,16 +1034,48 @@ class RideRenderer:
 
         frame.paste(base.convert("RGB"))
 
-    def _draw_media_popups(self, frame: Image.Image, frame_idx: int, view_x: float, view_y: float, margin: float):
+    def _get_hud_np(self, frame_idx: int, idx: int) -> np.ndarray:
+        hud_img = self._get_hud(frame_idx, idx)
+        if idx == getattr(self, "_cached_hud_np_idx", -1) and getattr(self, "_cached_hud_np_arr", None) is not None:
+            return self._cached_hud_np_arr
+        arr = np.asarray(hud_img.convert("RGBA"), dtype=np.uint8)
+        self._cached_hud_np_idx = idx
+        self._cached_hud_np_arr = arr
+        return arr
+
+    def _compose_minimap_np(self, idx: int) -> np.ndarray:
+        img = self._compose_minimap(idx)
+        if idx == getattr(self, "_cached_mini_np_idx", -1) and getattr(self, "_cached_mini_np_arr", None) is not None:
+            return self._cached_mini_np_arr
+        arr = np.asarray(img.convert("RGBA"), dtype=np.uint8)
+        self._cached_mini_np_idx = idx
+        self._cached_mini_np_arr = arr
+        return arr
+
+    def _compose_elevation_np(self, idx: int) -> np.ndarray:
+        img = self._compose_elevation(idx)
+        reveal_x = int(round(self.elev_px_x[idx]))
+        if reveal_x == getattr(self, "_cached_elev_np_rx", -1) and getattr(self, "_cached_elev_np_arr", None) is not None:
+            return self._cached_elev_np_arr
+        arr = np.asarray(img.convert("RGBA"), dtype=np.uint8)
+        self._cached_elev_np_rx = reveal_x
+        self._cached_elev_np_arr = arr
+        return arr
+
+    def _draw_media_popups(self, frame: Image.Image | np.ndarray, frame_idx: int, view_x: float, view_y: float, margin: float):
         if not self.media_popups:
             return
 
-        for popup in self.media_popups:
+        active_popups = [p for p in self.media_popups if p["start_frame"] <= frame_idx <= p["end_frame"]]
+        if not active_popups:
+            return
+
+        is_numpy = isinstance(frame, np.ndarray)
+        pil_frame = Image.fromarray(frame) if is_numpy else frame
+
+        for popup in active_popups:
             sf = popup["start_frame"]
             ef = popup["end_frame"]
-            if not (sf <= frame_idx <= ef):
-                continue
-
             ff = popup["fade_frames"]
             if frame_idx - sf < ff:
                 raw_a = (frame_idx - sf) / float(ff)
@@ -1024,7 +1099,7 @@ class RideRenderer:
             cx = (config.FRAME_WIDTH - tw) // 2
             cy = (config.FRAME_HEIGHT - th) // 2
 
-            base = frame.convert("RGBA")
+            base = pil_frame.convert("RGBA")
             overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
 
             # 劇院級中央背景遮罩暗化 (Backdrop Overlay)
@@ -1077,10 +1152,13 @@ class RideRenderer:
                 odraw.text((tx, ty), caption_text, font=font, fill=(255, 255, 255, int(248 * alpha)))
 
             base.alpha_composite(overlay)
-            frame.paste(base.convert("RGB"))
+            pil_frame.paste(base.convert("RGB"))
+
+        if is_numpy:
+            np.copyto(frame, np.asarray(pil_frame, dtype=np.uint8))
 
     # ---------- frame render ----------
-    def render_main_frame(self, frame_idx: int) -> Image.Image:
+    def render_main_frame(self, frame_idx: int) -> np.ndarray | Image.Image:
         i = min(max(int(frame_idx), 0), self.main_frames - 1)
         idx = int(self.main_indices[i])
         d = self.d
@@ -1100,29 +1178,55 @@ class RideRenderer:
             rider_z = float(d.eles[idx])
 
         frame = self._crop_raster(local_rm, view_x, view_y, current_margin, heading_rad=heading_rad, pitch_deg=pitch_deg, rider_z=rider_z)
-
-        draw = ImageDraw.Draw(frame)
         px, py = self._world_to_frame_px(float(d.xs[idx]), float(d.ys[idx]), view_x, view_y, current_margin, heading_rad=heading_rad, z=rider_z, pitch_deg=pitch_deg)
-        self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
 
-        if getattr(config, "SHOW_SPEED_HUD", True):
-            hud = self._get_hud(i, idx)
-            frame.paste(hud, (self.hud_x, self.hud_y), hud)
+        if isinstance(frame, np.ndarray):
+            # 原生 OpenCV / NumPy 高速渲染途徑 (Zero-Copy)
+            # 1. 繪製指示點 (白色外圈 + Strava 經典橘內圈)
+            cv2.circle(frame, (px, py), 7 + 3, (255, 255, 255), -1, lineType=cv2.LINE_AA)
+            cv2.circle(frame, (px, py), 7, config.ORANGE, -1, lineType=cv2.LINE_AA)
 
-        if getattr(config, "SHOW_MINIMAP", True):
-            mini = self._compose_minimap(idx)
-            frame.paste(mini, (self.mini_x, self.mini_y), mini)
+            # 2. 疊加資訊面板
+            if getattr(config, "SHOW_SPEED_HUD", True):
+                hud_np = self._get_hud_np(i, idx)
+                _blend_rgba_overlay_np(frame, hud_np, self.hud_x, self.hud_y)
 
-        if getattr(config, "SHOW_ELEVATION", True):
-            elev = self._compose_elevation(idx)
-            frame.paste(elev, (self.elev_x, self.elev_y), elev)
+            if getattr(config, "SHOW_MINIMAP", True):
+                mini_np = self._compose_minimap_np(idx)
+                _blend_rgba_overlay_np(frame, mini_np, self.mini_x, self.mini_y)
 
-        # 媒體卡片與背景暗化遮罩放置於最頂層 (無法被 HUD / 小地圖 / 海拔圖遮擋)
-        self._draw_media_popups(frame, frame_idx, view_x, view_y, current_margin)
+            if getattr(config, "SHOW_ELEVATION", True):
+                elev_np = self._compose_elevation_np(idx)
+                _blend_rgba_overlay_np(frame, elev_np, self.elev_x, self.elev_y)
 
-        return frame
+            # 3. 媒體相片卡片彈出
+            if self.media_popups:
+                self._draw_media_popups(frame, frame_idx, view_x, view_y, current_margin)
 
-    def render_end_frame(self, end_frame_idx: int) -> Image.Image:
+            return frame
+        else:
+            # Pillow Fallback 途徑
+            draw = ImageDraw.Draw(frame)
+            self._draw_marker(draw, px, py, config.WHITE, config.ORANGE, r=7, outline_w=3)
+
+            if getattr(config, "SHOW_SPEED_HUD", True):
+                hud = self._get_hud(i, idx)
+                frame.paste(hud, (self.hud_x, self.hud_y), hud)
+
+            if getattr(config, "SHOW_MINIMAP", True):
+                mini = self._compose_minimap(idx)
+                frame.paste(mini, (self.mini_x, self.mini_y), mini)
+
+            if getattr(config, "SHOW_ELEVATION", True):
+                elev = self._compose_elevation(idx)
+                frame.paste(elev, (self.elev_x, self.elev_y), elev)
+
+            # 媒體卡片與背景暗化遮罩放置於最頂層 (無法被 HUD / 小地圖 / 海拔圖遮擋)
+            self._draw_media_popups(frame, frame_idx, view_x, view_y, current_margin)
+
+            return frame
+
+    def render_end_frame(self, end_frame_idx: int) -> Image.Image | np.ndarray:
         d = self.d
 
         if end_frame_idx >= self.zoom_frames and self.cached_hold_frame is not None:
@@ -1155,15 +1259,25 @@ class RideRenderer:
             raise RuntimeError("render_end_frame 需要 overview_map。")
         frame = self._crop_raster(self.rm, view_x, view_y, margin, heading_rad=heading_rad, pitch_deg=current_pitch, rider_z=float(d.eles[-1]))
         frame = self._draw_visible_track(frame, d.total_points - 1, view_x, view_y, margin, heading_rad=heading_rad, pitch_deg=current_pitch)
-        draw = ImageDraw.Draw(frame)
 
         sx, sy = self._world_to_frame_px(float(d.xs[0]), float(d.ys[0]), view_x, view_y, margin, heading_rad=heading_rad, z=float(d.eles[0]), pitch_deg=current_pitch)
         ex, ey = self._world_to_frame_px(float(d.xs[-1]), float(d.ys[-1]), view_x, view_y, margin, heading_rad=heading_rad, z=float(d.eles[-1]), pitch_deg=current_pitch)
-        self._draw_marker(draw, sx, sy, config.GREEN, config.WHITE, r=8, outline_w=2)
-        self._draw_marker(draw, ex, ey, config.ORANGE, config.WHITE, r=8, outline_w=2)
 
-        card_alpha = ease_smoothstep((progress - 0.60) / 0.40)
-        self._draw_summary(frame, card_alpha)
+        if isinstance(frame, np.ndarray):
+            cv2.circle(frame, (sx, sy), 8 + 2, (255, 255, 255), -1, lineType=cv2.LINE_AA)
+            cv2.circle(frame, (sx, sy), 8, config.GREEN, -1, lineType=cv2.LINE_AA)
+            cv2.circle(frame, (ex, ey), 8 + 2, (255, 255, 255), -1, lineType=cv2.LINE_AA)
+            cv2.circle(frame, (ex, ey), 8, config.ORANGE, -1, lineType=cv2.LINE_AA)
+            pil_frame = Image.fromarray(frame)
+            card_alpha = ease_smoothstep((progress - 0.60) / 0.40)
+            self._draw_summary(pil_frame, card_alpha)
+            frame = np.asarray(pil_frame, dtype=np.uint8).copy()
+        else:
+            draw = ImageDraw.Draw(frame)
+            self._draw_marker(draw, sx, sy, config.GREEN, config.WHITE, r=8, outline_w=2)
+            self._draw_marker(draw, ex, ey, config.ORANGE, config.WHITE, r=8, outline_w=2)
+            card_alpha = ease_smoothstep((progress - 0.60) / 0.40)
+            self._draw_summary(frame, card_alpha)
 
         if end_frame_idx >= self.zoom_frames:
             self.cached_hold_frame = frame.copy()
@@ -1176,5 +1290,5 @@ class RideRenderer:
             frame = self.render_end_frame(frame_idx - self.main_frames)
 
         if isinstance(frame, np.ndarray):
-            return memoryview(frame)
+            return memoryview(np.ascontiguousarray(frame)).cast("B")
         return frame.tobytes("raw", "RGB")

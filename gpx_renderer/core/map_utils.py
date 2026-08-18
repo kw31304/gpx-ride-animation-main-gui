@@ -171,6 +171,68 @@ def _get_max_view_margins():
     return margin, margin / aspect
 
 
+def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback=None) -> int:
+    """在多程序渲染前，預先掃描全路線所需之所有 LocalBasemapCache 網格，並一次性下載與快取所有切片。"""
+    if not config.ENABLE_BASEMAP:
+        return 0
+
+    if zoom is None:
+        zoom = config.LOCAL_MAP_ZOOM
+
+    margin_x, margin_y = _get_max_view_margins()
+    max_margin = max(margin_x, margin_y)
+    step = max(float(config.LOCAL_CHUNK_STEP_M), max_margin * 1.25)
+
+    # 收集整條 GPX 路線上所有經過的網格 (gx, gy)
+    gxs = np.rint(data.xs / step).astype(np.int64)
+    gys = np.rint(data.ys / step).astype(np.int64)
+
+    unique_keys = []
+    seen = set()
+    for gx, gy in zip(gxs, gys):
+        k = (int(gx), int(gy))
+        if k not in seen:
+            seen.add(k)
+            unique_keys.append(k)
+
+    total_chunks = len(unique_keys)
+    if total_chunks == 0:
+        return 0
+
+    print(f"\n[PREFETCH] 掃描到路線涵蓋 {total_chunks} 個局部底圖區塊 (Zoom {zoom})，開始預熱快取...")
+
+    half_x = margin_x + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
+    half_y = margin_y + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
+    is_3d = (getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain")
+
+    for i, (gx, gy) in enumerate(unique_keys, 1):
+        cx0 = gx * step
+        cy0 = gy * step
+        west, east = cx0 - half_x, cx0 + half_x
+        south, north = cy0 - half_y, cy0 + half_y
+
+        try:
+            # 啟用 cache=True 下載並快取到磁碟
+            _ = _fetch_raster(west, south, east, north, map_style, zoom, use_cache=True)
+            if is_3d:
+                try:
+                    from gpx_renderer.core.dem_utils import get_elevation_grid
+                    _ = get_elevation_grid(west, south, east, north, rows=24, cols=24)
+                except Exception:
+                    pass
+        except Exception as exc:
+            print(f"[WARN] 預抓底圖區塊 ({gx}, {gy}) 失敗：{exc}")
+
+        if callback:
+            callback(i, total_chunks, f"預熱底圖 ({i}/{total_chunks})")
+        elif i % max(1, total_chunks // 10) == 0 or i == total_chunks:
+            pct = (i / float(total_chunks)) * 100.0
+            print(f"   預熱進度：{i}/{total_chunks} ({pct:.1f}%)")
+
+    print(f"[OK] 路線 {total_chunks} 個底圖區塊已全部預先快取完成！所有 Worker 均可 100% 本機離線讀取。\n")
+    return total_chunks
+
+
 class LocalBasemapCache:
     """主動畫局部高解析底圖 + 已完成軌跡的增量 raster cache。"""
     def __init__(
@@ -275,22 +337,49 @@ class LocalBasemapCache:
         local_ids = np.flatnonzero(mask)
         if local_ids.size:
             ids = local_ids + start
-            x0, y0 = self._world_to_raster_px(rm, self.seg_x0[ids], self.seg_y0[ids])
-            x1, y1 = self._world_to_raster_px(rm, self.seg_x1[ids], self.seg_y1[ids])
             width = self._source_track_width(rm)
 
             if self.use_cv2:
                 arr = rm.np_image
-                for j, seg_id in enumerate(ids):
-                    cv2.line(
-                        arr,
-                        (int(x0[j]), int(y0[j])),
-                        (int(x1[j]), int(y1[j])),
-                        self.track_colors[int(seg_id)],
-                        thickness=width,
-                        lineType=cv2.LINE_AA,
-                    )
+                # 判定是否為單一純色 (如 Strava 橘 / 螢光綠等)，若為純色則組合成 polyline 批次繪製
+                first_color = self.track_colors[int(ids[0])]
+                is_single_color = True
+                if len(ids) > 1:
+                    # 抽樣快速比對顏色
+                    for seg_id in ids[1:]:
+                        if self.track_colors[int(seg_id)] != first_color:
+                            is_single_color = False
+                            break
+
+                if is_single_color:
+                    # 連續線段分組並批次以 cv2.polylines 繪製
+                    diffs = np.diff(ids)
+                    break_pts = np.flatnonzero(diffs != 1)
+                    splits = np.split(ids, break_pts + 1)
+                    for chunk_ids in splits:
+                        if len(chunk_ids) == 0:
+                            continue
+                        cx0, cy0 = self._world_to_raster_px(rm, self.seg_x0[chunk_ids], self.seg_y0[chunk_ids])
+                        cx1, cy1 = self._world_to_raster_px(rm, self.seg_x1[chunk_ids[-1:]], self.seg_y1[chunk_ids[-1:]])
+                        pts_x = np.concatenate([cx0, cx1])
+                        pts_y = np.concatenate([cy0, cy1])
+                        pts = np.column_stack((pts_x, pts_y)).reshape((-1, 1, 2))
+                        cv2.polylines(arr, [pts], isClosed=False, color=first_color, thickness=width, lineType=cv2.LINE_AA)
+                else:
+                    x0, y0 = self._world_to_raster_px(rm, self.seg_x0[ids], self.seg_y0[ids])
+                    x1, y1 = self._world_to_raster_px(rm, self.seg_x1[ids], self.seg_y1[ids])
+                    for j, seg_id in enumerate(ids):
+                        cv2.line(
+                            arr,
+                            (int(x0[j]), int(y0[j])),
+                            (int(x1[j]), int(y1[j])),
+                            self.track_colors[int(seg_id)],
+                            thickness=width,
+                            lineType=cv2.LINE_AA,
+                        )
             else:
+                x0, y0 = self._world_to_raster_px(rm, self.seg_x0[ids], self.seg_y0[ids])
+                x1, y1 = self._world_to_raster_px(rm, self.seg_x1[ids], self.seg_y1[ids])
                 draw = ImageDraw.Draw(rm.image)
                 for j, seg_id in enumerate(ids):
                     draw.line(

@@ -502,7 +502,7 @@ def encode_video_parallel(
         video_duration=duration,
         zoom_out_duration=0.0,
         end_hold_duration=0.0,
-        tile_cache_enabled=False,
+        tile_cache_enabled=True,
         media_items=media_items,
     )
     main_frames = temp_renderer.main_frames
@@ -716,6 +716,11 @@ def render_job(config_dict: dict | None = None):
         matched_media = match_media_to_ride(raw_media, data, data.gpx_times)
         print(f"[OK] 掃描到 {len(raw_media)} 個媒體檔案，成功與路線對齊 {len(matched_media)} 個時間點/座標")
 
+    # 1. 預熱全路線底圖切片，確保所有 Worker 均可 100% 離線讀取快取避免伺服器限流
+    if config.ENABLE_BASEMAP:
+        from gpx_renderer.core.map_utils import prefetch_route_basemap_chunks
+        prefetch_route_basemap_chunks(data, config.MAP_STYLE_OPTIONS[map_style_key][1], config.LOCAL_MAP_ZOOM)
+
     temp_info_renderer = RideRenderer(
         data=data,
         overview_map=None,
@@ -724,7 +729,7 @@ def render_job(config_dict: dict | None = None):
         video_duration=duration,
         zoom_out_duration=config.ZOOM_OUT_DURATION,
         end_hold_duration=config.END_HOLD_DURATION,
-        tile_cache_enabled=False,
+        tile_cache_enabled=True,
         media_items=matched_media,
     )
     main_frames = temp_info_renderer.main_frames
