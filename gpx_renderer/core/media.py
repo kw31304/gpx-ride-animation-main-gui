@@ -33,9 +33,16 @@ class MediaItem:
     mercator_y: Optional[float] = None
     matched_index: int = -1  # 匹配之 RideData xs/ys 陣列索引
     matched_frame: int = -1  # 匹配之動畫主畫格索引
+    matched_km: float = 0.0  # 匹配之實際里程 (km)
     thumbnail: Optional[Image.Image] = None  # 快取縮圖
     caption: str = ""  # 照片下方自訂說明文字
     manual_distance_km: Optional[float] = None  # 手動指定之里程數 (km)
+
+    @property
+    def current_km(self) -> float:
+        if self.manual_distance_km is not None and self.manual_distance_km >= 0:
+            return float(self.manual_distance_km)
+        return float(self.matched_km)
 
 
 def _convert_dms_to_deg(dms, ref: str) -> float:
@@ -174,8 +181,8 @@ def scan_media_files(
     if p.is_file():
         files = [p]
     elif p.is_dir():
-        image_exts = {".jpg", ".jpeg", ".png", ".webp"}
-        video_exts = {".mp4", ".mov", ".avi", ".mkv"}
+        image_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+        video_exts = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
         for root_dir, _, filenames in os.walk(p):
             for fn in filenames:
                 ext = Path(fn).suffix.lower()
@@ -192,13 +199,20 @@ def scan_media_files(
     items = []
     for f in sorted(files):
         ext = f.suffix.lower()
-        is_video = ext in {".mp4", ".mov", ".avi", ".mkv"}
+        is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
         media_type = "video" if is_video else "image"
 
         if is_video:
             dt, lat, lon = parse_video_metadata(f, ffmpeg_exe)
         else:
             dt, lat, lon = parse_image_exif(f)
+
+        # 若無 EXIF 時間，採用檔案修改時間備援
+        if dt is None:
+            try:
+                dt = datetime.fromtimestamp(f.stat().st_mtime)
+            except Exception:
+                dt = None
 
         if dt and time_offset_sec != 0.0:
             dt = dt + timedelta(seconds=time_offset_sec)
@@ -218,19 +232,18 @@ def scan_media_files(
             except Exception:
                 man_dist = None
 
-        if dt is not None or (mx is not None and my is not None) or (man_dist is not None and man_dist >= 0):
-            items.append(MediaItem(
-                file_path=str(f),
-                filename=f.name,
-                media_type=media_type,
-                timestamp=dt,
-                lat=lat,
-                lon=lon,
-                mercator_x=mx,
-                mercator_y=my,
-                caption=caption,
-                manual_distance_km=man_dist,
-            ))
+        items.append(MediaItem(
+            file_path=str(f),
+            filename=f.name,
+            media_type=media_type,
+            timestamp=dt,
+            lat=lat,
+            lon=lon,
+            mercator_x=mx,
+            mercator_y=my,
+            caption=caption,
+            manual_distance_km=man_dist,
+        ))
 
     return items
 
@@ -239,17 +252,18 @@ def match_media_to_ride(
     media_items: List[MediaItem],
     ride_data: RideData,
     gpx_times: Optional[List[datetime]] = None,
+    time_offset_sec: float = 0.0,
 ) -> List[MediaItem]:
-    """將 MediaItem 配對至 GPX 騎乘時間軸 (RideData.xs/ys 點位)。"""
-    if not media_items or ride_data.total_points < 2:
+    """將 MediaItem 配對至 GPX 騎乘時間軸 (RideData.xs/ys 點位與 distances 里程)。"""
+    if not media_items or ride_data.total_points < 1:
         return media_items
 
-    # 1. 嘗試時間配對
     has_gpx_times = gpx_times is not None and len(gpx_times) == ride_data.total_points and gpx_times[0] is not None
 
     for item in media_items:
-        item.matched_index = -1
+        item.matched_index = 0
         item.matched_frame = -1
+        item.matched_km = float(ride_data.distances[0]) if len(ride_data.distances) > 0 else 0.0
 
         # 0. 手動覆寫里程點 (最高優先權)
         if item.manual_distance_km is not None and item.manual_distance_km >= 0:
@@ -257,19 +271,23 @@ def match_media_to_ride(
             dists = np.abs(ride_data.distances - target_km)
             best_i = int(np.argmin(dists))
             item.matched_index = best_i
+            item.matched_km = target_km
             continue
 
+        # 1. 嘗試時間配對
         if has_gpx_times and item.timestamp is not None:
-            # 去除 時區 影響做比對
-            item_ts = item.timestamp.replace(tzinfo=None)
+            raw_ts = item.timestamp
+            if time_offset_sec != 0.0:
+                raw_ts = raw_ts + timedelta(seconds=time_offset_sec)
+            item_ts = raw_ts.replace(tzinfo=None)
             g_start = gpx_times[0].replace(tzinfo=None)
             g_end = gpx_times[-1].replace(tzinfo=None)
 
             if g_start <= item_ts <= g_end:
-                # 在 GPX 區間內，尋找最接近的時間點
                 deltas = [abs((t.replace(tzinfo=None) - item_ts).total_seconds()) for t in gpx_times]
                 best_i = int(np.argmin(deltas))
                 item.matched_index = best_i
+                item.matched_km = float(ride_data.distances[best_i])
                 continue
 
         # 2. 時間不在區間內或缺乏時間戳記，改由 GPS 距離配對最近軌跡點
@@ -277,8 +295,48 @@ def match_media_to_ride(
             dists = (ride_data.xs - item.mercator_x) ** 2 + (ride_data.ys - item.mercator_y) ** 2
             best_i = int(np.argmin(dists))
             item.matched_index = best_i
+            item.matched_km = float(ride_data.distances[best_i])
+            continue
 
-    return [m for m in media_items if m.matched_index >= 0]
+        # 3. 預設配對首點
+        if len(ride_data.distances) > 0:
+            item.matched_index = 0
+            item.matched_km = float(ride_data.distances[0])
+
+    return media_items
+
+
+def load_media_thumbnail(file_path: str | Path, max_w: int = 600, max_h: int = 450) -> Optional[Image.Image]:
+    """讀取相片或影片截圖並回傳經 EXIF 旋轉校正之 PIL Image 縮圖。"""
+    p = Path(file_path)
+    if not p.is_file():
+        return None
+    ext = p.suffix.lower()
+    is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+    if not is_video:
+        try:
+            with Image.open(p) as img:
+                img = ImageOps.exif_transpose(img)
+                img = img.convert("RGB")
+                img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+                return img
+        except Exception:
+            return None
+    else:
+        # Video: 嘗試以 OpenCV 讀取第一畫格
+        try:
+            import cv2
+            cap = cv2.VideoCapture(str(p))
+            ret, frame = cap.read()
+            cap.release()
+            if ret and frame is not None:
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(rgb)
+                img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+                return img
+        except Exception:
+            pass
+        return None
 
 
 def prepare_thumbnail(file_path: str, max_w: int = 800, max_h: int = 800) -> Optional[Image.Image]:

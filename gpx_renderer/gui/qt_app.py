@@ -392,10 +392,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 QMessageBox.information(self, "提示", "在指定的媒體路徑下未找到相應的照片或影片。")
                 return
 
-            dlg = QtMediaManagerDialog(scanned, data, media_duration=4.0, media_offset_sec=0.0, media_path=media_p, parent=self)
+            initial_dur = float(self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION)
+            initial_offset = float(self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC)
+            dlg = QtMediaManagerDialog(scanned, data, media_duration=initial_dur, media_offset_sec=initial_offset, media_path=media_p, parent=self)
             if dlg.exec() == QDialog.Accepted:
                 overrides = dlg.result_overrides
                 self.state["media_overrides_json"] = json.dumps(overrides, ensure_ascii=False)
+                self.state["media_popup_duration"] = float(dlg.spin_media_dur.value())
+                self.state["media_time_offset_sec"] = float(dlg.spin_media_offset.value())
+                config.MEDIA_POPUP_DURATION = float(dlg.spin_media_dur.value())
+                config.MEDIA_TIME_OFFSET_SEC = float(dlg.spin_media_offset.value())
+                config.MEDIA_OVERRIDES_JSON = self.state["media_overrides_json"]
                 QMessageBox.information(self, "成功", f"已儲存 {len(overrides)} 個媒體自訂標籤與微調設定！")
         except Exception as exc:
             QMessageBox.critical(self, "錯誤", f"無法開啟媒體管理視窗：{exc}")
@@ -588,8 +595,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             "PARALLEL_DISABLE_TILE_CACHE": dict_self.chk_disable_parallel_cache.isChecked(),
             "ENABLE_MEDIA": dict_self.chk_enable_media_2.isChecked(),
             "MEDIA_PATH": dict_self.lineEdit_media.text().strip(),
-            "MEDIA_POPUP_DURATION": 4.0,
-            "MEDIA_TIME_OFFSET_SEC": 0.0,
+            "MEDIA_POPUP_DURATION": float(dict_self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION),
+            "MEDIA_TIME_OFFSET_SEC": float(dict_self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC),
             "MEDIA_OVERRIDES_JSON": dict_self.state.get("media_overrides_json", "{}"),
             "USE_REAL_SPEED": dict_self.chk_real_speed_2.isChecked(),
             "ENABLE_DYNAMIC_SPEED_ZOOM": dict_self.chk_dynamic_speed_zoom.isChecked(),
