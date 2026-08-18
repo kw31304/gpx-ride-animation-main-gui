@@ -171,21 +171,18 @@ class RideRenderer:
                             start_f = len(main_idx_list) - 1
                             end_f = start_f + item_dur_frames
 
+                            if item.thumbnail is None:
+                                item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h)
 
-            for i, pt_val in enumerate(base_indices):
-                main_idx_list.append(pt_val)
-                if pt_val in media_by_start:
-                    for item, item_dur_frames in media_by_start[pt_val]:
-                        start_f = len(main_idx_list)
-                        end_f = start_f + item_dur_frames
-                        fade_frames = max(1, int(round(0.3 * self.fps)))
-                        self.media_popups.append({
-                            "item": item,
-                            "start_frame": start_f,
-                            "end_frame": end_f,
-                            "fade_frames": fade_frames,
-                        })
-                        main_idx_list.extend([pt_val] * item_dur_frames)
+                            if item.thumbnail is not None:
+                                self.media_popups.append({
+                                    "item": item,
+                                    "start_frame": start_f,
+                                    "end_frame": end_f,
+                                    "fade_frames": fade_frames,
+                                })
+
+                            main_idx_list.extend([pt_val] * item_dur_frames)
 
             ride_indices = np.array(main_idx_list, dtype=np.int32)
         else:
@@ -222,6 +219,9 @@ class RideRenderer:
                 np.full(intro_total_f, 0, dtype=np.int32),
                 ride_indices
             ])
+            for popup in self.media_popups:
+                popup["start_frame"] += intro_total_f
+                popup["end_frame"] += intro_total_f
         else:
             self.main_indices = ride_indices
 
