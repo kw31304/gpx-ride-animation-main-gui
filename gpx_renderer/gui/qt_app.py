@@ -143,6 +143,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 開局自動刷新 GPX 距離
         QTimer.singleShot(200, self.refresh_gpx_distance)
 
+        # 每 5 秒週期性自動刷新快取容量顯示
+        self.cache_timer = QTimer(self)
+        self.cache_timer.setInterval(5000)
+        self.cache_timer.timeout.connect(self.refresh_cache_size_display)
+        self.cache_timer.start()
+
     def center_on_screen(self):
         """將視窗定位至螢幕工作區域中央"""
         screen = QApplication.primaryScreen()
@@ -944,6 +950,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 f.close()
             except Exception:
                 pass
+
+        # 停止背景定時器
+        if hasattr(self, "cache_timer") and self.cache_timer.isActive():
+            self.cache_timer.stop()
 
         # 若為 Session 暫存模式，關閉主程式時自動清除當前 Session 快取目錄
         if getattr(config, "MAP_CACHE_MODE", "session") == "session":
