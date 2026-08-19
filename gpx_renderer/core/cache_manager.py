@@ -7,6 +7,7 @@
 2. Persistent 永久保留模式：儲存於 .map_cache/persistent/，跨次重開程式依然秒載入。
 3. LRU 自動容量上限修剪 (預設 1GB / 1024MB)。
 4. 一鍵全域快取清除與孤立暫存自動清理。
+5. 執行緒與行程安全的原子 PNG 切片快取（避免 Windows 檔案鎖死與 PermissionError）。
 """
 
 from __future__ import annotations
@@ -14,11 +15,62 @@ import os
 import sys
 import time
 import shutil
+import hashlib
 from pathlib import Path
 from typing import Optional
+import numpy as np
+from PIL import Image
 
 from gpx_renderer import config
 from gpx_renderer.utils.env import application_dir
+
+_ORIGINAL_CT_RETRYER = None
+
+
+def _safe_cached_tile_retryer(tile_url, wait, max_retries, headers: dict[str, str] | None = None, timeout=None):
+    """自訂執行緒安全且行程安全的 PNG 切片快取攔截器，完全取代 contextily 不穩定的 joblib pickle 快取。"""
+    if headers is None:
+        headers = {}
+    tiles_dir = CacheManager.get_tiles_dir()
+    url_hash = hashlib.sha256(tile_url.encode("utf-8")).hexdigest()
+    tile_file = tiles_dir / f"{url_hash}.png"
+
+    # 1. 本機磁碟快取命中檢查
+    if tile_file.exists():
+        try:
+            with Image.open(tile_file) as img:
+                arr = np.asarray(img.convert("RGBA"))
+            CacheManager.touch_file(tile_file)
+            return arr
+        except Exception:
+            try:
+                tile_file.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    # 2. 未命中快取，向圖資伺服器請求
+    global _ORIGINAL_CT_RETRYER
+    if _ORIGINAL_CT_RETRYER is None:
+        import contextily.tile as ct
+        _ORIGINAL_CT_RETRYER = ct._retryer
+
+    arr = _ORIGINAL_CT_RETRYER(tile_url, wait, max_retries, headers, timeout=timeout)
+
+    # 3. 原子寫入本機 PNG 快取
+    tmp_file = tiles_dir / f"{url_hash}.tmp_{os.getpid()}_{time.time_ns()}"
+    try:
+        img = Image.fromarray(arr)
+        img.save(tmp_file, format="PNG", optimize=False)
+        tmp_file.replace(tile_file)
+        CacheManager.touch_file(tile_file)
+    except Exception:
+        try:
+            if tmp_file.exists():
+                tmp_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    return arr
 
 
 class CacheManager:
@@ -85,19 +137,21 @@ class CacheManager:
 
     @classmethod
     def init_cache_system(cls, session_id: Optional[str] = None):
-        """初始化快取系統（註冊 contextily 與 DEM 快取目錄，清理孤立 session）"""
+        """初始化快取系統（註冊 contextily 切片快取攔截器，清理孤立 session）"""
         if session_id:
             cls.set_session_id(session_id)
 
         # 1. 確保基本目錄建立
-        tiles_dir = cls.get_tiles_dir()
+        cls.get_tiles_dir()
         cls.get_dem_dir()
 
-        # 2. 設定 contextily 使用本專案之磁碟快取目錄
+        # 2. 註冊自訂快取攔截器至 contextily.tile
         try:
-            import contextily as cx
-            if hasattr(cx, "set_cache_dir"):
-                cx.set_cache_dir(str(tiles_dir))
+            import contextily.tile as ct
+            global _ORIGINAL_CT_RETRYER
+            if _ORIGINAL_CT_RETRYER is None:
+                _ORIGINAL_CT_RETRYER = ct._retryer
+            ct._retryer = _safe_cached_tile_retryer
         except Exception:
             pass
 

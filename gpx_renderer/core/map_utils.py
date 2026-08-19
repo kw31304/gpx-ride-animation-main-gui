@@ -105,7 +105,7 @@ def _fetch_raster(west: float, south: float, east: float, north: float, map_styl
                     wait=1,
                     max_retries=3,
                     n_connections=config.MAP_CONNECTIONS,
-                    use_cache=use_cache,
+                    use_cache=False,  # 停用 contextily joblib，由 CacheManager 自訂原子 PNG 攔截器安全接管
                 )
                 left, right, bottom, top = map(float, extent)
                 image = Image.fromarray(np.asarray(img_np)).convert("RGB")

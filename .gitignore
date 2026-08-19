@@ -29,3 +29,5 @@ desktop.ini
 logs/
 *.log
 
+# 底圖快取
+.map_cache/
