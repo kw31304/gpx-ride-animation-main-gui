@@ -310,16 +310,29 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_4.addWidget(self.chk_preview)
 
+        self.combo_cache_mode = QComboBox(self.groupBox)
+        self.combo_cache_mode.setObjectName(u"combo_cache_mode")
+        self.verticalLayout_4.addWidget(self.combo_cache_mode)
+
+        self.horizontalLayout_cache_actions = QHBoxLayout()
+        self.horizontalLayout_cache_actions.setObjectName(u"horizontalLayout_cache_actions")
+        self.lbl_cache_size = QLabel(self.groupBox)
+        self.lbl_cache_size.setObjectName(u"lbl_cache_size")
+        self.horizontalLayout_cache_actions.addWidget(self.lbl_cache_size)
+
+        self.btn_clear_cache = QPushButton(self.groupBox)
+        self.btn_clear_cache.setObjectName(u"btn_clear_cache")
+        self.horizontalLayout_cache_actions.addWidget(self.btn_clear_cache)
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_cache_actions)
+
+        # 隱藏保留相容物件
         self.chk_disable_parallel_cache = QCheckBox(self.groupBox)
         self.chk_disable_parallel_cache.setObjectName(u"chk_disable_parallel_cache")
-
-        self.verticalLayout_4.addWidget(self.chk_disable_parallel_cache)
-
+        self.chk_disable_parallel_cache.setVisible(False)
         self.chk_contextily_cache = QCheckBox(self.groupBox)
         self.chk_contextily_cache.setObjectName(u"chk_contextily_cache")
-
-        self.verticalLayout_4.addWidget(self.chk_contextily_cache)
-
+        self.chk_contextily_cache.setVisible(False)
 
         self.gridLayout_3.addLayout(self.verticalLayout_4, 0, 4, 6, 1)
 
@@ -1037,6 +1050,11 @@ class Ui_MainWindow(object):
         self.chk_preview.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u53ea\u6e32\u67d3\u4e00\u5c0f\u6bb5\u4e3b\u52d5\u756b\uff0c\u5feb\u901f\u6aa2\u67e5 HUD\u3001\u8def\u5f91\u3001\u5730\u5716\u8207\u756b\u8cea\u8a2d\u5b9a\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.chk_preview.setText(QCoreApplication.translate("MainWindow", u"Preview \u9810\u89bd\u6a21\u5f0f", None))
+#if QT_CONFIG(tooltip)
+        self.combo_cache_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5207\u63db\u5e95\u5716\u78c1\u789f\u5feb\u53d6\u6a21\u5f0f\u3002\u81ea\u52d5\u66ab\u5b58\u6a21\u5f0f\u65bc\u95dc\u9589\u7a0b\u5e8f\u6642\u6e05\u9664\uff1b\u6c38\u4e45\u4fdd\u7559\u6a21\u5f0f\u5247\u4fdd\u7559\u4ee5\u52a0\u901f\u65e5\u5f8c\u6e32\u67d3\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_cache_size.setText(QCoreApplication.translate("MainWindow", u"\u5feb\u53d6: 0.0 MB", None))
+        self.btn_clear_cache.setText(QCoreApplication.translate("MainWindow", u"\u6e05\u9664\u5feb\u53d6", None))
 #if QT_CONFIG(tooltip)
         self.chk_disable_parallel_cache.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5728\u591a\u7a0b\u5e8f worker \u88e1\u95dc\u9589 contextily/joblib \u7684\u78c1\u789f cache\u3002", None))
 #endif // QT_CONFIG(tooltip)

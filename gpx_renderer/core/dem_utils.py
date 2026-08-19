@@ -13,8 +13,8 @@ import urllib.request
 import numpy as np
 from PIL import Image
 
-# 全域 DEM 快取目錄與記憶體快取
-DEM_CACHE_DIR = Path.home() / ".cache" / "gpx_renderer" / "dem_tiles"
+from gpx_renderer.core.cache_manager import CacheManager
+
 _DEM_MEMORY_CACHE = OrderedDict()
 MAX_DEM_MEM_CACHE = 64
 MERCATOR_R = 6378137.0
@@ -45,21 +45,30 @@ def fetch_dem_tile(tx: int, ty: int, zoom: int) -> np.ndarray:
         _DEM_MEMORY_CACHE.move_to_end(key)
         return _DEM_MEMORY_CACHE[key]
 
-    DEM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = DEM_CACHE_DIR / f"dem_{zoom}_{tx}_{ty}.png"
+    dem_dir = CacheManager.get_dem_dir()
+    file_path = dem_dir / f"dem_{zoom}_{tx}_{ty}.png"
 
     if not file_path.exists():
         url = f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{tx}/{ty}.png"
         req = urllib.request.Request(url, headers={"User-Agent": "GPX-Ride-Renderer/2.0"})
+        tmp_file = dem_dir / f"dem_{zoom}_{tx}_{ty}.tmp_{os.getpid()}"
         try:
             with urllib.request.urlopen(req, timeout=5.0) as resp:
                 data = resp.read()
-                file_path.write_bytes(data)
+                tmp_file.write_bytes(data)
+                tmp_file.replace(file_path)
         except Exception:
+            if tmp_file.exists():
+                try:
+                    tmp_file.unlink(missing_ok=True)
+                except Exception:
+                    pass
             # 下載失敗時建立預設平坦 0m 陣列
             elev_flat = np.zeros((256, 256), dtype=np.float32)
             _DEM_MEMORY_CACHE[key] = elev_flat
             return elev_flat
+    else:
+        CacheManager.touch_file(file_path)
 
     try:
         with Image.open(file_path) as img:

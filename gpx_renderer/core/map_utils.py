@@ -21,6 +21,7 @@ except Exception:
 
 from gpx_renderer import config
 from gpx_renderer.core.data import RideData, compute_end_route_view
+from gpx_renderer.core.cache_manager import CacheManager
 
 
 @dataclass
@@ -71,6 +72,7 @@ def choose_map_style():
 
 def _fetch_raster(west: float, south: float, east: float, north: float, map_style, zoom, use_cache: bool | None = None) -> RasterMap:
     """下載指定 EPSG:3857 bbox 的 raster。帶有自動降階 (Zoom Fallback) 與指數退避重試保護機制。"""
+    CacheManager.init_cache_system()
     if use_cache is None:
         use_cache = config.MAP_USE_CACHE
     if getattr(sys, "frozen", False) and use_cache and config.MAP_CONNECTIONS > 1:
@@ -275,6 +277,7 @@ def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback
             print(f"   預熱進度：{i}/{total_chunks} ({pct:.1f}%)")
 
     print(f"[OK] 路線 {total_chunks} 個底圖區塊已全部預先快取完成！所有 Worker 均可 100% 本機離線讀取。\n")
+    CacheManager.prune_if_exceeds()
     return total_chunks
 
 

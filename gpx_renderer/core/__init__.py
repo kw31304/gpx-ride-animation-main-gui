@@ -53,6 +53,8 @@ from gpx_renderer.core.media import (
     prepare_thumbnail,
 )
 
+from gpx_renderer.core.cache_manager import CacheManager
+
 __all__ = [
     "RideData",
     "latlon_to_mercator",
@@ -69,6 +71,7 @@ __all__ = [
     "build_overview_raster_map",
     "LocalChunkState",
     "LocalBasemapCache",
+    "CacheManager",
     "find_ffmpeg",
     "encoder_is_listed",
     "encoder_works",

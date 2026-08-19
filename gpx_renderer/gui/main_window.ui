@@ -447,26 +447,31 @@
            </property>
           </widget>
          </item>
-         <item>
-          <widget class="QCheckBox" name="chk_disable_parallel_cache">
-           <property name="toolTip">
-            <string>用途：在多程序 worker 裡關閉 contextily/joblib 的磁碟 cache。</string>
-           </property>
-           <property name="text">
-            <string>多程序停用 Cache</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="chk_contextily_cache">
-           <property name="toolTip">
-            <string>用途：讓 contextily/joblib 將下載與處理結果保存到磁碟 cache。</string>
-           </property>
-           <property name="text">
-            <string>Contextily Cache</string>
-           </property>
-          </widget>
-         </item>
+          <item>
+           <widget class="QComboBox" name="combo_cache_mode">
+            <property name="toolTip">
+             <string>用途：切換底圖磁碟快取模式。自動暫存模式於關閉程式時清除；永久保留模式則保留以加速日後渲染。</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_cache_actions">
+            <item>
+             <widget class="QLabel" name="lbl_cache_size">
+              <property name="text">
+               <string>快取: 0.0 MB</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_clear_cache">
+              <property name="text">
+               <string>清除快取</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
         </layout>
        </item>
        <item row="1" column="0" colspan="3">

@@ -24,6 +24,7 @@ from gpx_renderer.gui.ui_main_window import Ui_MainWindow
 from gpx_renderer.utils import _self_subprocess_command, application_dir
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
+from gpx_renderer.core.cache_manager import CacheManager
 
 
 RESOLUTION_PRESETS = [
@@ -116,6 +117,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ]
         self.worker_status_labels = [l for l in self.worker_status_labels if l is not None]
 
+        CacheManager.init_cache_system()
+
         self._init_combos()
         self._init_default_values()
         self._connect_signals()
@@ -178,8 +181,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parallel = self.chk_parallel_2.isChecked()
             workers = self.spin_workers.value()
             chunks = self.spin_chunks.value()
-            cache_info = "停用 Cache" if self.chk_disable_parallel_cache.isChecked() else "啟用 Cache"
-            perf_text = f"多程序 ({workers} Workers × {chunks} chunks) | {cache_info}" if parallel else f"單程序渲染 | {cache_info}"
+            cache_mode_txt = "永久保留快取" if self.combo_cache_mode.currentIndex() == 1 else "自動暫存 (關閉清除)"
+            perf_text = f"多程序 ({workers} Workers × {chunks} chunks) | {cache_mode_txt}" if parallel else f"單程序渲染 | {cache_mode_txt}"
             if hasattr(self, "label_cfg_perf"):
                 self.label_cfg_perf.setText(f"效能模式: {perf_text}")
         except Exception:
@@ -223,6 +226,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.combo_bitrate.clear()
         self.combo_bitrate.addItems(["8M", "12M", "20M", "24M", "30M", "40M", "60M"])
         self.combo_bitrate.setCurrentText(config.NVENC_BITRATE)
+
+        # 9. 快取模式
+        self.combo_cache_mode.clear()
+        self.combo_cache_mode.addItems(["自動暫存 (關閉清除)", "永久保留 (保留快取)"])
+        self.combo_cache_mode.setCurrentIndex(0 if getattr(config, "MAP_CACHE_MODE", "session") == "session" else 1)
 
     def _init_default_values(self):
         self.lineEdit_gpx.setText(str(Path(config.gpx_filename).resolve()))
@@ -303,6 +311,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spin_seconds_per_100km.valueChanged.connect(self.on_duration_rate_change)
         self.lineEdit_duration.textChanged.connect(lambda: self._update_dashboard_summary())
 
+        self.combo_cache_mode.currentIndexChanged.connect(self.on_cache_mode_change)
+        self.btn_clear_cache.clicked.connect(self.on_clear_cache_clicked)
+
         # 加入 400ms Debounce 防抖，避免連續輸入字元快速開線程
         self.gpx_debounce_timer = QTimer(self)
         self.gpx_debounce_timer.setSingleShot(True)
@@ -322,7 +333,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "btn_apply_benchmark"):
             self.btn_apply_benchmark.clicked.connect(self.apply_benchmark_recommendation)
 
+        self.refresh_cache_size_display()
+
     # ---------- Slot Implementations ----------
+    def refresh_cache_size_display(self):
+        try:
+            mb = CacheManager.get_cache_size_mb()
+            if hasattr(self, "lbl_cache_size"):
+                self.lbl_cache_size.setText(f"快取: {mb:.1f} MB")
+        except Exception:
+            if hasattr(self, "lbl_cache_size"):
+                self.lbl_cache_size.setText("快取: 0.0 MB")
+
+    def on_cache_mode_change(self, idx: int):
+        mode = "session" if idx == 0 else "persistent"
+        config.MAP_CACHE_MODE = mode
+        CacheManager.init_cache_system()
+        self.refresh_cache_size_display()
+        self._update_dashboard_summary()
+
+    def on_clear_cache_clicked(self):
+        reply = QMessageBox.question(
+            self, "清除快取確認",
+            "確定要立即清除所有本機磁碟底圖與高程快取嗎？",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            CacheManager.cleanup_all_cache()
+            self.refresh_cache_size_display()
+            QMessageBox.information(self, "快取已清除", "所有底圖與高程快取已全數清空！")
     def toggle_advanced(self, *args, show: Optional[bool] = None):
         is_visible = self.groupBox.isVisible()
         next_state = not is_visible if show is None else bool(show)
@@ -591,8 +630,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             "PARALLEL_RENDER": dict_self.chk_parallel_2.isChecked(),
             "ENABLE_BASEMAP": dict_self.chk_basemap_2.isChecked(),
             "PREVIEW_MODE": dict_self.chk_preview.isChecked(),
-            "MAP_USE_CACHE": dict_self.chk_contextily_cache.isChecked(),
-            "PARALLEL_DISABLE_TILE_CACHE": dict_self.chk_disable_parallel_cache.isChecked(),
+            "MAP_USE_CACHE": True,
+            "MAP_CACHE_MODE": "session" if dict_self.combo_cache_mode.currentIndex() == 0 else "persistent",
+            "MAP_CACHE_SESSION_ID": CacheManager.get_session_id(),
+            "MAP_CACHE_MAX_MB": getattr(config, "MAP_CACHE_MAX_MB", 1024),
+            "PARALLEL_DISABLE_TILE_CACHE": False,
             "ENABLE_MEDIA": dict_self.chk_enable_media_2.isChecked(),
             "MEDIA_PATH": dict_self.lineEdit_media.text().strip(),
             "MEDIA_POPUP_DURATION": float(dict_self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION),
@@ -873,6 +915,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             except Exception:
                 pass
         self.state["log_file"] = None
+        self.refresh_cache_size_display()
 
     def closeEvent(self, event):
         proc = self.state.get("proc")
@@ -893,6 +936,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 f.close()
             except Exception:
                 pass
+
+        # 若為 Session 暫存模式，關閉主程式時自動清除當前 Session 快取目錄
+        if getattr(config, "MAP_CACHE_MODE", "session") == "session":
+            CacheManager.cleanup_current_session()
+
         event.accept()
 
 

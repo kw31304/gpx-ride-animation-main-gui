@@ -29,12 +29,18 @@ except Exception:
 from gpx_renderer import config
 from gpx_renderer.utils import _background_subprocess_kwargs
 from gpx_renderer.core.data import RideData, load_gpx, format_seconds_human
-from gpx_renderer.core.map_utils import build_overview_raster_map
+from gpx_renderer.core.map_utils import RasterMap, choose_map_style, build_overview_raster_map
 from gpx_renderer.core.encoder import (
-    find_ffmpeg, choose_encoder, build_ffmpeg_command, encode_video,
-    _concat_mp4_segments, _encode_end_segment,
+    find_ffmpeg,
+    encoder_works,
+    choose_encoder,
+    build_ffmpeg_command,
+    encode_video,
+    _concat_mp4_segments,
+    _encode_end_segment,
 )
 from gpx_renderer.core.renderer import RideRenderer
+from gpx_renderer.core.cache_manager import CacheManager
 
 
 @dataclass
@@ -447,6 +453,10 @@ def _encode_chunk_with_renderer(renderer: RideRenderer, task: SegmentTask, ffmpe
 def _dynamic_worker_loop(worker_id: int, worker_cfg: DynamicWorkerConfig, task_queue, result_queue):
     try:
         config.apply_render_config(worker_cfg.settings)
+        session_id = str(worker_cfg.settings.get("MAP_CACHE_SESSION_ID") or "")
+        if session_id:
+            CacheManager.set_session_id(session_id)
+        CacheManager.init_cache_system()
         if HAVE_CV2:
             try:
                 cv2.setNumThreads(max(1, int(config.CV2_THREADS_PER_WORKER)))
@@ -669,6 +679,11 @@ def render_job(config_dict: dict | None = None):
     """實際渲染入口。可由 CLI 或 Tkinter 啟動的子程序呼叫。"""
     config_dict = dict(config_dict or {})
     config.apply_render_config(config_dict)
+
+    session_id = str(config_dict.get("MAP_CACHE_SESSION_ID") or config.MAP_CACHE_SESSION_ID or "")
+    if session_id:
+        CacheManager.set_session_id(session_id)
+    CacheManager.init_cache_system()
 
     if config_dict.get("gpx_filename"):
         config.gpx_filename = str(config_dict["gpx_filename"])
