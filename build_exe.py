@@ -46,6 +46,12 @@ def main():
         pass
 
     if not ffmpeg_src or not ffmpeg_src.exists():
+        root_ffmpeg = project_root.parent / "ffmpeg.exe"
+        if root_ffmpeg.exists():
+            ffmpeg_src = root_ffmpeg
+            print(f"[OK] 找到專案根目錄 FFmpeg 核心：{ffmpeg_src}")
+
+    if not ffmpeg_src or not ffmpeg_src.exists():
         system_ffmpeg = shutil.which("ffmpeg")
         if system_ffmpeg:
             ffmpeg_src = Path(system_ffmpeg)
@@ -63,7 +69,8 @@ def main():
 
     # 4. 檢查與準備 PyInstaller .spec 設定檔
     spec_file = project_root / "GPX_Ride_Renderer.spec"
-    dist_dir = project_root / "dist"
+    dist_dir = project_root.parent / "gpx-ride-animation-releases"
+    dist_dir.mkdir(parents=True, exist_ok=True)
 
     if not spec_file.exists():
         print(f"[WARN] 未找到 {spec_file.name}，正在自動建立最新標準打包設定檔...")
@@ -158,13 +165,15 @@ coll = COLLECT(
         "-m",
         "PyInstaller",
         "--noconfirm",
+        "--distpath",
+        str(dist_dir),
         str(spec_file),
     ]
 
-    print("[INFO] 正在執行 PyInstaller 編譯打包 (讀取 GPX_Ride_Renderer.spec)...")
+    print(f"[INFO] 正在執行 PyInstaller 編譯打包至 {dist_dir} (讀取 GPX_Ride_Renderer.spec)...")
     subprocess.check_call(cmd, cwd=str(project_root))
 
-    # 4. 複製 ffmpeg.exe 至 EXE 輸出資料夾
+    # 5. 複製 ffmpeg.exe 至 EXE 輸出資料夾
     target_output_dir = dist_dir / "GPX_Ride_Renderer"
     if ffmpeg_src and ffmpeg_src.exists():
         dest_ffmpeg = target_output_dir / "ffmpeg.exe"
