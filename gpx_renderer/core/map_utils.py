@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 import sys
+import json
 from dataclasses import dataclass
 from collections import OrderedDict
 import numpy as np
@@ -201,6 +202,28 @@ def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback
 
     print(f"\n[PREFETCH] 掃描到路線涵蓋 {total_chunks} 個局部底圖區塊 (Zoom {zoom})，開始預熱快取...")
 
+    # 輸出初始 0% 進度 JSON
+    initial_payload = {
+        "stage": "prefetch",
+        "status": f"預先下載底圖中 (0/{total_chunks})",
+        "pct": 0.0,
+        "chunks_done": 0,
+        "chunks_total": total_chunks,
+        "rendered": 0,
+        "total": total_chunks,
+        "fps": None,
+        "eta_seconds": None,
+        "workers": [
+            {
+                "id": w + 1,
+                "status": "等待底圖預熱",
+                "pct": 0.0,
+            }
+            for w in range(min(6, max(1, int(getattr(config, "RENDER_WORKERS", 1)))))
+        ],
+    }
+    print("\n[PROGRESS_JSON]" + json.dumps(initial_payload, ensure_ascii=False), flush=True)
+
     half_x = margin_x + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
     half_y = margin_y + step * 0.5 + float(config.LOCAL_CHUNK_BUFFER_M)
     is_3d = (getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain")
@@ -223,10 +246,32 @@ def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback
         except Exception as exc:
             print(f"[WARN] 預抓底圖區塊 ({gx}, {gy}) 失敗：{exc}")
 
+        pct = (i / float(total_chunks)) * 100.0
         if callback:
             callback(i, total_chunks, f"預熱底圖 ({i}/{total_chunks})")
-        elif i % max(1, total_chunks // 10) == 0 or i == total_chunks:
-            pct = (i / float(total_chunks)) * 100.0
+        else:
+            progress_payload = {
+                "stage": "prefetch",
+                "status": f"預先下載底圖中 ({i}/{total_chunks})",
+                "pct": round(pct, 1),
+                "chunks_done": i,
+                "chunks_total": total_chunks,
+                "rendered": i,
+                "total": total_chunks,
+                "fps": None,
+                "eta_seconds": None,
+                "workers": [
+                    {
+                        "id": w + 1,
+                        "status": "預熱底圖中",
+                        "pct": round(pct, 1),
+                    }
+                    for w in range(min(6, max(1, int(getattr(config, "RENDER_WORKERS", 1)))))
+                ],
+            }
+            print("\n[PROGRESS_JSON]" + json.dumps(progress_payload, ensure_ascii=False), flush=True)
+
+        if i % max(1, total_chunks // 10) == 0 or i == total_chunks:
             print(f"   預熱進度：{i}/{total_chunks} ({pct:.1f}%)")
 
     print(f"[OK] 路線 {total_chunks} 個底圖區塊已全部預先快取完成！所有 Worker 均可 100% 本機離線讀取。\n")

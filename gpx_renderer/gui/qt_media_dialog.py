@@ -36,6 +36,7 @@ MAP_PROVIDERS = {
     "Google 混合衛星 (Hybrid)": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     "Google 街道地圖 (Roadmap)": "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
     "Google 地形圖 (Terrain)": "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
+    "戶外等高線 (OpenTopoMap)": cx.providers.OpenTopoMap,
     "深色高對比 (Dark Matter)": cx.providers.CartoDB.DarkMatter,
 }
 

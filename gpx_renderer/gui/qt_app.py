@@ -747,49 +747,74 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 json_str = line.split(sep, 1)[1].strip()
                 data = json.loads(json_str)
                 pct = float(data.get("pct", data.get("progress_percent", 0.0)))
-                self.progressBar_main.setValue(int(round(pct)))
+                stage = data.get("stage", "render")
 
-                rendered = data.get("rendered")
-                total = data.get("total")
-                if rendered is not None and total is not None:
+                if stage == "prefetch":
+                    self.progressBar_main.setValue(int(round(pct)))
+                    chunks_done = data.get("chunks_done", data.get("rendered", 0))
+                    chunks_total = data.get("chunks_total", data.get("total", 0))
+
                     if hasattr(self, "label_eta_frames"):
-                        self.label_eta_frames.setText(f"已完成幀數: {rendered} / {total}")
-
-                fps = data.get("fps")
-                if fps is not None:
+                        self.label_eta_frames.setText(f"底圖區塊: {chunks_done} / {chunks_total}")
                     if hasattr(self, "label_eta_speed"):
-                        self.label_eta_speed.setText(f"渲染速度: {fps:.1f} frame/s")
-
-                eta_sec = data.get("eta_seconds")
-                if eta_sec is not None and eta_sec >= 0:
+                        self.label_eta_speed.setText("下載底圖切片與 DEM...")
                     if hasattr(self, "label_eta_time"):
-                        self.label_eta_time.setText(f"預估剩餘時間: {format_seconds_human(eta_sec)}")
-                    eta_finish = time.strftime("%H:%M:%S", time.localtime(time.time() + eta_sec))
+                        self.label_eta_time.setText("預熱本機 SSD 快取")
                     if hasattr(self, "label_eta_clock"):
-                        self.label_eta_clock.setText(f"預計完成時刻: {eta_finish}")
+                        self.label_eta_clock.setText("完成後即刻啟動渲染")
+
+                    status = str(data.get("status", f"下載底圖中 ({chunks_done}/{chunks_total})"))
+                    self.set_status_message(f"{status} ({pct:.1f}%)")
+
+                    workers_data = data.get("workers", [])
+                    for i in range(len(self.worker_bars)):
+                        self.worker_bars[i].setValue(int(round(pct)))
+                        if i < len(self.worker_status_labels):
+                            self.worker_status_labels[i].setText("預熱底圖中")
                 else:
-                    if hasattr(self, "label_eta_time"):
-                        self.label_eta_time.setText("預估剩餘時間: --")
-                    if hasattr(self, "label_eta_clock"):
-                        self.label_eta_clock.setText("預計完成時刻: --:--:--")
+                    self.progressBar_main.setValue(int(round(pct)))
 
-                status = str(data.get("status", "渲染中"))
-                self.set_status_message(f"{status} ({pct:.1f}%)")
+                    rendered = data.get("rendered")
+                    total = data.get("total")
+                    if rendered is not None and total is not None:
+                        if hasattr(self, "label_eta_frames"):
+                            self.label_eta_frames.setText(f"已完成幀數: {rendered} / {total}")
 
-                # 解析每位 Worker 的進度
-                workers_data = data.get("workers", [])
-                for i, w_item in enumerate(workers_data):
-                    if isinstance(w_item, dict):
-                        w_pct = float(w_item.get("pct", 0.0))
-                        w_status = str(w_item.get("status", "待命"))
+                    fps = data.get("fps")
+                    if fps is not None:
+                        if hasattr(self, "label_eta_speed"):
+                            self.label_eta_speed.setText(f"渲染速度: {fps:.1f} frame/s")
+
+                    eta_sec = data.get("eta_seconds")
+                    if eta_sec is not None and eta_sec >= 0:
+                        if hasattr(self, "label_eta_time"):
+                            self.label_eta_time.setText(f"預估剩餘時間: {format_seconds_human(eta_sec)}")
+                        eta_finish = time.strftime("%H:%M:%S", time.localtime(time.time() + eta_sec))
+                        if hasattr(self, "label_eta_clock"):
+                            self.label_eta_clock.setText(f"預計完成時刻: {eta_finish}")
                     else:
-                        w_pct = float(w_item)
-                        w_status = f"{w_pct:.0f}%"
+                        if hasattr(self, "label_eta_time"):
+                            self.label_eta_time.setText("預估剩餘時間: --")
+                        if hasattr(self, "label_eta_clock"):
+                            self.label_eta_clock.setText("預計完成時刻: --:--:--")
 
-                    if i < len(self.worker_bars):
-                        self.worker_bars[i].setValue(int(round(w_pct)))
-                    if i < len(self.worker_status_labels):
-                        self.worker_status_labels[i].setText(w_status)
+                    status = str(data.get("status", "渲染中"))
+                    self.set_status_message(f"{status} ({pct:.1f}%)")
+
+                    # 解析每位 Worker 的進度
+                    workers_data = data.get("workers", [])
+                    for i, w_item in enumerate(workers_data):
+                        if isinstance(w_item, dict):
+                            w_pct = float(w_item.get("pct", 0.0))
+                            w_status = str(w_item.get("status", "待命"))
+                        else:
+                            w_pct = float(w_item)
+                            w_status = f"{w_pct:.0f}%"
+
+                        if i < len(self.worker_bars):
+                            self.worker_bars[i].setValue(int(round(w_pct)))
+                        if i < len(self.worker_status_labels):
+                            self.worker_status_labels[i].setText(w_status)
             except Exception:
                 pass
 

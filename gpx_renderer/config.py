@@ -106,6 +106,8 @@ MAP_STYLE_OPTIONS = {
     "2": ("全彩導航（標準彩色）", cx.providers.CartoDB.Voyager),
     "3": ("簡約淺灰（極簡淺色）", cx.providers.CartoDB.Positron),
     "4": ("衛星影像（實景空拍）", cx.providers.Esri.WorldImagery),
+    "5": ("戶外等高線（Strava 風格）", cx.providers.OpenTopoMap),
+    "6": ("山岳地形（Google Terrain）", "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"),
 }
 
 # 路線媒體照片/影片
