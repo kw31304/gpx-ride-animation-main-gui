@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer
+from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer, QSettings
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar
 )
@@ -116,6 +116,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             getattr(self, f"lbl_worker_status_{i}", None) for i in range(1, 7)
         ]
         self.worker_status_labels = [l for l in self.worker_status_labels if l is not None]
+
+        # 讀取並還原上次使用者偏好的快取模式 (Session 暫存 或 永久保留)
+        self.settings = QSettings("GPXRideRenderer", "GPXRideRenderer")
+        saved_cache_mode = self.settings.value("map_cache_mode", "session")
+        if str(saved_cache_mode).lower() in ("session", "persistent"):
+            config.MAP_CACHE_MODE = str(saved_cache_mode).lower()
 
         CacheManager.init_cache_system()
 
@@ -230,7 +236,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 9. 快取模式
         self.combo_cache_mode.clear()
         self.combo_cache_mode.addItems(["自動暫存 (關閉清除)", "永久保留 (保留快取)"])
-        self.combo_cache_mode.setCurrentIndex(0 if getattr(config, "MAP_CACHE_MODE", "session") == "session" else 1)
+        self.combo_cache_mode.setCurrentIndex(1 if getattr(config, "MAP_CACHE_MODE", "session") == "persistent" else 0)
 
     def _init_default_values(self):
         self.lineEdit_gpx.setText(str(Path(config.gpx_filename).resolve()))
@@ -348,6 +354,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_cache_mode_change(self, idx: int):
         mode = "session" if idx == 0 else "persistent"
         config.MAP_CACHE_MODE = mode
+        if hasattr(self, "settings"):
+            self.settings.setValue("map_cache_mode", mode)
         CacheManager.init_cache_system()
         self.refresh_cache_size_display()
         self._update_dashboard_summary()
