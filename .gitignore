@@ -35,3 +35,6 @@ logs/
 # 環境變數與認證 Token
 .env
 *.env
+
+# GitHub Release 專用更新說明檔
+release_notes.md

@@ -62,18 +62,18 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
     release_title = f"GPX Ride Renderer v{version}"
 
     body_parts = [f"## GPX Ride Renderer v{version} (Windows 64-bit)\n"]
-    if release_notes:
-        body_parts.append(f"### ✨ 本次更新內容 (What's New)\n{release_notes}\n")
     body_parts.append(
-        f"### 📥 下載與使用說明\n"
+        f"### 下載與使用說明\n"
         f"1. 下載下方 `{zip_file.name}` 壓縮檔。\n"
         f"2. 解壓縮至任意資料夾。\n"
         f"3. 雙擊執行 `GPX_Ride_Renderer.exe` 即可開始使用。\n\n"
-        f"### ⚙️ 特性與需求\n"
+        f"### 系統需求與特性\n"
         f"- 系統支援：Windows 10 / 11 64-bit\n"
         f"- 內建 FFmpeg 核心與完整地圖/3D地形模組\n"
-        f"- 免安裝 Python 環境，開箱即用"
+        f"- 免安裝 Python 環境，開箱即用\n"
     )
+    if release_notes:
+        body_parts.append(f"### 更新內容\n{release_notes}\n")
     release_body = "\n".join(body_parts)
 
     headers = {
@@ -207,6 +207,8 @@ def main():
     github_repo = os.environ.get("GITHUB_REPO") or env_vars.get("GITHUB_REPO", "kw31304/gpx-ride-animation-releases")
 
     dist_dir = project_root.parent / "gpx-ride-animation-releases"
+    zip_filename = f"GPX_Ride_Renderer_v{version}_windows_x64.zip"
+    zip_path = dist_dir / zip_filename
     release_notes = load_release_notes(project_root)
 
     print("=" * 70)
