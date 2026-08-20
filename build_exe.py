@@ -14,16 +14,16 @@ from pathlib import Path
 
 
 def detect_version(project_root: Path) -> str:
-    """自動從 qt_app.py 的 setWindowTitle 中解析版本號。"""
-    qt_app_file = project_root / "gpx_renderer" / "gui" / "qt_app.py"
-    if qt_app_file.exists():
+    """自動從 gpx_renderer/__init__.py 讀取 __version__ 版本號。"""
+    init_file = project_root / "gpx_renderer" / "__init__.py"
+    if init_file.exists():
         try:
-            content = qt_app_file.read_text(encoding="utf-8")
-            match = re.search(r'setWindowTitle\(\s*["\'].*?[vV]?(\d+\.\d+(?:\.\d+)?).*?["\']\s*\)', content)
+            content = init_file.read_text(encoding="utf-8")
+            match = re.search(r'__version__\s*=\s*["\']([0-9\.]+)["\']', content)
             if match:
                 return match.group(1)
         except Exception as e:
-            print(f"[WARN] 讀取 qt_app.py 版本失敗：{e}")
+            print(f"[WARN] 讀取 __init__.py 版本失敗：{e}")
     return "1.0.0"
 
 

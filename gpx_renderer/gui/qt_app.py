@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar
 )
 
-from gpx_renderer import config
+from gpx_renderer import config, __version__
 from gpx_renderer.gui.ui_main_window import Ui_MainWindow
 from gpx_renderer.utils import _self_subprocess_command, application_dir
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
@@ -98,7 +98,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.setWindowTitle("GPX Ride Renderer V1.3.0")
+        self.setWindowTitle(f"GPX Ride Renderer V{__version__}")
 
         self.state = {
             "proc": None, "proc_mode": None, "config_path": None,
