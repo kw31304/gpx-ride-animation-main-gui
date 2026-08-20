@@ -43,12 +43,28 @@ def load_env_vars(project_root: Path) -> dict:
     return env_vars
 
 
-def publish_to_github_release(zip_file: Path, version: str, repo: str, token: str) -> bool:
-    """透過 GitHub REST API 自動建立 Release 並上傳 ZIP 檔案。"""
+def load_release_notes(project_root: Path) -> str:
+    """讀取專案目錄下的 release_notes.md 內容。"""
+    notes_file = project_root / "release_notes.md"
+    if notes_file.exists():
+        try:
+            content = notes_file.read_text(encoding="utf-8-sig").strip()
+            if content:
+                return content
+        except Exception as e:
+            print(f"[WARN] 讀取 release_notes.md 失敗：{e}")
+    return ""
+
+
+def publish_to_github_release(zip_file: Path, version: str, repo: str, token: str, release_notes: str = "") -> bool:
+    """透過 GitHub REST API 自動建立/更新 Release 並上傳 ZIP 檔案。"""
     tag = f"v{version}"
     release_title = f"GPX Ride Renderer v{version}"
-    release_body = (
-        f"## GPX Ride Renderer v{version} (Windows 64-bit)\n\n"
+
+    body_parts = [f"## GPX Ride Renderer v{version} (Windows 64-bit)\n"]
+    if release_notes:
+        body_parts.append(f"### ✨ 本次更新內容 (What's New)\n{release_notes}\n")
+    body_parts.append(
         f"### 📥 下載與使用說明\n"
         f"1. 下載下方 `{zip_file.name}` 壓縮檔。\n"
         f"2. 解壓縮至任意資料夾。\n"
@@ -58,6 +74,7 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
         f"- 內建 FFmpeg 核心與完整地圖/3D地形模組\n"
         f"- 免安裝 Python 環境，開箱即用"
     )
+    release_body = "\n".join(body_parts)
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -76,7 +93,19 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
         with urllib.request.urlopen(req) as resp:
             if resp.status == 200:
                 release_data = json.loads(resp.read().decode("utf-8"))
-                print(f"[INFO] 偵測到既有 Release ({tag})，將直接更新該版本附件...")
+                print(f"[INFO] 偵測到既有 Release ({tag})，正在同步更新發布說明與附件...")
+                # 同步更新說明內容
+                patch_url = f"https://api.github.com/repos/{repo}/releases/{release_data['id']}"
+                patch_payload = json.dumps({"name": release_title, "body": release_body}).encode("utf-8")
+                patch_headers = dict(headers)
+                patch_headers["Content-Type"] = "application/json"
+                patch_req = urllib.request.Request(patch_url, data=patch_payload, headers=patch_headers, method="PATCH")
+                try:
+                    with urllib.request.urlopen(patch_req) as patch_resp:
+                        release_data = json.loads(patch_resp.read().decode("utf-8"))
+                        print("[OK] 已成功同步最新更新說明至 Release！")
+                except Exception as patch_err:
+                    print(f"[WARN] 更新 Release 說明異常：{patch_err}")
     except urllib.error.HTTPError as e:
         if e.code != 404:
             print(f"[ERROR] 查詢 GitHub Release 失敗 (HTTP {e.code})：{e.read().decode('utf-8')}")
@@ -178,14 +207,17 @@ def main():
     github_repo = os.environ.get("GITHUB_REPO") or env_vars.get("GITHUB_REPO", "kw31304/gpx-ride-animation-releases")
 
     dist_dir = project_root.parent / "gpx-ride-animation-releases"
-    zip_filename = f"GPX_Ride_Renderer_v{version}_windows_x64.zip"
-    zip_path = dist_dir / zip_filename
+    release_notes = load_release_notes(project_root)
 
     print("=" * 70)
     print(f"[INFO] GPX Ride Renderer 手動發布至 GitHub Releases")
     print(f"• 目標版本：v{version}")
     print(f"• 目標倉庫：{github_repo}")
     print(f"• 壓縮檔案：{zip_path}")
+    if release_notes:
+        print("• 更新說明：已偵測到 release_notes.md (將自動附加至 Release 說明)")
+    else:
+        print("• 更新說明：未偵測到 release_notes.md (將使用預設說明樣板)")
     print("=" * 70)
 
     if not zip_path.exists():
@@ -208,6 +240,7 @@ def main():
         version=version,
         repo=github_repo,
         token=github_token,
+        release_notes=release_notes,
     )
     if not success:
         sys.exit(1)

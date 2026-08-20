@@ -248,6 +248,8 @@ class Ui_MainWindow(object):
         self.spin_seconds_per_100km.setObjectName(u"spin_seconds_per_100km")
         sizePolicy1.setHeightForWidth(self.spin_seconds_per_100km.sizePolicy().hasHeightForWidth())
         self.spin_seconds_per_100km.setSizePolicy(sizePolicy1)
+        self.spin_seconds_per_100km.setMinimum(1)
+        self.spin_seconds_per_100km.setMaximum(9999)
         self.spin_seconds_per_100km.setValue(60)
 
         self.horizontalLayout_rate.addWidget(self.spin_seconds_per_100km)

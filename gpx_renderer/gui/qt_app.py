@@ -261,6 +261,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spin_fps.setValue(config.FPS)
         self.lineEdit_duration.setText(str(config.VIDEO_DURATION))
         self.chk_auto_duration.setChecked(config.AUTO_DURATION_DEFAULT)
+        self.spin_seconds_per_100km.setRange(1, 9999)
         self.spin_seconds_per_100km.setValue(int(config.AUTO_SECONDS_PER_100KM))
 
         self.lineEdit_zoomout.setText(str(config.ZOOM_OUT_DURATION))
