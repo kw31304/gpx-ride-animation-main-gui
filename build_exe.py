@@ -1,13 +1,50 @@
 # -*- coding: utf-8 -*-
 """
-一鍵自動打包 GPX Ride Renderer 為獨立 Windows EXE 執行檔之建置腳本。
+一鍵自動打包 GPX Ride Renderer 為獨立 Windows EXE 執行檔與 ZIP 壓縮包之建置腳本。
+打包完成後可直接測試，確認無誤後再執行 `python publish_release.py` 發布至 GitHub Releases。
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
+
+
+def detect_version(project_root: Path) -> str:
+    """自動從 qt_app.py 的 setWindowTitle 中解析版本號。"""
+    qt_app_file = project_root / "gpx_renderer" / "gui" / "qt_app.py"
+    if qt_app_file.exists():
+        try:
+            content = qt_app_file.read_text(encoding="utf-8")
+            match = re.search(r'setWindowTitle\(\s*["\'].*?[vV]?(\d+\.\d+(?:\.\d+)?).*?["\']\s*\)', content)
+            if match:
+                return match.group(1)
+        except Exception as e:
+            print(f"[WARN] 讀取 qt_app.py 版本失敗：{e}")
+    return "1.0.0"
+
+
+def compress_to_zip(source_dir: Path, zip_file: Path) -> Path:
+    """將打包產出的資料夾壓縮為 ZIP 檔案。"""
+    print(f"\n[INFO] 正在壓縮發行資料夾至 ZIP：{zip_file.name} ...")
+    if zip_file.exists():
+        try:
+            zip_file.unlink()
+        except Exception:
+            pass
+
+    with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file in source_dir.rglob("*"):
+            if file.is_file():
+                arcname = file.relative_to(source_dir)
+                zf.write(file, arcname)
+
+    size_mb = zip_file.stat().st_size / (1024 * 1024)
+    print(f"[OK] ZIP 壓縮完成！檔案大小：{size_mb:.2f} MB")
+    return zip_file
 
 
 def main():
@@ -17,13 +54,15 @@ def main():
         except Exception:
             pass
 
-    print("=" * 70)
-    print("[INFO] 開始執行 GPX Ride Renderer 一鍵 EXE 打包作業...")
-    print("=" * 70)
-
     project_root = Path(__file__).resolve().parent
-    venv_python = project_root / ".venv" / "Scripts" / "python.exe"
+    version = detect_version(project_root)
 
+    print("=" * 70)
+    print(f"[INFO] 開始執行 GPX Ride Renderer 一鍵 EXE 打包與壓縮作業...")
+    print(f"• 偵測目標版本：v{version}")
+    print("=" * 70)
+
+    venv_python = project_root / ".venv" / "Scripts" / "python.exe"
     if not venv_python.exists():
         venv_python = Path(sys.executable)
 
@@ -181,16 +220,31 @@ coll = COLLECT(
         shutil.copy2(ffmpeg_src, dest_ffmpeg)
 
     exe_path = target_output_dir / "GPX_Ride_Renderer.exe"
-    if exe_path.exists():
-        print("=" * 70)
-        print("[SUCCESS] 打包完成！")
-        print(f"• EXE 執行檔路徑：{exe_path}")
-        print(f"• 發行資料夾路徑：{target_output_dir}")
-        print("=" * 70)
-    else:
+    if not exe_path.exists():
         print("[ERROR] 打包失敗，未能產出 EXE 檔案。")
         sys.exit(1)
+
+    print("=" * 70)
+    print("[SUCCESS] 打包完成！")
+    print(f"• EXE 執行檔路徑：{exe_path}")
+    print(f"• 發行資料夾路徑：{target_output_dir}")
+    print("=" * 70)
+
+    # 6. 自動壓縮為 ZIP 檔案
+    zip_filename = f"GPX_Ride_Renderer_v{version}_windows_x64.zip"
+    zip_path = dist_dir / zip_filename
+    compress_to_zip(target_output_dir, zip_path)
+
+    print("\n" + "=" * 70)
+    print("💡 下一步指引：")
+    print(f"1. 請先前往 `{target_output_dir}` 執行 `GPX_Ride_Renderer.exe` 進行功能測試。")
+    print(f"2. 測試確認無誤後，請在終端機執行：")
+    print(f"   python publish_release.py")
+    print(f"   即可手動將 `{zip_filename}` 發布至 GitHub Releases 公開給其他使用者！")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
     main()
+
+

@@ -31,3 +31,7 @@ logs/
 
 # 底圖快取
 .map_cache/
+
+# 環境變數與認證 Token
+.env
+*.env
