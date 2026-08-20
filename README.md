@@ -102,7 +102,7 @@ gpx_renderer/                        核心模組套件
 
 儲存庫只保留原始碼與建置腳本，不包含大型編譯產物。若只想直接使用程式：
 
-👉 請前往 [GitHub Releases](https://github.com/ccccchhhheeenng/gpx-ride-animation/releases/latest) 下載最新版 `GPX_Ride_Renderer_vX.X.X_windows_x64.zip`，解壓縮後直接執行 `GPX_Ride_Renderer.exe` 即可使用。
+👉 請前往 [GitHub Releases](https://github.com/kw31304/gpx-ride-animation-releases) 下載最新版 `GPX_Ride_Renderer_vX.X.X_windows_x64.zip`，解壓縮後直接執行 `GPX_Ride_Renderer.exe` 即可使用。
 
 ---
 
@@ -138,6 +138,7 @@ build_exe.bat
 ```
 
 打包完成後，將自動產出：
+
 1. `../gpx-ride-animation-releases/GPX_Ride_Renderer/`（已隨附 `ffmpeg.exe` 的獨立執行資料夾）
 2. `../gpx-ride-animation-releases/GPX_Ride_Renderer_v<version>_windows_x64.zip`（發行壓縮包）
 
