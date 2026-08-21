@@ -3,6 +3,7 @@
 手動發布 GPX Ride Renderer 至 GitHub Releases 之專用腳本。
 """
 
+import argparse
 import json
 import os
 import re
@@ -19,9 +20,9 @@ def detect_version(project_root: Path) -> str:
     if init_file.exists():
         try:
             content = init_file.read_text(encoding="utf-8")
-            match = re.search(r'__version__\s*=\s*["\']([0-9\.]+)["\']', content)
+            match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
             if match:
-                return match.group(1)
+                return match.group(1).strip()
         except Exception as e:
             print(f"[WARN] 讀取 __init__.py 版本失敗：{e}")
     return "1.0.0"
@@ -43,17 +44,32 @@ def load_env_vars(project_root: Path) -> dict:
     return env_vars
 
 
-def load_release_notes(project_root: Path) -> str:
-    """讀取專案目錄下的 release_notes.md 內容。"""
+def load_release_notes(project_root: Path) -> tuple[str, str]:
+    """
+    優先讀取 release_notes/ 最新說明的 Markdown 檔案；
+    若無則向下相容讀取根目錄下的 release_notes.md。
+    回傳 (內容, 來源檔案路徑說明)。
+    """
+    notes_dir = project_root / "release_notes"
+    if notes_dir.exists() and notes_dir.is_dir():
+        note_files = sorted(notes_dir.glob("*.md"), key=lambda p: p.name, reverse=True)
+        for note_file in note_files:
+            try:
+                content = note_file.read_text(encoding="utf-8-sig").strip()
+                if content:
+                    return content, f"release_notes/{note_file.name}"
+            except Exception as e:
+                print(f"[WARN] 讀取 {note_file.name} 失敗：{e}")
+
     notes_file = project_root / "release_notes.md"
     if notes_file.exists():
         try:
             content = notes_file.read_text(encoding="utf-8-sig").strip()
             if content:
-                return content
+                return content, "release_notes.md"
         except Exception as e:
             print(f"[WARN] 讀取 release_notes.md 失敗：{e}")
-    return ""
+    return "", ""
 
 
 def publish_to_github_release(zip_file: Path, version: str, repo: str, token: str, release_notes: str = "") -> bool:
@@ -90,7 +106,7 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
     check_url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
     req = urllib.request.Request(check_url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             if resp.status == 200:
                 release_data = json.loads(resp.read().decode("utf-8"))
                 print(f"[INFO] 偵測到既有 Release ({tag})，正在同步更新發布說明與附件...")
@@ -101,7 +117,7 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
                 patch_headers["Content-Type"] = "application/json"
                 patch_req = urllib.request.Request(patch_url, data=patch_payload, headers=patch_headers, method="PATCH")
                 try:
-                    with urllib.request.urlopen(patch_req) as patch_resp:
+                    with urllib.request.urlopen(patch_req, timeout=30) as patch_resp:
                         release_data = json.loads(patch_resp.read().decode("utf-8"))
                         print("[OK] 已成功同步最新更新說明至 Release！")
                 except Exception as patch_err:
@@ -125,7 +141,7 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
         create_headers["Content-Type"] = "application/json"
         create_req = urllib.request.Request(create_url, data=payload, headers=create_headers, method="POST")
         try:
-            with urllib.request.urlopen(create_req) as resp:
+            with urllib.request.urlopen(create_req, timeout=30) as resp:
                 release_data = json.loads(resp.read().decode("utf-8"))
                 print(f"[OK] 成功建立 GitHub Release: {release_title}")
         except urllib.error.HTTPError as e:
@@ -137,10 +153,10 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
                     init_content = base64.b64encode(b"# GPX Ride Renderer Releases\n\nOfficial releases and downloads for GPX Ride Renderer (Windows).\n").decode("utf-8")
                     init_payload = json.dumps({"message": "Initial commit: Initialize repository with README.md", "content": init_content}).encode("utf-8")
                     init_req = urllib.request.Request(f"https://api.github.com/repos/{repo}/contents/README.md", data=init_payload, headers=create_headers, method="PUT")
-                    with urllib.request.urlopen(init_req):
+                    with urllib.request.urlopen(init_req, timeout=30):
                         pass
                     # 重試建立 Release
-                    with urllib.request.urlopen(create_req) as retry_resp:
+                    with urllib.request.urlopen(create_req, timeout=30) as retry_resp:
                         release_data = json.loads(retry_resp.read().decode("utf-8"))
                         print(f"[OK] 倉庫初始化完成，成功建立 GitHub Release: {release_title}")
                 except Exception as init_err:
@@ -161,7 +177,7 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
             del_url = f"https://api.github.com/repos/{repo}/releases/assets/{asset_id}"
             del_req = urllib.request.Request(del_url, headers=headers, method="DELETE")
             try:
-                with urllib.request.urlopen(del_req) as del_resp:
+                with urllib.request.urlopen(del_req, timeout=30) as del_resp:
                     pass
             except Exception as e:
                 print(f"[WARN] 移除舊 Asset 異常：{e}")
@@ -178,7 +194,7 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
 
     upload_req = urllib.request.Request(upload_url, data=data, headers=upload_headers, method="POST")
     try:
-        with urllib.request.urlopen(upload_req) as resp:
+        with urllib.request.urlopen(upload_req, timeout=300) as resp:
             result = json.loads(resp.read().decode("utf-8"))
             download_url = result.get("browser_download_url", "")
             print("=" * 70)
@@ -192,6 +208,14 @@ def publish_to_github_release(zip_file: Path, version: str, repo: str, token: st
         return False
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="手動發布 GPX Ride Renderer 至 GitHub Releases")
+    parser.add_argument("-y", "--yes", action="store_true", help="略過確認提示，直接執行發布")
+    parser.add_argument("--repo", type=str, default="", help="指定目標 GitHub 倉庫 (例如 user/repo)")
+    parser.add_argument("--version", type=str, default="", help="指定發布版本號 (例如 1.3.0)")
+    return parser.parse_args()
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         try:
@@ -199,27 +223,34 @@ def main():
         except Exception:
             pass
 
+    args = parse_args()
     project_root = Path(__file__).resolve().parent
-    version = detect_version(project_root)
+    version = args.version or detect_version(project_root)
     env_vars = load_env_vars(project_root)
 
     github_token = os.environ.get("GITHUB_TOKEN") or env_vars.get("GITHUB_TOKEN", "")
-    github_repo = os.environ.get("GITHUB_REPO") or env_vars.get("GITHUB_REPO", "kw31304/gpx-ride-animation-releases")
+    github_repo = args.repo or os.environ.get("GITHUB_REPO") or env_vars.get("GITHUB_REPO", "kw31304/gpx-ride-animation-releases")
 
-    dist_dir = project_root.parent / "gpx-ride-animation-releases"
     zip_filename = f"GPX_Ride_Renderer_v{version}_windows_x64.zip"
+    dist_dir = project_root.parent / "gpx-ride-animation-releases"
     zip_path = dist_dir / zip_filename
-    release_notes = load_release_notes(project_root)
+
+    if not zip_path.exists():
+        fallback_zip = project_root / "dist" / zip_filename
+        if fallback_zip.exists():
+            zip_path = fallback_zip
+
+    release_notes, notes_source = load_release_notes(project_root)
 
     print("=" * 70)
-    print(f"[INFO] GPX Ride Renderer 手動發布至 GitHub Releases")
+    print(f"[INFO] GPX Ride Renderer 發布至 GitHub Releases")
     print(f"• 目標版本：v{version}")
     print(f"• 目標倉庫：{github_repo}")
     print(f"• 壓縮檔案：{zip_path}")
-    if release_notes:
-        print("• 更新說明：已偵測到 release_notes.md (將自動附加至 Release 說明)")
+    if notes_source:
+        print(f"• 更新說明：已載入 `{notes_source}` (將自動附加至 Release 說明)")
     else:
-        print("• 更新說明：未偵測到 release_notes.md (將使用預設說明樣板)")
+        print("• 更新說明：未偵測到 release notes (將使用預設說明樣板)")
     print("=" * 70)
 
     if not zip_path.exists():
@@ -232,10 +263,11 @@ def main():
         print("請確認專案目錄下的 .env 檔案中是否包含 GITHUB_TOKEN=ghp_xxx")
         sys.exit(1)
 
-    confirm = input(f"\n即將發布 {zip_filename} 至 GitHub ({github_repo})，確認發布？[Y/n]: ").strip().lower()
-    if confirm and confirm != "y":
-        print("[INFO] 已取消發布。")
-        sys.exit(0)
+    if not args.yes:
+        confirm = input(f"\n即將發布 {zip_filename} 至 GitHub ({github_repo})，確認發布？[Y/n]: ").strip().lower()
+        if confirm and confirm != "y":
+            print("[INFO] 已取消發布。")
+            sys.exit(0)
 
     success = publish_to_github_release(
         zip_file=zip_path,
@@ -250,3 +282,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
