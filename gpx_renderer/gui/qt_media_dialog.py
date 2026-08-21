@@ -15,15 +15,15 @@ import numpy as np
 from PIL import Image, ImageOps
 import contextily as cx
 
-from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QUrl, QSize, QObject
+from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QUrl, QSize, QObject, QTimer
 from PySide6.QtGui import (
-    QPainter, QPen, QBrush, QColor, QFont, QPixmap, QImage, QDesktopServices, QCursor
+    QPainter, QPen, QBrush, QColor, QFont, QPixmap, QImage, QDesktopServices, QCursor, QPolygonF
 )
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QLineEdit, QDoubleSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QGroupBox, QMessageBox, QSplitter, QFrame, QScrollArea,
-    QSizePolicy, QCheckBox, QComboBox
+    QSizePolicy, QCheckBox, QComboBox, QSlider
 )
 
 from gpx_renderer.core.media import (
@@ -32,32 +32,43 @@ from gpx_renderer.core.media import (
 from gpx_renderer.core.data import RideData
 
 
-MAP_PROVIDERS = {
-    "Google 混合衛星 (Hybrid)": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-    "Google 街道地圖 (Roadmap)": "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
-    "Google 地形圖 (Terrain)": "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
-    "戶外等高線 (OpenTopoMap)": cx.providers.OpenTopoMap,
-    "深色高對比 (Dark Matter)": cx.providers.CartoDB.DarkMatter,
-}
+# 路線預覽專用 Google 街道圖 (Roadmap)
+GOOGLE_STREETS_URL = "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
 
 
 class MapTileWorker(QObject):
-    """背景非同步下載 Google Map / 瓦片底圖的背景工作元件 (daemon thread)。"""
+    """背景非同步下載 Google 街道地圖瓦片底圖的背景工作元件 (daemon thread)。"""
     tile_ready = Signal(object, float, float, float, float)  # (QImage, left, right, bottom, top)
     fetch_failed = Signal(str)
 
-    def fetch_async(self, west: float, south: float, east: float, north: float, source, zoom="auto"):
+    def fetch_async(self, west: float, south: float, east: float, north: float, source: str = GOOGLE_STREETS_URL, zoom="auto"):
         import threading
         def _task():
             try:
-                img_np, extent = cx.bounds2img(
-                    west, south, east, north,
-                    zoom=zoom,
-                    source=source,
-                    ll=False,
-                    use_cache=True,
-                    max_retries=2,
-                )
+                target_zoom = zoom
+                try:
+                    img_np, extent = cx.bounds2img(
+                        west, south, east, north,
+                        zoom=target_zoom,
+                        source=source,
+                        ll=False,
+                        use_cache=True,
+                        max_retries=2,
+                    )
+                except Exception:
+                    # 若指定高縮放層級超過最大切片數量，自動降階以 auto 備援
+                    if target_zoom != "auto":
+                        img_np, extent = cx.bounds2img(
+                            west, south, east, north,
+                            zoom="auto",
+                            source=source,
+                            ll=False,
+                            use_cache=True,
+                            max_retries=2,
+                        )
+                    else:
+                        raise
+
                 if img_np is None:
                     return
 
@@ -78,7 +89,7 @@ class MapTileWorker(QObject):
 
 
 class QtRoutePreviewWidget(QWidget):
-    """PySide6 向量路線預覽 Canvas，支援 Google Map 底圖、滑鼠滾輪縮放、平移與動態媒體標記點連動。"""
+    """PySide6 向量路線預覽 Canvas，支援 Google 街道圖底圖、多層級動態縮放、平移與動態媒體標記點連動。"""
     item_selected = Signal(int)
 
     def __init__(self, ride_data: RideData, parent=None):
@@ -100,15 +111,23 @@ class QtRoutePreviewWidget(QWidget):
         self.drag_start_pos: Optional[QPointF] = None
         self.is_dragging = False
 
-        # 底圖狀態
-        self.map_source = MAP_PROVIDERS["Google 混合衛星 (Hybrid)"]
+        # 底圖狀態 (固定為 Google 街道圖並支援指定/動態縮放層級)
+        self.map_source = GOOGLE_STREETS_URL
+        self.map_zoom: int | str = "auto"
         self.map_qimage: Optional[QImage] = None
         self.map_extent: Optional[tuple[float, float, float, float]] = None
         self.is_loading_map = False
+        self._current_rendered_zoom: int | str = "auto"
 
         self.map_worker = MapTileWorker(self)
         self.map_worker.tile_ready.connect(self._on_map_tile_ready)
         self.map_worker.fetch_failed.connect(self._on_map_fetch_failed)
+
+        # 動態視野防抖計時器 (避免滑鼠連續滾輪或拖曳時過度請求)
+        self._reload_timer = QTimer(self)
+        self._reload_timer.setSingleShot(True)
+        self._reload_timer.setInterval(200)  # 200ms 防抖
+        self._reload_timer.timeout.connect(self._do_fetch_viewport_basemap)
 
         # 抽樣軌跡點以提升畫圖效率
         step = max(1, len(ride_data.xs) // 600)
@@ -118,28 +137,72 @@ class QtRoutePreviewWidget(QWidget):
         self.setMouseTracking(True)
         self.setMinimumSize(320, 240)
 
-        # 初始非同步下載 Google Map 底圖
-        self.load_basemap()
+        # 初始載入全景視野
+        self.reset_view()
 
-    def load_basemap(self, source_url: Optional[str] = None):
-        """非同步下載涵蓋目前路線邊界之 Google Map 底圖。"""
-        if source_url:
-            self.map_source = source_url
+    def compute_auto_zoom_level(self) -> int:
+        """根據當前 Canvas scale (pixels per meter) 自動計算最佳 Google Map 瓦片層級 (10~19)。"""
+        if self.scale <= 1e-6:
+            return 11
+        try:
+            z_float = math.log2(max(1.0, 156543.03392 * self.scale))
+            z_int = int(round(z_float + 0.3))
+            return max(8, min(19, z_int))
+        except Exception:
+            return 14
 
-        span_x = self.route_w
-        span_y = self.route_h
-        max_span = max(span_x, span_y, 400.0)
-        pad = max_span * 0.4
+    def schedule_basemap_reload(self):
+        """安排防抖延遲下載當前可視範圍之高解析底圖。"""
+        self._reload_timer.start()
 
-        west = float(self.ride_data.xs.min()) - pad
-        east = float(self.ride_data.xs.max()) + pad
-        south = float(self.ride_data.ys.min()) - pad
-        north = float(self.ride_data.ys.max()) + pad
+    def set_map_zoom(self, zoom: int | str):
+        """切換指定瓦片縮放層級並重新下載底圖。"""
+        self.map_zoom = zoom
+        self.schedule_basemap_reload()
 
+    def load_basemap(self, zoom: int | str | None = None):
+        if zoom is not None:
+            self.map_zoom = zoom
+        self.schedule_basemap_reload()
+
+    def _do_fetch_viewport_basemap(self):
+        """非同步下載涵蓋目前視窗視野範圍 (Viewport) 之 Google 街道圖底圖，保證放大後清晰銳利。"""
+        if self.width() <= 10 or self.height() <= 10 or self.scale <= 1e-6:
+            return
+
+        w_meters = self.width() / self.scale
+        h_meters = self.height() / self.scale
+
+        # 加入 35% 邊界緩衝區，避免微幅平移時立刻出現空白邊框
+        pad_w = w_meters * 0.35
+        pad_h = h_meters * 0.35
+
+        west = self.view_center_x - (w_meters * 0.5 + pad_w)
+        east = self.view_center_x + (w_meters * 0.5 + pad_w)
+        south = self.view_center_y - (h_meters * 0.5 + pad_h)
+        north = self.view_center_y + (h_meters * 0.5 + pad_h)
+
+        if self.map_zoom == "auto":
+            target_z = self.compute_auto_zoom_level()
+        else:
+            try:
+                target_z = int(self.map_zoom)
+            except Exception:
+                target_z = self.compute_auto_zoom_level()
+
+        self._current_rendered_zoom = target_z
         self.is_loading_map = True
         self.update()
 
-        self.map_worker.fetch_async(west, south, east, north, self.map_source, zoom="auto")
+        self.map_worker.fetch_async(west, south, east, north, self.map_source, zoom=target_z)
+
+    def zoom_in(self):
+        """畫面視角放大。"""
+        self.zoom(1.25)
+
+    def zoom_out(self):
+        """畫面視角縮小。"""
+        self.zoom(0.8)
 
     def _on_map_tile_ready(self, qimg: QImage, left: float, right: float, bottom: float, top: float):
         self.map_qimage = qimg
@@ -162,18 +225,30 @@ class QtRoutePreviewWidget(QWidget):
         self.view_center_x = float(self.ride_data.route_center_x)
         self.view_center_y = float(self.ride_data.route_center_y)
         self.update()
+        self.schedule_basemap_reload()
+
+    def _get_km_world_coord(self, km: float) -> tuple[float, float]:
+        """利用線性插值極速獲取指定里程在 WebMercator 座標系中的 (wx, wy)。"""
+        if km < 0 or len(self.ride_data.distances) == 0:
+            return float(self.ride_data.route_center_x), float(self.ride_data.route_center_y)
+        wx = float(np.interp(km, self.ride_data.distances, self.ride_data.xs))
+        wy = float(np.interp(km, self.ride_data.distances, self.ride_data.ys))
+        return wx, wy
 
     def zoom(self, factor: float, center_pt: Optional[QPointF] = None):
         self.scale = max(1e-4, min(100.0, self.scale * factor))
         self.update()
+        self.schedule_basemap_reload()
 
     def focus_active(self):
         if self.active_km >= 0 and len(self.ride_data.distances) > 0:
-            dists = np.abs(self.ride_data.distances - self.active_km)
-            best_i = int(np.argmin(dists))
-            self.view_center_x = float(self.ride_data.xs[best_i])
-            self.view_center_y = float(self.ride_data.ys[best_i])
+            self.view_center_x, self.view_center_y = self._get_km_world_coord(self.active_km)
             self.update()
+            self.schedule_basemap_reload()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.schedule_basemap_reload()
 
     def _world_to_canvas(self, wx: float, wy: float) -> tuple[float, float]:
         cx = self.width() * 0.5
@@ -185,6 +260,7 @@ class QtRoutePreviewWidget(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         painter.fillRect(self.rect(), QColor("#121820"))
 
         if self.scale == 1.0 and self.width() > 10 and self.height() > 10:
@@ -198,45 +274,38 @@ class QtRoutePreviewWidget(QWidget):
             dest_rect = QRectF(px_l, py_t, px_r - px_l, py_b - py_t)
             painter.drawImage(dest_rect, self.map_qimage)
 
-        # 2. 繪製軌跡主線段 (底層黑邊光暈 + 頂層青色高亮)
-        pts = []
-        for x, y in zip(self.sampled_xs, self.sampled_ys):
-            px, py = self._world_to_canvas(x, y)
-            pts.append(QPointF(px, py))
+        # 2. 向量化繪製軌跡主線段 (C++ Qt Polyline 快速渲染)
+        if len(self.sampled_xs) > 1:
+            cx = self.width() * 0.5
+            cy = self.height() * 0.5
+            pxs = cx + (self.sampled_xs - self.view_center_x) * self.scale
+            pys = cy - (self.sampled_ys - self.view_center_y) * self.scale
+            poly = QPolygonF([QPointF(x, y) for x, y in zip(pxs, pys)])
 
-        # 2.1 黑色外框 (保證在衛星或淺色底圖上極高辨識度)
-        pen_outline = QPen(QColor(0, 0, 0, 180), 5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-        painter.setPen(pen_outline)
-        for i in range(len(pts) - 1):
-            painter.drawLine(pts[i], pts[i + 1])
+            # 2.1 黑色外框光暈 (增強對比)
+            pen_outline = QPen(QColor(0, 0, 0, 180), 5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            painter.setPen(pen_outline)
+            painter.drawPolyline(poly)
 
-        # 2.2 青色核心軌跡
-        pen_route = QPen(QColor("#00e5ff"), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-        painter.setPen(pen_route)
-        for i in range(len(pts) - 1):
-            painter.drawLine(pts[i], pts[i + 1])
+            # 2.2 青色核心軌跡
+            pen_route = QPen(QColor("#00e5ff"), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            painter.setPen(pen_route)
+            painter.drawPolyline(poly)
 
-        # 起點 (綠色) 與 終點 (紅色)
-        if pts:
-            spx, spy = pts[0].x(), pts[0].y()
-            epx, epy = pts[-1].x(), pts[-1].y()
-
-            # 起點
+            # 起點 (綠色) 與 終點 (紅色)
+            spx, spy = pxs[0], pys[0]
+            epx, epy = pxs[-1], pys[-1]
             painter.setPen(QPen(QColor("#ffffff"), 1.8))
             painter.setBrush(QBrush(QColor("#4caf50")))
             painter.drawEllipse(QPointF(spx, spy), 7, 7)
 
-            # 終點
             painter.setPen(QPen(QColor("#ffffff"), 1.8))
             painter.setBrush(QBrush(QColor("#f44336")))
             painter.drawEllipse(QPointF(epx, epy), 7, 7)
 
-        # 3. 繪製所有媒體標記點
+        # 3. 繪製所有媒體標記點 (使用 O(1) 座標快查，無繁複 numpy 搜尋)
         for i, item in enumerate(self.media_items):
-            km = item.current_km
-            dists = np.abs(self.ride_data.distances - km)
-            idx = int(np.argmin(dists))
-            wx, wy = float(self.ride_data.xs[idx]), float(self.ride_data.ys[idx])
+            wx, wy = self._get_km_world_coord(item.current_km)
             px, py = self._world_to_canvas(wx, wy)
 
             is_sel = (i == self.selected_index)
@@ -255,9 +324,7 @@ class QtRoutePreviewWidget(QWidget):
 
         # 4. 高亮選取中的標記資訊框
         if self.active_km >= 0 and len(self.ride_data.distances) > 0:
-            dists = np.abs(self.ride_data.distances - self.active_km)
-            idx = int(np.argmin(dists))
-            wx, wy = float(self.ride_data.xs[idx]), float(self.ride_data.ys[idx])
+            wx, wy = self._get_km_world_coord(self.active_km)
             apx, apy = self._world_to_canvas(wx, wy)
 
             painter.setPen(QPen(QColor("#ffab40"), 2.5))
@@ -265,8 +332,8 @@ class QtRoutePreviewWidget(QWidget):
             painter.drawEllipse(QPointF(apx, apy), 15, 15)
 
             # Bubble text
-            txt = f"{self.active_km:.1f} km"
-            bw = max(64, len(txt) * 9)
+            txt = f"{self.active_km:.2f} km"
+            bw = max(68, len(txt) * 9)
             bh = 20
             bx = apx - bw / 2
             by = apy - 34
@@ -283,21 +350,40 @@ class QtRoutePreviewWidget(QWidget):
         if self.is_loading_map:
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(0, 0, 0, 180)))
-            painter.drawRoundedRect(QRectF(self.width() - 170, 8, 162, 24), 4, 4)
+            painter.drawRoundedRect(QRectF(self.width() - 190, 8, 182, 24), 4, 4)
             painter.setPen(QPen(QColor("#ffcc00")))
             painter.setFont(QFont("Segoe UI", 8))
-            painter.drawText(QRectF(self.width() - 170, 8, 162, 24), Qt.AlignCenter, "📡 載入 Google Map 底圖中...")
+            painter.drawText(QRectF(self.width() - 190, 8, 182, 24), Qt.AlignCenter, "📡 載入 Google 街道圖中...")
 
-        # 水印
-        painter.setPen(QPen(QColor(255, 255, 255, 120)))
-        painter.setFont(QFont("Segoe UI", 7))
-        painter.drawText(QRectF(8, self.height() - 20, 150, 16), Qt.AlignLeft | Qt.AlignVCenter, "Google Maps Imagery")
+        # 水印標籤
+        painter.setPen(QPen(QColor(0, 0, 0, 160)))
+        painter.setFont(QFont("Segoe UI", 7, QFont.Bold))
+        painter.drawText(QRectF(9, self.height() - 19, 180, 16), Qt.AlignLeft | Qt.AlignVCenter, "Google Maps 街道圖")
+        painter.setPen(QPen(QColor(255, 255, 255, 200)))
+        painter.drawText(QRectF(8, self.height() - 20, 180, 16), Qt.AlignLeft | Qt.AlignVCenter, "Google Maps 街道圖")
 
     # --- 滑鼠互動事件 ---
     def wheelEvent(self, event):
         delta = event.angleDelta().y()
-        factor = 1.15 if delta > 0 else 0.85
-        self.zoom(factor)
+        if delta == 0:
+            return
+        factor = 1.18 if delta > 0 else 1.0 / 1.18
+
+        # 依滑鼠游標位置為中心平滑縮放 (如同 Google Maps)
+        cursor_pos = event.position()
+        cx = self.width() * 0.5
+        cy = self.height() * 0.5
+
+        old_wx = self.view_center_x + (cursor_pos.x() - cx) / self.scale
+        old_wy = self.view_center_y - (cursor_pos.y() - cy) / self.scale
+
+        self.scale = max(1e-4, min(100.0, self.scale * factor))
+
+        self.view_center_x = old_wx - (cursor_pos.x() - cx) / self.scale
+        self.view_center_y = old_wy + (cursor_pos.y() - cy) / self.scale
+
+        self.update()
+        self.schedule_basemap_reload()
 
     def mousePressEvent(self, event):
         if event.button() in (Qt.LeftButton, Qt.RightButton):
@@ -307,16 +393,13 @@ class QtRoutePreviewWidget(QWidget):
             # 判斷點擊近距離媒體標記
             click_pt = event.position()
             for i, item in enumerate(self.media_items):
-                km = item.current_km
-                dists = np.abs(self.ride_data.distances - km)
-                idx = int(np.argmin(dists))
-                wx, wy = float(self.ride_data.xs[idx]), float(self.ride_data.ys[idx])
+                wx, wy = self._get_km_world_coord(item.current_km)
                 px, py = self._world_to_canvas(wx, wy)
 
                 dist = math.hypot(click_pt.x() - px, click_pt.y() - py)
                 if dist <= 15:
                     self.selected_index = i
-                    self.active_km = km
+                    self.active_km = item.current_km
                     self.item_selected.emit(i)
                     self.update()
                     break
@@ -331,8 +414,13 @@ class QtRoutePreviewWidget(QWidget):
             self.update()
 
     def mouseReleaseEvent(self, event):
-        self.is_dragging = False
-        self.drag_start_pos = None
+        if self.is_dragging:
+            self.is_dragging = False
+            self.drag_start_pos = None
+            self.schedule_basemap_reload()
+        else:
+            self.is_dragging = False
+            self.drag_start_pos = None
 
 class ClickablePreviewLabel(QLabel):
     """支援點擊開啟原圖之預覽圖片標籤元件。"""
@@ -370,6 +458,7 @@ class QtMediaManagerDialog(QDialog):
         self.media_path = media_path
         self.total_distance_km = max(0.1, float(ride_data.distances[-1])) if len(ride_data.distances) > 0 else 100.0
         self.selected_index = -1
+        self.deleted_filenames: set[str] = set()
         self.result_overrides: Dict[str, dict] = {}
         self._pixmap_cache: Dict[str, Optional[QPixmap]] = {}
         self._raw_img_dims: Dict[str, tuple[int, int]] = {}
@@ -393,19 +482,19 @@ class QtMediaManagerDialog(QDialog):
 
         # 1. 頂部控制列
         top_group = QGroupBox(" 媒體播放與相機時間校正 ")
+        top_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         top_layout = QVBoxLayout(top_group)
-        top_layout.setSpacing(4)
+        top_layout.setContentsMargins(10, 8, 10, 8)
+        top_layout.setSpacing(6)
 
+        # 第 1 列：相機時間校正說明與照片提示
         row1 = QHBoxLayout()
-        lbl_title = QLabel("路線媒體管理器與照片標籤編輯器")
-        lbl_title.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        row1.addWidget(lbl_title)
-        lbl_sub = QLabel("（相片已依拍攝時間/GPS自動配對，可在地圖上拖拉微調並自訂文字標籤）")
-        lbl_sub.setStyleSheet("color: #718096;")
-        row1.addWidget(lbl_sub)
-        row1.addStretch()
+        lbl_info = QLabel("💡 說明：若相機或 GoPro 時間未校時，可在此填寫秒數統一校正所有媒體的匹配里程。")
+        lbl_info.setStyleSheet("color: #a0aec0; font-size: 11px;")
+        row1.addWidget(lbl_info)
         top_layout.addLayout(row1)
 
+        # 第 2 列：媒體停留秒數、秒數微調輸入與重新對齊按鈕
         row2 = QHBoxLayout()
         row2.addWidget(QLabel("媒體停留秒數："))
         self.spin_media_dur = QDoubleSpinBox()
@@ -415,8 +504,8 @@ class QtMediaManagerDialog(QDialog):
         self.spin_media_dur.setSuffix(" 秒")
         row2.addWidget(self.spin_media_dur)
 
-        row2.addSpacing(20)
-        row2.addWidget(QLabel("相機時間校正："))
+        row2.addSpacing(16)
+        row2.addWidget(QLabel("相機時間校正偏移："))
         self.spin_media_offset = QDoubleSpinBox()
         self.spin_media_offset.setRange(-86400, 86400)
         self.spin_media_offset.setSingleStep(1.0)
@@ -429,13 +518,13 @@ class QtMediaManagerDialog(QDialog):
         btn_realign.clicked.connect(self._recalculate_time_offset)
         row2.addWidget(btn_realign)
 
-        lbl_hint = QLabel("💡 相機時間慢 1 分鐘請填 60 秒；快 1 分鐘請填 -60 秒")
+        lbl_hint = QLabel("💡 提示：慢 1 分鐘填 60 秒；快 1 分鐘填 -60 秒")
         lbl_hint.setStyleSheet("color: #718096; font-size: 11px;")
         row2.addWidget(lbl_hint)
         row2.addStretch()
         top_layout.addLayout(row2)
 
-        main_layout.addWidget(top_group)
+        main_layout.addWidget(top_group, 0)
 
         # 2. 中間水平 Splitter (左側：清單+地圖上下排列 | 右側：照片預覽與編輯區)
         main_splitter = QSplitter(Qt.Horizontal)
@@ -448,7 +537,8 @@ class QtMediaManagerDialog(QDialog):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(0)
 
-        left_vsplitter = QSplitter(Qt.Vertical)
+        self.left_vsplitter = QSplitter(Qt.Vertical)
+        self.left_vsplitter.setChildrenCollapsible(False)
 
         # 2.1.1 上半部：媒體清單列表
         table_container = QWidget()
@@ -461,46 +551,52 @@ class QtMediaManagerDialog(QDialog):
         table_vbox.addWidget(self.lbl_table_header)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["檔名", "類型", "拍攝時間", "匹配里程 (km)", "自訂說明"])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["檔名", "類型", "拍攝時間", "匹配里程 (km)", "自訂說明", "操作"])
+        self.table.verticalHeader().setDefaultSectionSize(28)
+        self.table.verticalHeader().setVisible(False)
         
-        # 欄位寬度自適應設置：類型、時間、里程依內容緊湊排版，檔名與自訂說明彈性伸展
+        # 欄位寬度自適應設置：類型、時間、里程、操作依內容緊湊排版，檔名與自訂說明彈性伸展
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.Stretch)
-        header.setStretchLastSection(True)
-        header.setMinimumSectionSize(60)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setMinimumSectionSize(55)
 
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setAlternatingRowColors(True)
         self.table.itemSelectionChanged.connect(self._on_table_select)
+        self.table.itemChanged.connect(self._on_table_item_changed)
         table_vbox.addWidget(self.table)
 
-        left_vsplitter.addWidget(table_container)
+        self.left_vsplitter.addWidget(table_container)
 
-        # 2.1.2 下半部：路線軌跡與 Google Map 底圖預覽
+        # 2.1.2 下半部：路線軌跡與 Google 街道圖預覽
         map_container = QWidget()
         map_vbox = QVBoxLayout(map_container)
         map_vbox.setContentsMargins(0, 4, 0, 0)
         map_vbox.setSpacing(4)
 
         map_toolbar = QHBoxLayout()
-        lbl_map_header = QLabel("路線軌跡與 Google Map 預覽")
+        lbl_map_header = QLabel("路線軌跡與 Google 街道圖預覽")
         lbl_map_header.setFont(QFont("Segoe UI", 9, QFont.Bold))
         map_toolbar.addWidget(lbl_map_header)
 
         map_toolbar.addStretch()
 
-        map_toolbar.addWidget(QLabel("底圖風格："))
-        self.combo_map_type = QComboBox()
-        self.combo_map_type.addItems(list(MAP_PROVIDERS.keys()))
-        self.combo_map_type.setCurrentText("Google 混合衛星 (Hybrid)")
-        self.combo_map_type.currentIndexChanged.connect(self._on_map_style_changed)
-        map_toolbar.addWidget(self.combo_map_type)
+        btn_zoom_in = QPushButton("➕ 放大")
+        btn_zoom_in.setToolTip("放大視角 (Canvas Zoom In)")
+        btn_zoom_in.clicked.connect(lambda: self.preview_widget.zoom_in())
+        map_toolbar.addWidget(btn_zoom_in)
+
+        btn_zoom_out = QPushButton("➖ 縮小")
+        btn_zoom_out.setToolTip("縮小視角 (Canvas Zoom Out)")
+        btn_zoom_out.clicked.connect(lambda: self.preview_widget.zoom_out())
+        map_toolbar.addWidget(btn_zoom_out)
 
         btn_reset_view = QPushButton("🔄 視野置中")
         btn_reset_view.setToolTip("重設視角至路線全景中央")
@@ -519,11 +615,13 @@ class QtMediaManagerDialog(QDialog):
         lbl_map_hint.setAlignment(Qt.AlignCenter)
         map_vbox.addWidget(lbl_map_hint)
 
-        left_vsplitter.addWidget(map_container)
+        self.left_vsplitter.addWidget(map_container)
 
-        # 設定左側垂直 Splitter 上下比例 (清單約 260px，地圖約 320px)
-        left_vsplitter.setSizes([260, 320])
-        left_layout.addWidget(left_vsplitter)
+        # 設定左側垂直 Splitter 上下比例與延展因子 (穩定版面高度避免刪除項目時震盪)
+        self.left_vsplitter.setStretchFactor(0, 1)
+        self.left_vsplitter.setStretchFactor(1, 1)
+        self.left_vsplitter.setSizes([260, 320])
+        left_layout.addWidget(self.left_vsplitter)
 
         main_splitter.addWidget(left_panel)
 
@@ -535,17 +633,18 @@ class QtMediaManagerDialog(QDialog):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # 2.2.1 照片縮圖預覽卡片
+        # 2.2.1 照片縮圖預覽卡片 (固定高度避免直/橫式照片造成外框高度波動)
         preview_group = QGroupBox(" 媒體照片預覽 ")
+        preview_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         preview_vbox = QVBoxLayout(preview_group)
         preview_vbox.setContentsMargins(8, 8, 8, 8)
         preview_vbox.setSpacing(6)
 
-        # 照片縮圖容器 (支援點擊開啟原圖)
+        # 照片縮圖容器 (固定 210px 高度視框)
         self.lbl_preview_image = ClickablePreviewLabel()
         self.lbl_preview_image.setAlignment(Qt.AlignCenter)
-        self.lbl_preview_image.setMinimumSize(280, 190)
-        self.lbl_preview_image.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.lbl_preview_image.setFixedHeight(210)
+        self.lbl_preview_image.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.lbl_preview_image.setStyleSheet(
             "background-color: #1a202c; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;"
         )
@@ -564,6 +663,7 @@ class QtMediaManagerDialog(QDialog):
 
         # 2.2.2 拍攝與 EXIF 詳細資訊卡片
         info_group = QGroupBox(" 拍攝與 EXIF 資訊 ")
+        info_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         info_layout = QGridLayout(info_group)
         info_layout.setContentsMargins(8, 8, 8, 8)
         info_layout.setHorizontalSpacing(8)
@@ -597,8 +697,9 @@ class QtMediaManagerDialog(QDialog):
 
         right_layout.addWidget(info_group)
 
-        # 2.2.3 屬性編輯卡片
+        # 2.2.3 屬性編輯卡片 (即時自動儲存與雙向連動)
         edit_group = QGroupBox(" 編輯選取相片屬性 ")
+        edit_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         edit_layout = QGridLayout(edit_group)
         edit_layout.setContentsMargins(8, 8, 8, 8)
         edit_layout.setSpacing(6)
@@ -611,20 +712,27 @@ class QtMediaManagerDialog(QDialog):
         self.spin_manual_km = QDoubleSpinBox()
         self.spin_manual_km.setRange(0.0, self.total_distance_km)
         self.spin_manual_km.setSingleStep(0.1)
+        self.spin_manual_km.setDecimals(2)
         self.spin_manual_km.setSuffix(f" / {self.total_distance_km:.1f} km")
         self.spin_manual_km.setEnabled(False)
         self.spin_manual_km.valueChanged.connect(self._on_manual_km_value_change)
         edit_layout.addWidget(self.spin_manual_km, 1, 1)
 
-        edit_layout.addWidget(QLabel("自訂說明文字："), 2, 0)
+        edit_layout.addWidget(QLabel("路線位置滑桿："), 2, 0)
+        self.slider_manual_km = QSlider(Qt.Horizontal)
+        self.slider_manual_km.setRange(0, max(1, int(round(self.total_distance_km * 100))))
+        self.slider_manual_km.setSingleStep(10)  # 0.1 km
+        self.slider_manual_km.setPageStep(100)  # 1.0 km
+        self.slider_manual_km.setEnabled(False)
+        self.slider_manual_km.setCursor(QCursor(Qt.PointingHandCursor))
+        self.slider_manual_km.valueChanged.connect(self._on_slider_km_value_change)
+        edit_layout.addWidget(self.slider_manual_km, 2, 1)
+
+        edit_layout.addWidget(QLabel("自訂說明文字："), 3, 0)
         self.line_caption = QLineEdit()
         self.line_caption.setPlaceholderText("例如：合歡山主峰登山口 3158m")
-        edit_layout.addWidget(self.line_caption, 2, 1)
-
-        btn_apply_item = QPushButton("套用此項修改")
-        btn_apply_item.setStyleSheet("font-weight: bold; padding: 4px;")
-        btn_apply_item.clicked.connect(self._apply_current_edit)
-        edit_layout.addWidget(btn_apply_item, 3, 0, 1, 2)
+        self.line_caption.textChanged.connect(self._on_caption_text_changed)
+        edit_layout.addWidget(self.line_caption, 3, 1)
 
         right_layout.addWidget(edit_group)
         right_layout.addStretch()
@@ -654,51 +762,306 @@ class QtMediaManagerDialog(QDialog):
 
         main_layout.addLayout(bottom_bar)
 
-    def _on_map_style_changed(self):
-        style_name = self.combo_map_type.currentText()
-        source_url = MAP_PROVIDERS.get(style_name)
-        if source_url:
-            self.preview_widget.load_basemap(source_url)
+    def _delete_media_item(self, item: MediaItem):
+        """從清單中移除個別項目，並記錄至排除集合。"""
+        res = QMessageBox.question(
+            self,
+            "確認移除",
+            f"確定要從媒體清單中移除「{item.filename}」嗎？\n（此操作僅自本次清單排除，不會刪除硬碟原始檔案）",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if res != QMessageBox.Yes:
+            return
+
+        # 記錄為已排除
+        self.deleted_filenames.add(item.filename)
+
+        del_idx = self.media_items.index(item) if item in self.media_items else -1
+        if del_idx >= 0:
+            self.media_items.pop(del_idx)
+
+        self.preview_widget.media_items = self.media_items
+
+        if not self.media_items:
+            self.selected_index = -1
+            self.lbl_preview_image.setText("📷 清單已無媒體項目")
+            self.lbl_preview_image.setPixmap(QPixmap())
+            self.btn_view_full.setEnabled(False)
+            self.lbl_info_filename.setText("-")
+            self.lbl_info_time.setText("-")
+            self.lbl_info_gps.setText("-")
+            self.lbl_info_res.setText("-")
+            self.lbl_info_match.setText("-")
+            self.chk_manual_km.setChecked(False)
+            self.spin_manual_km.setValue(0.0)
+            self.slider_manual_km.setValue(0)
+            self.line_caption.setText("")
+            self.preview_widget.selected_index = -1
+            self.preview_widget.active_km = -1.0
+            self._populate_tree()
+        else:
+            # 平滑單列移除，避免全表重建引發版面高度震盪
+            saved_sizes = getattr(self, "left_vsplitter", None)
+            sizes = saved_sizes.sizes() if saved_sizes else None
+            self.table.blockSignals(True)
+            self.table.setUpdatesEnabled(False)
+            try:
+                self.table.removeRow(del_idx)
+                # 重新綁定後續列的刪除按鈕
+                for r in range(del_idx, self.table.rowCount()):
+                    r_item = self.media_items[r]
+                    btn_del = self.table.cellWidget(r, 5)
+                    if btn_del:
+                        try:
+                            btn_del.clicked.disconnect()
+                        except Exception:
+                            pass
+                        btn_del.clicked.connect(lambda _, cur=r_item: self._delete_media_item(cur))
+                self.lbl_table_header.setText(f"媒體清單 (共 {len(self.media_items)} 項)")
+            finally:
+                self.table.setUpdatesEnabled(True)
+                self.table.blockSignals(False)
+                if sizes and sum(sizes) > 0 and saved_sizes:
+                    saved_sizes.setSizes(sizes)
+
+            next_idx = min(max(0, del_idx), len(self.media_items) - 1)
+            self.table.selectRow(next_idx)
+
+            # 即時刷新右側媒體照片預覽、拍攝資訊與地圖視角
+            self.selected_index = next_idx
+            item_now = self.media_items[next_idx]
+            self._update_photo_preview(item_now)
+            self.preview_widget.selected_index = next_idx
+            self.preview_widget.active_km = item_now.current_km
+            self.preview_widget.focus_active()
+
+        self.preview_widget.update()
 
     def _populate_tree(self):
         self.lbl_table_header.setText(f"媒體清單 (共 {len(self.media_items)} 項)")
+        saved_sizes = getattr(self, "left_vsplitter", None)
+        sizes = saved_sizes.sizes() if saved_sizes else None
+
         self.table.blockSignals(True)
-        self.table.setRowCount(0)
+        self.table.setUpdatesEnabled(False)
+        try:
+            self.table.setRowCount(0)
 
-        for i, item in enumerate(self.media_items):
-            self.table.insertRow(i)
+            for i, item in enumerate(self.media_items):
+                self.table.insertRow(i)
 
-            ts_str = item.timestamp.strftime("%Y-%m-%d %H:%M:%S") if item.timestamp else "--"
-            km = item.current_km
-            km_label = f"{km:.2f} (手動)" if (item.manual_distance_km is not None and item.manual_distance_km >= 0) else f"{km:.2f}"
-            type_label = "🎬 影片" if item.media_type == "video" else "📷 相片"
+                ts_str = item.timestamp.strftime("%Y-%m-%d %H:%M:%S") if item.timestamp else "--"
+                km = item.current_km
+                km_label = f"{km:.2f} (手動)" if (item.manual_distance_km is not None and item.manual_distance_km >= 0) else f"{km:.2f}"
+                type_label = "🎬 影片" if item.media_type == "video" else "📷 相片"
 
-            item_fn = QTableWidgetItem(item.filename)
-            item_fn.setToolTip(item.file_path)
-            self.table.setItem(i, 0, item_fn)
+                item_fn = QTableWidgetItem(item.filename)
+                item_fn.setToolTip(item.file_path)
+                item_fn.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                self.table.setItem(i, 0, item_fn)
 
-            item_type = QTableWidgetItem(type_label)
-            item_type.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(i, 1, item_type)
+                item_type = QTableWidgetItem(type_label)
+                item_type.setTextAlignment(Qt.AlignCenter)
+                item_type.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                self.table.setItem(i, 1, item_type)
 
-            item_ts = QTableWidgetItem(ts_str)
-            item_ts.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(i, 2, item_ts)
+                item_ts = QTableWidgetItem(ts_str)
+                item_ts.setTextAlignment(Qt.AlignCenter)
+                item_ts.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                self.table.setItem(i, 2, item_ts)
 
-            item_km = QTableWidgetItem(km_label)
-            item_km.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(i, 3, item_km)
+                # 匹配里程欄位：支援雙擊直接手動輸入里程 (km)
+                item_km = QTableWidgetItem(km_label)
+                item_km.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                item_km.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+                item_km.setToolTip("雙擊可直接輸入自訂手動里程 (km)")
+                self.table.setItem(i, 3, item_km)
 
-            item_cap = QTableWidgetItem(item.caption or "")
-            self.table.setItem(i, 4, item_cap)
+                # 自訂說明欄位：支援雙擊直接編輯文字
+                item_cap = QTableWidgetItem(item.caption or "")
+                item_cap.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+                item_cap.setToolTip("雙擊可直接編輯說明文字")
+                self.table.setItem(i, 4, item_cap)
 
-        # 欄位內容自適應緊湊調整
-        self.table.resizeColumnToContents(1)
-        self.table.resizeColumnToContents(2)
-        self.table.resizeColumnToContents(3)
+                # 操作欄位：個別刪除按鈕
+                btn_del = QPushButton("🗑️ 刪除")
+                btn_del.setToolTip(f"從清單中移除「{item.filename}」")
+                btn_del.setCursor(QCursor(Qt.PointingHandCursor))
+                btn_del.setStyleSheet("""
+                    QPushButton {
+                        background-color: #2d3748;
+                        color: #feb2b2;
+                        border: 1px solid #4a5568;
+                        border-radius: 3px;
+                        padding: 2px 6px;
+                        font-size: 11px;
+                    }
+                    QPushButton:hover {
+                        background-color: #e53e3e;
+                        color: #ffffff;
+                        border-color: #c53030;
+                    }
+                    QPushButton:pressed {
+                        background-color: #9b2c2c;
+                    }
+                """)
+                btn_del.clicked.connect(lambda _, cur_item=item: self._delete_media_item(cur_item))
+                self.table.setCellWidget(i, 5, btn_del)
 
-        self.table.blockSignals(False)
+            # 欄位內容自適應緊湊調整
+            self.table.resizeColumnToContents(1)
+            self.table.resizeColumnToContents(2)
+            self.table.resizeColumnToContents(3)
+            self.table.resizeColumnToContents(5)
+        finally:
+            self.table.setUpdatesEnabled(True)
+            self.table.blockSignals(False)
+            if sizes and sum(sizes) > 0 and saved_sizes:
+                saved_sizes.setSizes(sizes)
+
         self.preview_widget.update()
+
+    def _sync_table_km_cell(self, row: int, item: MediaItem):
+        """將 MediaItem 當前里程即時同步至表格第 3 欄 (匹配里程)。"""
+        self.table.blockSignals(True)
+        km_item = self.table.item(row, 3)
+        if km_item:
+            km_label = f"{item.current_km:.2f} (手動)" if (item.manual_distance_km is not None and item.manual_distance_km >= 0) else f"{item.current_km:.2f}"
+            km_item.setText(km_label)
+        self.table.blockSignals(False)
+
+    def _on_table_item_changed(self, table_item: QTableWidgetItem):
+        """處理表格內直接編輯里程或說明的事件，即時自動更新並連動右側編輯區與地圖。"""
+        if not table_item or self.table.signalsBlocked():
+            return
+        row = table_item.row()
+        col = table_item.column()
+        if not (0 <= row < len(self.media_items)):
+            return
+
+        item = self.media_items[row]
+        if col == 3:
+            # 1. 編輯里程欄位
+            txt = table_item.text().strip()
+            import re
+            m = re.search(r"[-+]?(?:\d*\.\d+|\d+)", txt)
+            if m:
+                try:
+                    val = float(m.group(0))
+                    val = max(0.0, min(self.total_distance_km, val))
+                    item.manual_distance_km = round(val, 2)
+                except Exception:
+                    pass
+            else:
+                if not txt or txt == "--":
+                    item.manual_distance_km = None
+
+            # 規範化儲存格顯示文字
+            self._sync_table_km_cell(row, item)
+
+            # 若為當前選取項，即時同步右側控制項與地圖
+            if row == self.selected_index:
+                self._update_photo_preview(item)
+                self.preview_widget.active_km = item.current_km
+                self.preview_widget.focus_active()
+            self.preview_widget.update()
+
+        elif col == 4:
+            # 2. 編輯說明欄位
+            item.caption = table_item.text().strip()
+            if row == self.selected_index:
+                self.line_caption.blockSignals(True)
+                self.line_caption.setText(item.caption)
+                self.line_caption.blockSignals(False)
+
+    def _on_caption_text_changed(self, text: str):
+        """右側說明輸入框內容變更時，即時自動儲存並同步至表格第 4 欄。"""
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            item.caption = text.strip()
+            self.table.blockSignals(True)
+            cap_item = self.table.item(self.selected_index, 4)
+            if cap_item:
+                cap_item.setText(item.caption)
+            self.table.blockSignals(False)
+
+    def _on_manual_km_toggled(self, checked: bool):
+        self.spin_manual_km.setEnabled(checked)
+        self.slider_manual_km.setEnabled(checked)
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            if checked:
+                item.manual_distance_km = round(self.spin_manual_km.value(), 2)
+            else:
+                item.manual_distance_km = None
+
+            self._sync_table_km_cell(self.selected_index, item)
+
+            if checked:
+                self.lbl_info_match.setText(f"📍 {item.current_km:.2f} km (手動指定)")
+                self.lbl_info_match.setStyleSheet("color: #ecc94b; font-weight: bold;")
+            else:
+                self.lbl_info_match.setText(f"📍 {item.current_km:.2f} km (自動匹配)")
+                self.lbl_info_match.setStyleSheet("color: #63b3ed; font-weight: bold;")
+
+            self.preview_widget.active_km = item.current_km
+            self.preview_widget.focus_active()
+            self.preview_widget.update()
+
+    def _on_manual_km_value_change(self, val: float):
+        if 0 <= self.selected_index < len(self.media_items):
+            self.slider_manual_km.blockSignals(True)
+            self.slider_manual_km.setValue(int(round(val * 100)))
+            self.slider_manual_km.blockSignals(False)
+
+            if self.chk_manual_km.isChecked():
+                item = self.media_items[self.selected_index]
+                item.manual_distance_km = round(val, 2)
+                self._sync_table_km_cell(self.selected_index, item)
+
+                self.preview_widget.active_km = float(val)
+                self.preview_widget.focus_active()
+                self.preview_widget.update()
+                self.lbl_info_match.setText(f"📍 {val:.2f} km (手動指定)")
+                self.lbl_info_match.setStyleSheet("color: #ecc94b; font-weight: bold;")
+
+    def _on_slider_km_value_change(self, int_val: int):
+        val = int_val / 100.0
+        if 0 <= self.selected_index < len(self.media_items):
+            self.spin_manual_km.blockSignals(True)
+            self.spin_manual_km.setValue(val)
+            self.spin_manual_km.blockSignals(False)
+
+            if self.chk_manual_km.isChecked():
+                item = self.media_items[self.selected_index]
+                item.manual_distance_km = round(val, 2)
+                self._sync_table_km_cell(self.selected_index, item)
+
+                self.preview_widget.active_km = float(val)
+                self.preview_widget.focus_active()
+                self.preview_widget.update()
+                self.lbl_info_match.setText(f"📍 {val:.2f} km (手動指定)")
+                self.lbl_info_match.setStyleSheet("color: #ecc94b; font-weight: bold;")
+
+    def _on_save_and_apply(self):
+        overrides = {}
+        # 記錄已排除/刪除之檔案
+        for fn in self.deleted_filenames:
+            overrides[fn] = {
+                "excluded": True,
+                "deleted": True,
+            }
+
+        # 記錄目前保留項目之屬性覆寫
+        for item in self.media_items:
+            if item.caption or (item.manual_distance_km is not None and item.manual_distance_km >= 0):
+                overrides[item.filename] = {
+                    "caption": item.caption,
+                    "manual_distance_km": item.manual_distance_km,
+                }
+        self.result_overrides = overrides
+        self.accept()
 
     def _load_item_pixmap(self, item: MediaItem) -> Optional[QPixmap]:
         """從快取或檔案讀取經 EXIF 旋轉校正之 QPixmap。"""
@@ -723,11 +1086,11 @@ class QtMediaManagerDialog(QDialog):
 
     def _update_photo_preview(self, item: MediaItem):
         """更新右側預覽圖片與 EXIF 拍攝詳細資訊。"""
-        # 1. 讀取並渲染縮圖
+        # 1. 讀取並渲染縮圖 (固定在 210px 視框內依比例置中縮放，不引發幾何尺寸抖動)
         pixmap = self._load_item_pixmap(item)
         if pixmap and not pixmap.isNull():
-            lbl_w = max(240, self.lbl_preview_image.width() - 10)
-            lbl_h = max(180, self.lbl_preview_image.height() - 10)
+            lbl_w = max(240, self.lbl_preview_image.width() - 8)
+            lbl_h = 200  # 固定在預覽視框高度內
             scaled_pix = pixmap.scaled(
                 lbl_w, lbl_h, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
@@ -778,15 +1141,19 @@ class QtMediaManagerDialog(QDialog):
         # 3. 更新屬性編輯區
         self.chk_manual_km.blockSignals(True)
         self.spin_manual_km.blockSignals(True)
+        self.slider_manual_km.blockSignals(True)
         self.line_caption.blockSignals(True)
 
         self.chk_manual_km.setChecked(is_manual)
         self.spin_manual_km.setEnabled(is_manual)
+        self.slider_manual_km.setEnabled(is_manual)
         self.spin_manual_km.setValue(km)
+        self.slider_manual_km.setValue(int(round(km * 100)))
         self.line_caption.setText(item.caption or "")
 
         self.chk_manual_km.blockSignals(False)
         self.spin_manual_km.blockSignals(False)
+        self.slider_manual_km.blockSignals(False)
         self.line_caption.blockSignals(False)
 
     def _on_table_select(self):
@@ -809,21 +1176,6 @@ class QtMediaManagerDialog(QDialog):
         if 0 <= idx < self.table.rowCount():
             self.table.selectRow(idx)
 
-    def _on_manual_km_toggled(self, checked: bool):
-        self.spin_manual_km.setEnabled(checked)
-        if 0 <= self.selected_index < len(self.media_items):
-            item = self.media_items[self.selected_index]
-            if checked:
-                item.manual_distance_km = round(self.spin_manual_km.value(), 2)
-            else:
-                item.manual_distance_km = None
-            self._apply_current_edit()
-
-    def _on_manual_km_value_change(self, val: float):
-        if self.chk_manual_km.isChecked() and 0 <= self.selected_index < len(self.media_items):
-            self.preview_widget.active_km = float(val)
-            self.preview_widget.update()
-
     def _open_full_media(self):
         """以作業系統預設照片檢視器開啟原檔。"""
         if 0 <= self.selected_index < len(self.media_items):
@@ -840,40 +1192,21 @@ class QtMediaManagerDialog(QDialog):
             self._update_photo_preview(self.media_items[self.selected_index])
         QMessageBox.information(self, "完成", f"已重新根據校正時間 {offset_sec}s 配對媒體位置！")
 
-    def _apply_current_edit(self):
-        if 0 <= self.selected_index < len(self.media_items):
-            item = self.media_items[self.selected_index]
-            if self.chk_manual_km.isChecked():
-                item.manual_distance_km = round(self.spin_manual_km.value(), 2)
-            else:
-                item.manual_distance_km = None
-
-            item.caption = self.line_caption.text().strip()
-
-            cur_row = self.selected_index
-            self._populate_tree()
-            self.table.selectRow(cur_row)
-
     def _reset_all(self):
-        if QMessageBox.question(self, "確認重置", "確定要重置所有相片的手動里程與說明文字嗎？") == QMessageBox.Yes:
-            for item in self.media_items:
-                item.manual_distance_km = None
-                item.caption = ""
+        if QMessageBox.question(self, "確認重置", "確定要重置所有相片的手動里程、說明文字與已刪除的媒體項目嗎？") == QMessageBox.Yes:
+            self.deleted_filenames.clear()
+            if self.media_path and Path(self.media_path).exists():
+                from gpx_renderer.core.media import scan_media_files
+                self.media_items = scan_media_files(self.media_path, time_offset_sec=self.spin_media_offset.value())
+                match_media_to_ride(self.media_items, self.ride_data, self.ride_data.gpx_times, time_offset_sec=self.spin_media_offset.value())
+            else:
+                for item in self.media_items:
+                    item.manual_distance_km = None
+                    item.caption = ""
+            self.preview_widget.media_items = self.media_items
             self._populate_tree()
             if self.media_items:
                 self.table.selectRow(0)
-
-    def _on_save_and_apply(self):
-        self._apply_current_edit()
-        overrides = {}
-        for item in self.media_items:
-            if item.caption or (item.manual_distance_km is not None and item.manual_distance_km >= 0):
-                overrides[item.filename] = {
-                    "caption": item.caption,
-                    "manual_distance_km": item.manual_distance_km,
-                }
-        self.result_overrides = overrides
-        self.accept()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

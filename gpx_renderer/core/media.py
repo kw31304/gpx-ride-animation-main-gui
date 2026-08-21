@@ -224,6 +224,9 @@ def scan_media_files(
             my = float(my_arr[0])
 
         item_ovr = overrides.get(f.name) or overrides.get(str(f)) or {}
+        if item_ovr.get("excluded") or item_ovr.get("deleted"):
+            continue
+
         caption = str(item_ovr.get("caption", "") or "")
         man_dist = item_ovr.get("manual_distance_km")
         if man_dist is not None:
