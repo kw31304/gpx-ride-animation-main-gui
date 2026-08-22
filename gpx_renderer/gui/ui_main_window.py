@@ -974,7 +974,7 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"GPX Ride Renderer V1.3.0", None))
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"GPX Ride Renderer V1.3.2", None))
         self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"\u9032\u968e\u8a2d\u5b9a", None))
 #if QT_CONFIG(tooltip)
         self.lbl_custom_res.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
