@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 GPX Ride Renderer - 打包與發布視覺化管理中心 (Release Manager GUI)
 支援 PySide6 原生介面，具備以下功能：
@@ -505,11 +505,11 @@ class ReleaseManagerWindow(QMainWindow):
         self.edit_pub_tag.setText(f"v{version}")
         self.edit_pub_title.setText(f"GPX Ride Renderer v{version}")
         zip_filename = f"GPX_Ride_Renderer_v{version}_windows_x64.zip"
-        expected_zip = self.project_root / "dist" / zip_filename
+        expected_zip = self._get_dist_dir() / zip_filename
         if not expected_zip.exists():
-            release_repo_zip = self.project_root.parent / "gpx-ride-animation-releases" / zip_filename
-            if release_repo_zip.exists():
-                expected_zip = release_repo_zip
+            fallback_zip = self.project_root / "dist" / zip_filename
+            if fallback_zip.exists():
+                expected_zip = fallback_zip
         self.edit_pub_zip.setText(str(expected_zip))
 
     def _load_release_notes_list(self):
@@ -631,9 +631,16 @@ class ReleaseManagerWindow(QMainWindow):
             self._log(f"[ERROR] ❌ 打包失敗 (退出代碼 {returncode})\n")
             QMessageBox.critical(self, "失敗", f"打包失敗，退出代碼：{returncode}")
 
+    def _get_dist_dir(self) -> Path:
+        """取得發行輸出目錄 (預設 D:\\gpx-ride-animation-releases)"""
+        d = Path("D:/gpx-ride-animation-releases")
+        if d.parent.exists():
+            return d
+        return self.project_root.parent / "gpx-ride-animation-releases"
+
     def _open_dist_folder(self):
-        """開啟 dist 產出資料夾"""
-        dist_dir = self.project_root / "dist"
+        """開啟發行輸出資料夾"""
+        dist_dir = self._get_dist_dir()
         if not dist_dir.exists():
             dist_dir.mkdir(parents=True, exist_ok=True)
         if sys.platform == "win32":
@@ -643,17 +650,18 @@ class ReleaseManagerWindow(QMainWindow):
 
     def _test_run_exe(self):
         """測試啟動打包好的 EXE"""
-        exe_path = self.project_root / "dist" / "GPX_Ride_Renderer" / "GPX_Ride_Renderer.exe"
+        dist_dir = self._get_dist_dir()
+        exe_path = dist_dir / "GPX_Ride_Renderer" / "GPX_Ride_Renderer.exe"
         if not exe_path.exists():
             QMessageBox.warning(self, "找不到檔案", f"找不到打包產物：\n{exe_path}\n請先執行打包作業。")
             return
-        self._log(f"[INFO] 正在啟動測試執行檔：{exe_path.name}")
+        self._log(f"[INFO] 正在啟動測試執行檔：{exe_path}")
         subprocess.Popen([str(exe_path)], cwd=str(exe_path.parent))
 
     def _browse_publish_zip(self):
         """選擇發布 ZIP 檔案"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "選擇要發布的 ZIP 檔案", str(self.project_root / "dist"), "ZIP Files (*.zip)"
+            self, "選擇要發布的 ZIP 檔案", str(self._get_dist_dir()), "ZIP Files (*.zip)"
         )
         if file_path:
             self.edit_pub_zip.setText(file_path)

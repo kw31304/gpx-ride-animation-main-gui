@@ -109,7 +109,7 @@ def main():
 
     # 4. 檢查與準備 PyInstaller .spec 設定檔
     spec_file = project_root / "GPX_Ride_Renderer.spec"
-    dist_dir = project_root.parent / "gpx-ride-animation-releases"
+    dist_dir = Path("D:/gpx-ride-animation-releases") if Path("D:/").exists() else (project_root.parent / "gpx-ride-animation-releases")
     dist_dir.mkdir(parents=True, exist_ok=True)
 
     if not spec_file.exists():
@@ -235,6 +235,16 @@ coll = COLLECT(
     zip_filename = f"GPX_Ride_Renderer_v{version}_windows_x64.zip"
     zip_path = dist_dir / zip_filename
     compress_to_zip(target_output_dir, zip_path)
+
+    # 7. 打包編譯完成後自動刪除 build 暫存資料夾
+    build_dir = project_root / "build"
+    if build_dir.exists():
+        print(f"\n[INFO] 正在自動清理 build 編譯暫存資料夾：{build_dir} ...")
+        try:
+            shutil.rmtree(build_dir, ignore_errors=True)
+            print("[OK] build 編譯暫存資料夾已自動刪除！")
+        except Exception as e:
+            print(f"[WARN] 清理 build 資料夾失敗：{e}")
 
     print("\n" + "=" * 70)
     print("💡 下一步指引：")
