@@ -49,6 +49,7 @@ def fetch_dem_tile(tx: int, ty: int, zoom: int) -> np.ndarray:
     file_path = dem_dir / f"dem_{zoom}_{tx}_{ty}.png"
 
     if not file_path.exists():
+        CacheManager.record_dem_miss()
         url = f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{zoom}/{tx}/{ty}.png"
         req = urllib.request.Request(url, headers={"User-Agent": "GPX-Ride-Renderer/2.0"})
         tmp_file = dem_dir / f"dem_{zoom}_{tx}_{ty}.tmp_{os.getpid()}"
@@ -57,6 +58,7 @@ def fetch_dem_tile(tx: int, ty: int, zoom: int) -> np.ndarray:
                 data = resp.read()
                 tmp_file.write_bytes(data)
                 tmp_file.replace(file_path)
+                CacheManager.touch_file(file_path)
         except Exception:
             if tmp_file.exists():
                 try:
@@ -69,6 +71,7 @@ def fetch_dem_tile(tx: int, ty: int, zoom: int) -> np.ndarray:
             return elev_flat
     else:
         CacheManager.touch_file(file_path)
+        CacheManager.record_dem_hit()
 
     try:
         with Image.open(file_path) as img:

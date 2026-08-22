@@ -41,6 +41,7 @@ def _safe_cached_tile_retryer(tile_url, wait, max_retries, headers: dict[str, st
             with Image.open(tile_file) as img:
                 arr = np.asarray(img.convert("RGBA"))
             CacheManager.touch_file(tile_file)
+            CacheManager.record_tile_hit()
             return arr
         except Exception:
             try:
@@ -55,6 +56,7 @@ def _safe_cached_tile_retryer(tile_url, wait, max_retries, headers: dict[str, st
         _ORIGINAL_CT_RETRYER = ct._retryer
 
     arr = _ORIGINAL_CT_RETRYER(tile_url, wait, max_retries, headers, timeout=timeout)
+    CacheManager.record_tile_miss()
 
     # 3. 原子寫入本機 PNG 快取
     tmp_file = tiles_dir / f"{url_hash}.tmp_{os.getpid()}_{time.time_ns()}"
@@ -76,6 +78,60 @@ def _safe_cached_tile_retryer(tile_url, wait, max_retries, headers: dict[str, st
 class CacheManager:
     _SESSION_ID: str = f"session_{os.getpid()}_{int(time.time())}"
     _INITIALIZED: bool = False
+    _STATS: dict[str, int] = {
+        "tile_hits": 0,
+        "tile_misses": 0,
+        "dem_hits": 0,
+        "dem_misses": 0,
+    }
+
+    @classmethod
+    def reset_stats(cls):
+        """重置圖資快取命中/未命中計數器"""
+        cls._STATS = {
+            "tile_hits": 0,
+            "tile_misses": 0,
+            "dem_hits": 0,
+            "dem_misses": 0,
+        }
+
+    @classmethod
+    def record_tile_hit(cls):
+        cls._STATS["tile_hits"] = cls._STATS.get("tile_hits", 0) + 1
+
+    @classmethod
+    def record_tile_miss(cls):
+        cls._STATS["tile_misses"] = cls._STATS.get("tile_misses", 0) + 1
+
+    @classmethod
+    def record_dem_hit(cls):
+        cls._STATS["dem_hits"] = cls._STATS.get("dem_hits", 0) + 1
+
+    @classmethod
+    def record_dem_miss(cls):
+        cls._STATS["dem_misses"] = cls._STATS.get("dem_misses", 0) + 1
+
+    @classmethod
+    def get_stats(cls) -> dict:
+        """取得快取命中、未命中與再利用率 (Hit Rate %) 統計"""
+        t_hits = cls._STATS.get("tile_hits", 0)
+        t_miss = cls._STATS.get("tile_misses", 0)
+        d_hits = cls._STATS.get("dem_hits", 0)
+        d_miss = cls._STATS.get("dem_misses", 0)
+        tot_hits = t_hits + d_hits
+        tot_miss = t_miss + d_miss
+        tot_req = tot_hits + tot_miss
+        hit_rate = (tot_hits / float(tot_req) * 100.0) if tot_req > 0 else 0.0
+        return {
+            "tile_hits": t_hits,
+            "tile_misses": t_miss,
+            "dem_hits": d_hits,
+            "dem_misses": d_miss,
+            "total_hits": tot_hits,
+            "total_misses": tot_miss,
+            "total_requests": tot_req,
+            "hit_rate_pct": round(hit_rate, 2),
+        }
 
     @classmethod
     def get_base_dir(cls) -> Path:

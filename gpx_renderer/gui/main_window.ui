@@ -781,6 +781,13 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_eta">
             <item>
+             <widget class="QLabel" name="label_eta_elapsed">
+              <property name="text">
+               <string>渲染計時: 00:00:00</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QLabel" name="label_eta_time">
               <property name="text">
                <string>預估剩餘時間: --</string>

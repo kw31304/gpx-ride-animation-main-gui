@@ -55,6 +55,47 @@ def _blend_rgba_overlay_np(canvas: np.ndarray, overlay: np.ndarray, x: int, y: i
         dst[:] = np.clip(src[:, :, :3].astype(np.float32) * alpha + dst.astype(np.float32) * (1.0 - alpha), 0, 255).astype(np.uint8)
 
 
+def _compute_ease_curve(
+    n_frames: int,
+    ease_in: bool = True,
+    ease_out: bool = True,
+    fps: int = 60,
+    ease_in_sec: float = 1.2,
+    ease_out_sec: float = 1.5,
+) -> np.ndarray:
+    """產生 C1 平滑 Hermite 緩動曲線 (u in [0, 1])，支援進站平滑減速 (Ease-Out) 與出站平滑加速 (Ease-In)。"""
+    if n_frames <= 3:
+        return np.linspace(0.0, 1.0, n_frames)
+
+    t_in = min(0.35, (ease_in_sec * fps) / n_frames) if ease_in else 0.0
+    t_out = min(0.35, (ease_out_sec * fps) / n_frames) if ease_out else 0.0
+
+    if t_in + t_out > 0.8:
+        scale = 0.8 / (t_in + t_out)
+        t_in *= scale
+        t_out *= scale
+
+    t_samples = np.linspace(0.0, 1.0, n_frames)
+    v = np.ones(n_frames, dtype=np.float64)
+
+    for idx, t in enumerate(t_samples):
+        if t_in > 0 and t < t_in:
+            p = t / t_in
+            v[idx] = 3.0 * (p ** 2) - 2.0 * (p ** 3)
+        elif t_out > 0 and t > (1.0 - t_out):
+            p = (1.0 - t) / t_out
+            v[idx] = 3.0 * (p ** 2) - 2.0 * (p ** 3)
+        else:
+            v[idx] = 1.0
+
+    # 限制微小底速避免梯度完全歸零，保持陣列嚴格單調遞增
+    v = np.clip(v, 0.001, 1.0)
+    u = np.zeros(n_frames, dtype=np.float64)
+    u[1:] = np.cumsum(0.5 * (v[:-1] + v[1:]))
+    u /= u[-1]
+    return u
+
+
 class RideRenderer:
     def __init__(
         self,
@@ -152,7 +193,19 @@ class RideRenderer:
             for k_idx in range(len(spots) - 1):
                 s0, s1 = spots[k_idx], spots[k_idx + 1]
                 seg_frames = max(1, int(round(base_ride_frames * (span_weights[k_idx] / total_weight))))
-                endpoint_flag = (k_idx == len(spots) - 2)
+
+                # 判斷是否需要進站減速與出站加速
+                is_s0_media = (s0 in cluster_by_spot) or (k_idx == 0)
+                is_s1_media = (s1 in cluster_by_spot) or (k_idx == len(spots) - 2)
+
+                u_curve = _compute_ease_curve(
+                    seg_frames,
+                    ease_in=is_s0_media,
+                    ease_out=is_s1_media,
+                    fps=self.fps,
+                    ease_in_sec=1.2,
+                    ease_out_sec=1.5,
+                )
 
                 if use_real:
                     try:
@@ -161,20 +214,20 @@ class RideRenderer:
                         elapsed_sub = np.array([(t.replace(tzinfo=None) - tb).total_seconds() for t in times_sub], dtype=np.float64)
                         tot_t = elapsed_sub[-1]
                         if tot_t > 0:
-                            t_targets = np.linspace(0, tot_t, seg_frames, endpoint=endpoint_flag)
+                            t_targets = u_curve * tot_t
                             pts_sub = np.arange(s0, s1 + 1)
                             seg_indices = np.interp(t_targets, elapsed_sub, pts_sub).astype(np.int32)
                         else:
                             d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
-                            target_dists = np.linspace(d0, d1, seg_frames, endpoint=endpoint_flag)
+                            target_dists = d0 + u_curve * (d1 - d0)
                             seg_indices = np.interp(target_dists, self.d.distances[s0:s1 + 1], np.arange(s0, s1 + 1)).astype(np.int32)
                     except Exception:
                         d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
-                        target_dists = np.linspace(d0, d1, seg_frames, endpoint=endpoint_flag)
+                        target_dists = d0 + u_curve * (d1 - d0)
                         seg_indices = np.interp(target_dists, self.d.distances[s0:s1 + 1], np.arange(s0, s1 + 1)).astype(np.int32)
                 else:
                     d0, d1 = float(self.d.distances[s0]), float(self.d.distances[s1])
-                    target_dists = np.linspace(d0, d1, seg_frames, endpoint=endpoint_flag)
+                    target_dists = d0 + u_curve * (d1 - d0)
                     seg_indices = np.interp(target_dists, self.d.distances[s0:s1 + 1], np.arange(s0, s1 + 1)).astype(np.int32)
 
                 if main_idx_list and len(seg_indices) > 0 and seg_indices[0] == main_idx_list[-1]:
@@ -205,6 +258,7 @@ class RideRenderer:
                                     "start_frame": start_f,
                                     "end_frame": end_f,
                                     "fade_frames": fade_frames,
+                                    "cluster_size": k_count,
                                 })
 
                             main_idx_list.extend([pt_val] * item_dur_frames)
@@ -213,6 +267,7 @@ class RideRenderer:
         else:
             self.media_popups = []
             main_f = max(1, int(round(self.video_duration * self.fps)))
+            u_curve = _compute_ease_curve(main_f, ease_in=True, ease_out=True, fps=self.fps, ease_in_sec=1.0, ease_out_sec=1.2)
             use_real = bool(config.USE_REAL_SPEED and self.d.gpx_times and len(self.d.gpx_times) == self.d.total_points and self.d.gpx_times[0] is not None)
             if use_real:
                 try:
@@ -220,19 +275,19 @@ class RideRenderer:
                     elapsed = np.array([(t.replace(tzinfo=None) - tb).total_seconds() for t in self.d.gpx_times], dtype=np.float64)
                     tot_t = elapsed[-1]
                     if tot_t > 0:
-                        t_targets = np.linspace(0, tot_t, main_f)
+                        t_targets = u_curve * tot_t
                         ride_indices = np.interp(t_targets, elapsed, np.arange(self.d.total_points)).astype(np.int32)
                     else:
                         d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                        target_dists = np.linspace(d0, d1, main_f)
+                        target_dists = d0 + u_curve * (d1 - d0)
                         ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
                 except Exception:
                     d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                    target_dists = np.linspace(d0, d1, main_f)
+                    target_dists = d0 + u_curve * (d1 - d0)
                     ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
             else:
                 d0, d1 = float(self.d.distances[0]), float(self.d.distances[-1])
-                target_dists = np.linspace(d0, d1, main_f)
+                target_dists = d0 + u_curve * (d1 - d0)
                 ride_indices = np.interp(target_dists, self.d.distances, np.arange(self.d.total_points)).astype(np.int32)
 
         # 2. 若為 3D 地形模式，在最前段插入 2D 靜止 + 2D轉3D 俯衝過渡 (INTRO_HOLD_SEC + INTRO_TRANSITION_SEC)

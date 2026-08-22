@@ -533,6 +533,11 @@ class Ui_MainWindow(object):
         self.verticalLayout_main_progress.setObjectName(u"verticalLayout_main_progress")
         self.horizontalLayout_eta = QHBoxLayout()
         self.horizontalLayout_eta.setObjectName(u"horizontalLayout_eta")
+        self.label_eta_elapsed = QLabel(self.groupBox_main_progress)
+        self.label_eta_elapsed.setObjectName(u"label_eta_elapsed")
+
+        self.horizontalLayout_eta.addWidget(self.label_eta_elapsed)
+
         self.label_eta_time = QLabel(self.groupBox_main_progress)
         self.label_eta_time.setObjectName(u"label_eta_time")
 
@@ -1101,6 +1106,7 @@ class Ui_MainWindow(object):
         self.label_cfg_res.setText(QCoreApplication.translate("MainWindow", u"\u756b\u9762\u898f\u683c: 1440x1440 @ 60 FPS (\u81ea\u52d5\u6642\u9577 20.0s)", None))
         self.label_cfg_perf.setText(QCoreApplication.translate("MainWindow", u"\u6548\u80fd\u6a21\u5f0f: \u591a\u7a0b\u5e8f (6 Workers \u00d7 4 chunks) | \u505c\u7528 Cache", None))
         self.groupBox_main_progress.setTitle(QCoreApplication.translate("MainWindow", u"\u4e3b\u9032\u5ea6\u8207\u6574\u9ad4 ETA", None))
+        self.label_eta_elapsed.setText(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u8a08\u6642: 00:00:00", None))
         self.label_eta_time.setText(QCoreApplication.translate("MainWindow", u"\u9810\u4f30\u5269\u9918\u6642\u9593: --", None))
         self.label_eta_clock.setText(QCoreApplication.translate("MainWindow", u"\u9810\u8a08\u5b8c\u6210\u6642\u523b: --:--:--", None))
         self.label_eta_speed.setText(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u901f\u5ea6: -- frame/s", None))

@@ -675,8 +675,131 @@ def encode_video_parallel(
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def _print_render_job_summary(
+    data: RideData,
+    config_dict: dict,
+    map_label: str,
+    map_style_key: str,
+    fps: int,
+    duration: float,
+    total_frames: int,
+    encoder: str,
+    output_path: str,
+    parallel_ok: bool,
+    prefetch_stats: dict | None,
+    render_elapsed: float,
+    job_elapsed: float,
+    matched_media: list,
+):
+    out_file = Path(output_path)
+    out_size_mb = out_file.stat().st_size / (1024 * 1024) if out_file.is_file() else 0.0
+    prefetch_stats = prefetch_stats or {}
+    prefetch_elapsed = prefetch_stats.get("elapsed", 0.0)
+    prefetch_chunks = prefetch_stats.get("total_chunks", 0)
+    new_tiles = prefetch_stats.get("new_tiles", 0)
+    new_dem = prefetch_stats.get("new_dem", 0)
+    new_mb = prefetch_stats.get("new_bytes", 0) / (1024 * 1024)
+    total_cache_mb = CacheManager.get_cache_size_mb()
+    total_tiles = prefetch_stats.get("total_tiles", 0)
+
+    encoder_quality = ""
+    if "nvenc" in encoder:
+        encoder_quality = f"NVENC 位元率: {config.NVENC_BITRATE} (preset: {config.NVENC_PRESET})"
+    else:
+        encoder_quality = f"CPU x264 (CRF: {config.CPU_CRF}, preset: {config.CPU_PRESET})"
+
+    print("\n" + "=" * 78)
+    print("                      GPX RIDE RENDERER 渲染完成報告                      ")
+    print("=" * 78)
+    print("\n[1] 路線與騎乘統計數據 (Ride Statistics)")
+    print(f"  - GPX 檔案路徑       : {config.gpx_filename}")
+    print(f"  - 路線總長度         : {data.distances[-1]:.2f} km")
+    print(f"  - 累積總爬升         : +{data.elevation_gain[-1]:.0f} m")
+    print(f"  - GPS 軌跡點數       : {data.total_points} 點")
+
+    total_reqs = prefetch_stats.get("total_requests", 0)
+    total_hits = prefetch_stats.get("total_hits", 0)
+    total_misses = prefetch_stats.get("total_misses", 0)
+    hit_rate = prefetch_stats.get("hit_rate_pct", 0.0)
+
+    print("\n[2] 底圖預熱與快取統計 (Basemap & Cache Statistics)")
+    print(f"  - 底圖預熱狀態       : {'啟用' if config.ENABLE_BASEMAP else '停用'} (風格: {map_label})")
+    print(f"  - 下載預熱耗時       : {prefetch_elapsed:.2f} 秒 ({format_seconds_human(prefetch_elapsed)})")
+    print(f"  - 路線涵蓋區塊       : {prefetch_chunks} 個局部網格區塊 (Zoom {config.LOCAL_MAP_ZOOM})")
+    print(f"  - 切片請求總數       : {total_reqs} 次 (底圖切片: {prefetch_stats.get('tile_hits', 0) + prefetch_stats.get('tile_misses', 0)}, DEM: {prefetch_stats.get('dem_hits', 0) + prefetch_stats.get('dem_misses', 0)})")
+    print(f"  - 本機快取再利用率   : {hit_rate:.1f}% (命中再利用: {total_hits} 次, 遠端新下載: {total_misses} 次)")
+    print(f"  - 本次新增圖資       : +{new_tiles} 個 PNG 切片, +{new_dem} 個 DEM 區塊 (+{new_mb:.2f} MB)")
+    print(f"  - 本機快取總容量     : {total_cache_mb:.2f} MB (共 {total_tiles} 個切片檔案)")
+    print(f"  - 快取儲存模式       : {'Session 暫存 (關閉自動清理)' if CacheManager.get_mode() == 'session' else 'Persistent 永久保留'} (上限: {config.MAP_CACHE_MAX_MB} MB)")
+
+    print("\n[3] 渲染效能與輸出結果 (Render & Output Performance)")
+    print(f"  - 輸出影片檔案       : {output_path} ({out_size_mb:.2f} MB)")
+    print(f"  - 畫面解析度與規格   : {config.FRAME_WIDTH}x{config.FRAME_HEIGHT} @ {fps} FPS (總畫格數: {total_frames} 幀)")
+    print(f"  - 影片時長構成       : 主動畫 {duration:.1f}s + 結尾縮放 {config.ZOOM_OUT_DURATION:.1f}s + 結尾停留 {config.END_HOLD_DURATION:.1f}s (總時長: {total_frames / fps:.1f}s)")
+    print(f"  - 編碼器與品質       : {encoder} | {encoder_quality}")
+    print(f"  - 渲染並行模式       : {f'多程序並行 ({config.RENDER_WORKERS} Workers × {config.CHUNKS_PER_WORKER} chunks)' if parallel_ok else '單程序 (Single-process)'}")
+    print(f"  - 底圖預載耗時       : {prefetch_elapsed:.2f} 秒 ({format_seconds_human(prefetch_elapsed)})")
+    print(f"  - 主渲染運算耗時     : {render_elapsed:.2f} 秒 ({format_seconds_human(render_elapsed)})")
+    print(f"  - 總流程執行耗時     : {job_elapsed:.2f} 秒 ({format_seconds_human(job_elapsed)})")
+    render_fps = total_frames / max(render_elapsed, 0.001)
+    overall_fps = total_frames / max(job_elapsed, 0.001)
+    print(f"  - 平均渲染速率       : {render_fps:.1f} frame/s (主渲染) | {overall_fps:.1f} frame/s (全流程等效)")
+
+    print("\n[4] 完整設定參數清單 (Configuration Parameters)")
+    params = [
+        ("gpx_filename", str(config.gpx_filename)),
+        ("output_filename", str(config.output_filename)),
+        ("FRAME_WIDTH", config.FRAME_WIDTH),
+        ("FRAME_HEIGHT", config.FRAME_HEIGHT),
+        ("FPS", config.FPS),
+        ("VIDEO_DURATION", f"{config.VIDEO_DURATION:.1f}s"),
+        ("AUTO_DURATION_ENABLED", config_dict.get("AUTO_DURATION_ENABLED", config.AUTO_DURATION_DEFAULT)),
+        ("AUTO_SECONDS_PER_100KM", config_dict.get("AUTO_SECONDS_PER_100KM", config.AUTO_SECONDS_PER_100KM)),
+        ("ZOOM_OUT_DURATION", f"{config.ZOOM_OUT_DURATION:.1f}s"),
+        ("END_HOLD_DURATION", f"{config.END_HOLD_DURATION:.1f}s"),
+        ("VIEW_MARGIN", f"{config.VIEW_MARGIN}m"),
+        ("CAMERA_MODE", config.CAMERA_MODE),
+        ("CAMERA_SMOOTH", config.CAMERA_SMOOTH),
+        ("CAMERA_ROTATION_SMOOTH", config.CAMERA_ROTATION_SMOOTH),
+        ("CAMERA_MAX_ROTATION_SPEED_DEG", f"{config.CAMERA_MAX_ROTATION_SPEED_DEG} deg/s"),
+        ("CAMERA_PITCH_DEG", f"{config.CAMERA_PITCH_DEG} deg"),
+        ("ELEVATION_EXAGGERATION", f"{config.ELEVATION_EXAGGERATION}x"),
+        ("MAP_STYLE", f"{map_label} (Key: {map_style_key})"),
+        ("ENABLE_BASEMAP", config.ENABLE_BASEMAP),
+        ("LOCAL_MAP_ZOOM", config.LOCAL_MAP_ZOOM),
+        ("OVERVIEW_MAP_ZOOM", config.OVERVIEW_MAP_ZOOM),
+        ("LOCAL_CHUNK_STEP_M", f"{config.LOCAL_CHUNK_STEP_M}m"),
+        ("LOCAL_CHUNK_BUFFER_M", f"{config.LOCAL_CHUNK_BUFFER_M}m"),
+        ("TRACK_COLOR_SCHEME", config.TRACK_COLOR_SCHEME),
+        ("TRACK_LINE_WIDTH", f"{config.TRACK_LINE_WIDTH}px"),
+        ("SHOW_SPEED_HUD", config.SHOW_SPEED_HUD),
+        ("SHOW_MINIMAP", config.SHOW_MINIMAP),
+        ("SHOW_ELEVATION", config.SHOW_ELEVATION),
+        ("ENABLE_DYNAMIC_SPEED_ZOOM", getattr(config, "ENABLE_DYNAMIC_SPEED_ZOOM", False)),
+        ("USE_REAL_SPEED", getattr(config, "USE_REAL_SPEED", True)),
+        ("HIDE_START_DISTANCE_KM", f"{config_dict.get('HIDE_START_DISTANCE_KM', 0.0)} km"),
+        ("HIDE_END_DISTANCE_KM", f"{config_dict.get('HIDE_END_DISTANCE_KM', 0.0)} km"),
+        ("PARALLEL_RENDER", config.PARALLEL_RENDER),
+        ("RENDER_WORKERS", config.RENDER_WORKERS),
+        ("CHUNKS_PER_WORKER", config.CHUNKS_PER_WORKER),
+        ("CV2_THREADS_PER_WORKER", config.CV2_THREADS_PER_WORKER),
+        ("MAP_CACHE_MODE", config.MAP_CACHE_MODE),
+        ("MAP_CACHE_MAX_MB", f"{config.MAP_CACHE_MAX_MB} MB"),
+        ("MAP_CACHE_SESSION_ID", config.MAP_CACHE_SESSION_ID or "(None)"),
+        ("ENABLE_MEDIA", config.ENABLE_MEDIA),
+        ("MEDIA_PATH", config.MEDIA_PATH or "(None)"),
+        ("MEDIA_POPUP_DURATION", f"{config.MEDIA_POPUP_DURATION}s"),
+        ("MEDIA_TIME_OFFSET_SEC", f"{config.MEDIA_TIME_OFFSET_SEC}s"),
+        ("MATCHED_MEDIA_COUNT", len(matched_media)),
+    ]
+    for k, v in params:
+        print(f"  - {k:<30}: {v}")
+    print("=" * 78 + "\n")
+
+
 def render_job(config_dict: dict | None = None):
     """實際渲染入口。可由 CLI 或 Tkinter 啟動的子程序呼叫。"""
+    job_start_wall = time.perf_counter()
     config_dict = dict(config_dict or {})
     config.apply_render_config(config_dict)
 
@@ -732,9 +855,10 @@ def render_job(config_dict: dict | None = None):
         print(f"[OK] 掃描到 {len(raw_media)} 個媒體檔案，成功與路線對齊 {len(matched_media)} 個時間點/座標")
 
     # 1. 預熱全路線底圖切片，確保所有 Worker 均可 100% 離線讀取快取避免伺服器限流
+    prefetch_stats = None
     if config.ENABLE_BASEMAP:
         from gpx_renderer.core.map_utils import prefetch_route_basemap_chunks
-        prefetch_route_basemap_chunks(data, config.MAP_STYLE_OPTIONS[map_style_key][1], config.LOCAL_MAP_ZOOM)
+        prefetch_stats = prefetch_route_basemap_chunks(data, config.MAP_STYLE_OPTIONS[map_style_key][1], config.LOCAL_MAP_ZOOM)
 
     temp_info_renderer = RideRenderer(
         data=data,
@@ -764,6 +888,7 @@ def render_job(config_dict: dict | None = None):
     )
 
     parallel_ok = False
+    render_start_wall = time.perf_counter()
     if use_parallel:
         print(
             f"[INFO] Parallel render ON：{config.RENDER_WORKERS} process(es), "
@@ -814,5 +939,25 @@ def render_job(config_dict: dict | None = None):
         )
         print("[INFO] 使用單 process fallback。")
         encode_video(renderer, ffmpeg, encoder, output_path)
+
+    render_elapsed = time.perf_counter() - render_start_wall
+    job_elapsed = time.perf_counter() - job_start_wall
+
+    _print_render_job_summary(
+        data=data,
+        config_dict=config_dict,
+        map_label=map_label,
+        map_style_key=map_style_key,
+        fps=fps,
+        duration=duration,
+        total_frames=total_frames,
+        encoder=encoder,
+        output_path=output_path,
+        parallel_ok=parallel_ok,
+        prefetch_stats=prefetch_stats,
+        render_elapsed=render_elapsed,
+        job_elapsed=job_elapsed,
+        matched_media=matched_media,
+    )
 
     print(f"[DONE] 完成：{output_path}")

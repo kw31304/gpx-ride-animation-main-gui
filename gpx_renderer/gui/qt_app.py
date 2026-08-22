@@ -149,6 +149,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.cache_timer.timeout.connect(self.refresh_cache_size_display)
         self.cache_timer.start()
 
+        # 渲染計時器 (計算從開始渲染至完成所經過的時間)
+        self._render_start_time: Optional[float] = None
+        self._render_timer = QTimer(self)
+        self._render_timer.setInterval(500)
+        self._render_timer.timeout.connect(self._update_render_timer)
+
+    @staticmethod
+    def _format_elapsed_str(seconds: float) -> str:
+        total = max(0, int(seconds))
+        hrs = total // 3600
+        mins = (total % 3600) // 60
+        secs = total % 60
+        return f"{hrs:02d}:{mins:02d}:{secs:02d}"
+
+    def _update_render_timer(self):
+        if self._render_start_time is not None and hasattr(self, "label_eta_elapsed"):
+            elapsed = time.time() - self._render_start_time
+            self.label_eta_elapsed.setText(f"渲染計時: {self._format_elapsed_str(elapsed)}")
+
     def center_on_screen(self):
         """將視窗定位至螢幕工作區域中央"""
         screen = QApplication.primaryScreen()
@@ -688,6 +707,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for lbl in self.worker_status_labels:
             lbl.setText("待命")
 
+        if hasattr(self, "label_eta_elapsed"): self.label_eta_elapsed.setText("渲染計時: 00:00:00")
         if hasattr(self, "label_eta_time"): self.label_eta_time.setText("預估剩餘時間: --")
         if hasattr(self, "label_eta_clock"): self.label_eta_clock.setText("預計完成時刻: --:--:--")
         if hasattr(self, "label_eta_speed"): self.label_eta_speed.setText("渲染速度: -- frame/s")
@@ -715,6 +735,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for lbl in self.worker_status_labels:
             lbl.setText("待命")
 
+        if hasattr(self, "label_eta_elapsed"): self.label_eta_elapsed.setText("渲染計時: 00:00:00")
         if hasattr(self, "label_autotune_result"):
             self.label_autotune_result.setText("測試中…")
         self.set_status_message("Auto Tune 效能測試中…")
@@ -771,6 +792,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.state["proc"] = proc
         self.state["proc_mode"] = mode
         self.set_running(True)
+
+        self._render_start_time = time.time()
+        if hasattr(self, "label_eta_elapsed"):
+            self.label_eta_elapsed.setText("渲染計時: 00:00:00")
+        self._render_timer.start(500)
 
         self.reader_thread = SubprocessReaderThread(proc)
         self.reader_thread.line_signal.connect(self._parse_process_line)
@@ -908,9 +934,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             try: Path(cfg_p).unlink(missing_ok=True)
             except Exception: pass
 
+        self._render_timer.stop()
+        final_elapsed = None
+        if self._render_start_time is not None:
+            final_elapsed = time.time() - self._render_start_time
+            if hasattr(self, "label_eta_elapsed"):
+                self.label_eta_elapsed.setText(f"渲染計時: {self._format_elapsed_str(final_elapsed)}")
+            self._render_start_time = None
+
         self._write_log("=" * 72)
         if returncode == 0:
-            self._write_log("[OK] 程序執行成功完成。")
+            if final_elapsed is not None:
+                self._write_log(f"[OK] 程序執行成功完成 (總耗時: {self._format_elapsed_str(final_elapsed)})。")
+            else:
+                self._write_log("[OK] 程序執行成功完成。")
             self.progressBar_main.setValue(100)
             for bar in self.worker_bars:
                 bar.setValue(100)

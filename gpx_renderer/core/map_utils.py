@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 import sys
+import time
 import json
 from dataclasses import dataclass
 from collections import OrderedDict
@@ -174,13 +175,28 @@ def _get_max_view_margins():
     return margin, margin / aspect
 
 
-def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback=None) -> int:
+def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback=None) -> dict:
     """在多程序渲染前，預先掃描全路線所需之所有 LocalBasemapCache 網格，並一次性下載與快取所有切片。"""
     if not config.ENABLE_BASEMAP:
-        return 0
+        return {
+            "enabled": False,
+            "total_chunks": 0,
+            "elapsed": 0.0,
+            "new_bytes": 0,
+            "new_tiles": 0,
+            "new_dem": 0,
+            "total_cache_bytes": CacheManager.get_cache_size_bytes(),
+            "total_tiles": len(list(CacheManager.get_tiles_dir().glob("*.png"))) if CacheManager.get_tiles_dir().exists() else 0,
+        }
 
     if zoom is None:
         zoom = config.LOCAL_MAP_ZOOM
+
+    CacheManager.reset_stats()
+    t_start = time.perf_counter()
+    bytes_before = CacheManager.get_cache_size_bytes()
+    tiles_before = len(list(CacheManager.get_tiles_dir().glob("*.png"))) if CacheManager.get_tiles_dir().exists() else 0
+    dem_before = len(list(CacheManager.get_dem_dir().glob("*.npy"))) if CacheManager.get_dem_dir().exists() else 0
 
     margin_x, margin_y = _get_max_view_margins()
     max_margin = max(margin_x, margin_y)
@@ -200,7 +216,24 @@ def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback
 
     total_chunks = len(unique_keys)
     if total_chunks == 0:
-        return 0
+        return {
+            "enabled": True,
+            "total_chunks": 0,
+            "elapsed": 0.0,
+            "new_bytes": 0,
+            "new_tiles": 0,
+            "new_dem": 0,
+            "total_cache_bytes": CacheManager.get_cache_size_bytes(),
+            "total_tiles": tiles_before,
+            "tile_hits": 0,
+            "tile_misses": 0,
+            "dem_hits": 0,
+            "dem_misses": 0,
+            "total_hits": 0,
+            "total_misses": 0,
+            "total_requests": 0,
+            "hit_rate_pct": 0.0,
+        }
 
     print(f"\n[PREFETCH] 掃描到路線涵蓋 {total_chunks} 個局部底圖區塊 (Zoom {zoom})，開始預熱快取...")
 
@@ -276,9 +309,41 @@ def prefetch_route_basemap_chunks(data: RideData, map_style, zoom=None, callback
         if i % max(1, total_chunks // 10) == 0 or i == total_chunks:
             print(f"   預熱進度：{i}/{total_chunks} ({pct:.1f}%)")
 
-    print(f"[OK] 路線 {total_chunks} 個底圖區塊已全部預先快取完成！所有 Worker 均可 100% 本機離線讀取。\n")
     CacheManager.prune_if_exceeds()
-    return total_chunks
+    t_elapsed = time.perf_counter() - t_start
+    bytes_after = CacheManager.get_cache_size_bytes()
+    tiles_after = len(list(CacheManager.get_tiles_dir().glob("*.png"))) if CacheManager.get_tiles_dir().exists() else 0
+    dem_after = len(list(CacheManager.get_dem_dir().glob("*.npy"))) if CacheManager.get_dem_dir().exists() else 0
+    new_bytes = max(0, bytes_after - bytes_before)
+    new_tiles = max(0, tiles_after - tiles_before)
+    new_dem = max(0, dem_after - dem_before)
+    cache_stats = CacheManager.get_stats()
+
+    print(
+        f"[OK] 路線 {total_chunks} 個底圖區塊預熱完成！"
+        f"快取再利用率: {cache_stats['hit_rate_pct']:.1f}% (命中: {cache_stats['total_hits']} / 新下載: {cache_stats['total_misses']}) | "
+        f"耗時 {t_elapsed:.2f}s | 新增 {new_tiles} 個切片 (+{new_bytes/(1024*1024):.2f} MB) | "
+        f"快取總計 {bytes_after/(1024*1024):.2f} MB ({tiles_after} 個切片)。\n"
+    )
+
+    return {
+        "enabled": True,
+        "total_chunks": total_chunks,
+        "elapsed": t_elapsed,
+        "new_bytes": new_bytes,
+        "new_tiles": new_tiles,
+        "new_dem": new_dem,
+        "total_cache_bytes": bytes_after,
+        "total_tiles": tiles_after,
+        "tile_hits": cache_stats["tile_hits"],
+        "tile_misses": cache_stats["tile_misses"],
+        "dem_hits": cache_stats["dem_hits"],
+        "dem_misses": cache_stats["dem_misses"],
+        "total_hits": cache_stats["total_hits"],
+        "total_misses": cache_stats["total_misses"],
+        "total_requests": cache_stats["total_requests"],
+        "hit_rate_pct": cache_stats["hit_rate_pct"],
+    }
 
 
 class LocalBasemapCache:
