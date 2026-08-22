@@ -46,20 +46,21 @@ def load_env_vars(project_root: Path) -> dict:
 
 def load_release_notes(project_root: Path) -> tuple[str, str]:
     """
-    優先讀取 release_notes/ 最新說明的 Markdown 檔案；
+    優先讀取 release_tools/release_notes/ 或 release_notes/ 最新說明的 Markdown 檔案；
     若無則向下相容讀取根目錄下的 release_notes.md。
     回傳 (內容, 來源檔案路徑說明)。
     """
-    notes_dir = project_root / "release_notes"
-    if notes_dir.exists() and notes_dir.is_dir():
-        note_files = sorted(notes_dir.glob("*.md"), key=lambda p: p.name, reverse=True)
-        for note_file in note_files:
-            try:
-                content = note_file.read_text(encoding="utf-8-sig").strip()
-                if content:
-                    return content, f"release_notes/{note_file.name}"
-            except Exception as e:
-                print(f"[WARN] 讀取 {note_file.name} 失敗：{e}")
+    for sub in ["release_tools/release_notes", "release_notes"]:
+        notes_dir = project_root / sub
+        if notes_dir.exists() and notes_dir.is_dir():
+            note_files = sorted(notes_dir.glob("*.md"), key=lambda p: p.name, reverse=True)
+            for note_file in note_files:
+                try:
+                    content = note_file.read_text(encoding="utf-8-sig").strip()
+                    if content:
+                        return content, f"{sub}/{note_file.name}"
+                except Exception as e:
+                    print(f"[WARN] 讀取 {note_file.name} 失敗：{e}")
 
     notes_file = project_root / "release_notes.md"
     if notes_file.exists():
@@ -224,7 +225,8 @@ def main():
             pass
 
     args = parse_args()
-    project_root = Path(__file__).resolve().parent
+    cur_dir = Path(__file__).resolve().parent
+    project_root = cur_dir if (cur_dir / "gpx_renderer").exists() else cur_dir.parent
     version = args.version or detect_version(project_root)
     env_vars = load_env_vars(project_root)
 

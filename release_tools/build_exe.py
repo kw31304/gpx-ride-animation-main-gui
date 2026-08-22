@@ -54,7 +54,8 @@ def main():
         except Exception:
             pass
 
-    project_root = Path(__file__).resolve().parent
+    cur_dir = Path(__file__).resolve().parent
+    project_root = cur_dir if (cur_dir / "gpx_renderer").exists() else cur_dir.parent
     version = detect_version(project_root)
 
     print("=" * 70)
