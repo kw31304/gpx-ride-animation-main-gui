@@ -138,19 +138,26 @@ class RideRenderer:
             from gpx_renderer.core.media import prepare_thumbnail
 
             valid_items = [m for m in media_items if m.matched_index >= 0]
-            valid_items.sort(key=lambda m: m.matched_index)
+            # 嚴格依據當前有效里程與點位索引進行升冪排序
+            valid_items.sort(key=lambda m: (float(m.current_km), int(m.matched_index)))
 
-            # 群組 (Cluster) 判別：近距離點位或短時間內之相片
+            # 群組 (Cluster) 判別：僅對真正極近距離 (<= 50m / 0.05km) 且時間相近之相片進行同站合併
             clusters = []
             if valid_items:
                 curr_cluster = [valid_items[0]]
                 for idx_m in range(1, len(valid_items)):
                     prev_item = curr_cluster[-1]
                     curr_item = valid_items[idx_m]
-                    close_gpx = abs(curr_item.matched_index - prev_item.matched_index) <= max(6, int(self.d.total_points * 0.04))
+
+                    # 計算兩張照片在路線上的實際里程差距 (km)
+                    dist_diff_km = abs(float(curr_item.current_km) - float(prev_item.current_km))
+                    close_gpx = dist_diff_km <= 0.05  # 50 公尺內視為同一打卡景點
+
                     close_time = False
-                    if curr_item.timestamp and prev_item.timestamp:
-                        close_time = abs((curr_item.timestamp.replace(tzinfo=None) - prev_item.timestamp.replace(tzinfo=None)).total_seconds()) <= 15.0
+                    if getattr(curr_item, "has_exif_time", False) and getattr(prev_item, "has_exif_time", False):
+                        if curr_item.timestamp and prev_item.timestamp:
+                            t_diff = abs((curr_item.timestamp.replace(tzinfo=None) - prev_item.timestamp.replace(tzinfo=None)).total_seconds())
+                            close_time = (t_diff <= 15.0) and (dist_diff_km <= 0.10)
 
                     if close_gpx or close_time:
                         curr_cluster.append(curr_item)
@@ -168,6 +175,16 @@ class RideRenderer:
             # 建立單調遞增無倒退之時間軸 (Segment-based monotonic timeline)
             spots = [0] + [clus[0].matched_index for clus in clusters] + [self.d.total_points - 1]
             spots = sorted(list(dict.fromkeys(spots)))
+
+            # 依 spot 點位索引組織所有需播放的媒體清單 (防止同點位字典覆蓋)
+            cluster_by_spot: dict[int, list] = {}
+            for clus in clusters:
+                spot_idx = clus[0].matched_index
+                if spot_idx not in cluster_by_spot:
+                    cluster_by_spot[spot_idx] = []
+                cluster_by_spot[spot_idx].extend(clus)
+
+            cluster_spot_processed = set()
 
             use_real = bool(config.USE_REAL_SPEED and self.d.gpx_times and len(self.d.gpx_times) == self.d.total_points and self.d.gpx_times[0] is not None)
 
@@ -187,8 +204,6 @@ class RideRenderer:
 
             total_weight = sum(span_weights)
             main_idx_list = []
-            cluster_by_spot = {clus[0].matched_index: clus for clus in clusters}
-            cluster_spot_processed = set()
 
             for k_idx in range(len(spots) - 1):
                 s0, s1 = spots[k_idx], spots[k_idx + 1]
@@ -239,13 +254,12 @@ class RideRenderer:
 
                     if pt_val in cluster_by_spot and pt_val not in cluster_spot_processed:
                         cluster_spot_processed.add(pt_val)
-                        clus = cluster_by_spot[pt_val]
+                        items_at_spot = cluster_by_spot[pt_val]
 
-                        k_count = len(clus)
-                        item_duration_sec = float(config.MEDIA_POPUP_DURATION) + max(0.0, (k_count - 1) * 1.5)
-                        item_dur_frames = max(1, int(round(item_duration_sec * self.fps)))
+                        for item in items_at_spot:
+                            item_dur_sec = float(config.MEDIA_POPUP_DURATION)
+                            item_dur_frames = max(1, int(round(item_dur_sec * self.fps)))
 
-                        for item in clus:
                             start_f = len(main_idx_list) - 1
                             end_f = start_f + item_dur_frames
 
@@ -258,7 +272,7 @@ class RideRenderer:
                                     "start_frame": start_f,
                                     "end_frame": end_f,
                                     "fade_frames": fade_frames,
-                                    "cluster_size": k_count,
+                                    "cluster_size": len(items_at_spot),
                                 })
 
                             main_idx_list.extend([pt_val] * item_dur_frames)
@@ -1121,7 +1135,7 @@ class RideRenderer:
         if not self.media_popups:
             return
 
-        active_popups = [p for p in self.media_popups if p["start_frame"] <= frame_idx <= p["end_frame"]]
+        active_popups = [p for p in self.media_popups if p["start_frame"] <= frame_idx < p["end_frame"]]
         if not active_popups:
             return
 

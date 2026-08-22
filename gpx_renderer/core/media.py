@@ -27,6 +27,7 @@ class MediaItem:
     filename: str
     media_type: str  # "image" or "video"
     timestamp: Optional[datetime] = None  # EXIF 拍攝時間
+    has_exif_time: bool = False  # 是否具備真實 EXIF/Metadata 拍攝時間 (非檔案修改時間備援)
     lat: Optional[float] = None
     lon: Optional[float] = None
     mercator_x: Optional[float] = None
@@ -202,10 +203,15 @@ def scan_media_files(
         is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
         media_type = "video" if is_video else "image"
 
+        has_exif_dt = False
         if is_video:
             dt, lat, lon = parse_video_metadata(f, ffmpeg_exe)
+            if dt is not None:
+                has_exif_dt = True
         else:
             dt, lat, lon = parse_image_exif(f)
+            if dt is not None:
+                has_exif_dt = True
 
         # 若無 EXIF 時間，採用檔案修改時間備援
         if dt is None:
@@ -223,7 +229,7 @@ def scan_media_files(
             mx = float(mx_arr[0])
             my = float(my_arr[0])
 
-        item_ovr = overrides.get(f.name) or overrides.get(str(f)) or {}
+        item_ovr = overrides.get(f.name) or overrides.get(str(f)) or overrides.get(f.stem) or {}
         if item_ovr.get("excluded") or item_ovr.get("deleted"):
             continue
 
@@ -240,6 +246,7 @@ def scan_media_files(
             filename=f.name,
             media_type=media_type,
             timestamp=dt,
+            has_exif_time=has_exif_dt,
             lat=lat,
             lon=lon,
             mercator_x=mx,
@@ -277,8 +284,8 @@ def match_media_to_ride(
             item.matched_km = target_km
             continue
 
-        # 1. 嘗試時間配對
-        if has_gpx_times and item.timestamp is not None:
+        # 1. 嘗試時間配對 (僅在具備真實 EXIF 拍攝時間且時間與 GPX 吻合時生效)
+        if has_gpx_times and item.has_exif_time and item.timestamp is not None:
             raw_ts = item.timestamp
             if time_offset_sec != 0.0:
                 raw_ts = raw_ts + timedelta(seconds=time_offset_sec)
