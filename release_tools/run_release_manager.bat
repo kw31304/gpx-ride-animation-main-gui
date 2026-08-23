@@ -1,16 +1,11 @@
 @echo off
-chcp 65001 >nul
-title GPX Ride Renderer - Release Manager
 cd /d "%~dp0"
 
-if exist "..\.venv\Scripts\python.exe" (
-    "..\.venv\Scripts\python.exe" release_manager_gui.py
+if exist "..\.venv\Scripts\pythonw.exe" (
+    set "PYTHONW=..\.venv\Scripts\pythonw.exe"
 ) else (
-    python release_manager_gui.py
+    set "PYTHONW=pythonw.exe"
 )
 
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo [ERROR] ??????????%ERRORLEVEL%
-    pause
-)
+start "" /b "%PYTHONW%" release_manager_gui.py
+exit /b 0
