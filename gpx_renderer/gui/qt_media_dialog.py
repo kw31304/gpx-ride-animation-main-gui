@@ -23,13 +23,14 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QLineEdit, QDoubleSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QGroupBox, QMessageBox, QSplitter, QFrame, QScrollArea,
-    QSizePolicy, QCheckBox, QComboBox, QSlider
+    QSizePolicy, QCheckBox, QComboBox, QSlider, QFileDialog
 )
 
 from gpx_renderer.core.media import (
     MediaItem, match_media_to_ride, scan_media_files, load_media_thumbnail
 )
 from gpx_renderer.core.data import RideData
+from gpx_renderer.gui.qt_video_trim_dialog import QtVideoTrimDialog
 
 
 # 路線預覽專用 Google 街道圖 (Roadmap)
@@ -443,15 +444,15 @@ class QtMediaManagerDialog(QDialog):
         self,
         media_items: List[MediaItem],
         ride_data: RideData,
-        media_duration: float = 4.0,
+        media_duration: float = 3.0,
         media_offset_sec: float = 0.0,
         media_path: str = "",
         parent=None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("路線媒體管理器與照片標籤編輯器 (PySide6 Native)")
-        self.resize(1280, 760)
-        self.setMinimumSize(1060, 640)
+        self.setWindowTitle("路線媒體管理器與照片/影片標籤編輯器 (PySide6 Native)")
+        self.resize(1300, 760)
+        self.setMinimumSize(1080, 640)
 
         self.media_items = media_items
         self.ride_data = ride_data
@@ -467,7 +468,7 @@ class QtMediaManagerDialog(QDialog):
         match_media_to_ride(self.media_items, self.ride_data, self.ride_data.gpx_times, time_offset_sec=media_offset_sec)
 
         self._init_ui()
-        self.spin_media_dur.setValue(media_duration)
+        self.spin_photo_dur.setValue(media_duration if media_duration > 0 else 3.0)
         self.spin_media_offset.setValue(media_offset_sec)
         self._populate_tree()
 
@@ -489,20 +490,27 @@ class QtMediaManagerDialog(QDialog):
 
         # 第 1 列：相機時間校正說明與照片提示
         row1 = QHBoxLayout()
-        lbl_info = QLabel("💡 說明：若相機或 GoPro 時間未校時，可在此填寫秒數統一校正所有媒體的匹配里程。")
+        lbl_info = QLabel("💡 說明：相片預設停留 3.0 秒；影片預設保留原始片長（亦可透過「✂️ 裁剪」設定頭尾播放區間）。")
         lbl_info.setStyleSheet("color: #a0aec0; font-size: 11px;")
         row1.addWidget(lbl_info)
         top_layout.addLayout(row1)
 
-        # 第 2 列：媒體停留秒數、秒數微調輸入與重新對齊按鈕
+        # 第 2 列：相片預設秒數、一鍵重設、秒數微調輸入與重新對齊按鈕
         row2 = QHBoxLayout()
-        row2.addWidget(QLabel("媒體停留秒數："))
-        self.spin_media_dur = QDoubleSpinBox()
-        self.spin_media_dur.setRange(1.0, 30.0)
-        self.spin_media_dur.setSingleStep(0.5)
-        self.spin_media_dur.setValue(4.0)
-        self.spin_media_dur.setSuffix(" 秒")
-        row2.addWidget(self.spin_media_dur)
+        row2.addWidget(QLabel("📷 相片預設停留："))
+        self.spin_photo_dur = QDoubleSpinBox()
+        self.spin_photo_dur.setRange(1.0, 30.0)
+        self.spin_photo_dur.setSingleStep(0.5)
+        self.spin_photo_dur.setValue(3.0)
+        self.spin_photo_dur.setSuffix(" 秒")
+        self.spin_photo_dur.valueChanged.connect(self._on_photo_default_changed)
+        row2.addWidget(self.spin_photo_dur)
+
+        btn_reset_defaults = QPushButton("⚡ 一鍵套用 (相片預設 / 影片全片)")
+        btn_reset_defaults.setToolTip("將所有照片設為預設停留秒數，所有影片還原為原始片長")
+        btn_reset_defaults.setCursor(QCursor(Qt.PointingHandCursor))
+        btn_reset_defaults.clicked.connect(self._reset_all_durations_to_defaults)
+        row2.addWidget(btn_reset_defaults)
 
         row2.addSpacing(16)
         row2.addWidget(QLabel("相機時間校正偏移："))
@@ -518,11 +526,19 @@ class QtMediaManagerDialog(QDialog):
         btn_realign.clicked.connect(self._recalculate_time_offset)
         row2.addWidget(btn_realign)
 
-        lbl_hint = QLabel("💡 提示：慢 1 分鐘填 60 秒；快 1 分鐘填 -60 秒")
+        lbl_hint = QLabel("💡 慢 1 分填 60s；快 1 分填 -60s")
         lbl_hint.setStyleSheet("color: #718096; font-size: 11px;")
         row2.addWidget(lbl_hint)
         row2.addStretch()
         top_layout.addLayout(row2)
+
+        # 第 3 列：媒體統計與增加秒數摘要
+        row3 = QHBoxLayout()
+        self.lbl_stats_summary = QLabel("📊 媒體統計：共 0 項 | ⏱️ 停留總增加：+0.0 秒")
+        self.lbl_stats_summary.setStyleSheet("color: #63b3ed; font-weight: bold; font-size: 11px;")
+        row3.addWidget(self.lbl_stats_summary)
+        row3.addStretch()
+        top_layout.addLayout(row3)
 
         main_layout.addWidget(top_group, 0)
 
@@ -546,31 +562,50 @@ class QtMediaManagerDialog(QDialog):
         table_vbox.setContentsMargins(0, 0, 0, 4)
         table_vbox.setSpacing(4)
 
+        table_header_layout = QHBoxLayout()
         self.lbl_table_header = QLabel("媒體清單 (共 0 項)")
         self.lbl_table_header.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        table_vbox.addWidget(self.lbl_table_header)
+        table_header_layout.addWidget(self.lbl_table_header)
+        table_header_layout.addStretch()
+
+        btn_add_files = QPushButton("➕ 新增照片/影片 (可多選)")
+        btn_add_files.setToolTip("選取單張或多張照片/影片檔案加入清單")
+        btn_add_files.setCursor(QCursor(Qt.PointingHandCursor))
+        btn_add_files.clicked.connect(self._on_add_files)
+        table_header_layout.addWidget(btn_add_files)
+
+        btn_add_folder = QPushButton("📁 新增資料夾")
+        btn_add_folder.setToolTip("選取包含照片/影片之資料夾加入清單")
+        btn_add_folder.setCursor(QCursor(Qt.PointingHandCursor))
+        btn_add_folder.clicked.connect(self._on_add_folder)
+        table_header_layout.addWidget(btn_add_folder)
+
+        table_vbox.addLayout(table_header_layout)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["檔名", "類型", "拍攝時間", "匹配里程 (km)", "自訂說明", "操作"])
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels(["檔名", "類型", "影片長度", "停留秒數", "拍攝時間", "匹配里程 (km)", "自訂說明", "操作"])
         self.table.verticalHeader().setDefaultSectionSize(28)
         self.table.verticalHeader().setVisible(False)
         
-        # 欄位寬度自適應設置：類型、時間、里程、操作依內容緊湊排版，檔名與自訂說明彈性伸展
+        # 欄位寬度自適應設置：類型、長度、停留、時間、里程、操作依內容緊湊排版，檔名與自訂說明彈性伸展
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setMinimumSectionSize(55)
+        header.setSectionResizeMode(6, QHeaderView.Stretch)
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
+        header.setMinimumSectionSize(50)
 
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setAlternatingRowColors(True)
         self.table.itemSelectionChanged.connect(self._on_table_select)
         self.table.itemChanged.connect(self._on_table_item_changed)
+        self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         table_vbox.addWidget(self.table)
 
         self.left_vsplitter.addWidget(table_container)
@@ -698,17 +733,36 @@ class QtMediaManagerDialog(QDialog):
         right_layout.addWidget(info_group)
 
         # 2.2.3 屬性編輯卡片 (即時自動儲存與雙向連動)
-        edit_group = QGroupBox(" 編輯選取相片屬性 ")
+        edit_group = QGroupBox(" 編輯選取相片/影片屬性 ")
         edit_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         edit_layout = QGridLayout(edit_group)
         edit_layout.setContentsMargins(8, 8, 8, 8)
         edit_layout.setSpacing(6)
 
+        # 停留展示秒數與影片裁剪按鈕
+        edit_layout.addWidget(QLabel("⏱️ 停留展示秒數："), 0, 0)
+        dur_h_layout = QHBoxLayout()
+        self.spin_item_dur = QDoubleSpinBox()
+        self.spin_item_dur.setRange(0.5, 300.0)
+        self.spin_item_dur.setSingleStep(0.5)
+        self.spin_item_dur.setDecimals(1)
+        self.spin_item_dur.setSuffix(" 秒")
+        self.spin_item_dur.valueChanged.connect(self._on_item_dur_changed)
+        dur_h_layout.addWidget(self.spin_item_dur)
+
+        self.btn_trim_video = QPushButton("✂️ 裁剪影片頭尾 / 播放預覽...")
+        self.btn_trim_video.setToolTip("彈出專屬視窗，以滑桿調整影片播放起點與終點並即時預覽")
+        self.btn_trim_video.setCursor(QCursor(Qt.PointingHandCursor))
+        self.btn_trim_video.setStyleSheet("QPushButton { color: #63b3ed; font-weight: bold; }")
+        self.btn_trim_video.clicked.connect(self._open_trim_dialog_for_selected)
+        dur_h_layout.addWidget(self.btn_trim_video)
+        edit_layout.addLayout(dur_h_layout, 0, 1)
+
         self.chk_manual_km = QCheckBox("啟用手動里程 (覆寫自動匹配)")
         self.chk_manual_km.toggled.connect(self._on_manual_km_toggled)
-        edit_layout.addWidget(self.chk_manual_km, 0, 0, 1, 2)
+        edit_layout.addWidget(self.chk_manual_km, 1, 0, 1, 2)
 
-        edit_layout.addWidget(QLabel("手動里程 (km)："), 1, 0)
+        edit_layout.addWidget(QLabel("手動里程 (km)："), 2, 0)
         self.spin_manual_km = QDoubleSpinBox()
         self.spin_manual_km.setRange(0.0, self.total_distance_km)
         self.spin_manual_km.setSingleStep(0.1)
@@ -716,9 +770,9 @@ class QtMediaManagerDialog(QDialog):
         self.spin_manual_km.setSuffix(f" / {self.total_distance_km:.1f} km")
         self.spin_manual_km.setEnabled(False)
         self.spin_manual_km.valueChanged.connect(self._on_manual_km_value_change)
-        edit_layout.addWidget(self.spin_manual_km, 1, 1)
+        edit_layout.addWidget(self.spin_manual_km, 2, 1)
 
-        edit_layout.addWidget(QLabel("路線位置滑桿："), 2, 0)
+        edit_layout.addWidget(QLabel("路線位置滑桿："), 3, 0)
         self.slider_manual_km = QSlider(Qt.Horizontal)
         self.slider_manual_km.setRange(0, max(1, int(round(self.total_distance_km * 100))))
         self.slider_manual_km.setSingleStep(10)  # 0.1 km
@@ -726,13 +780,13 @@ class QtMediaManagerDialog(QDialog):
         self.slider_manual_km.setEnabled(False)
         self.slider_manual_km.setCursor(QCursor(Qt.PointingHandCursor))
         self.slider_manual_km.valueChanged.connect(self._on_slider_km_value_change)
-        edit_layout.addWidget(self.slider_manual_km, 2, 1)
+        edit_layout.addWidget(self.slider_manual_km, 3, 1)
 
-        edit_layout.addWidget(QLabel("自訂說明文字："), 3, 0)
+        edit_layout.addWidget(QLabel("自訂說明文字："), 4, 0)
         self.line_caption = QLineEdit()
         self.line_caption.setPlaceholderText("例如：合歡山主峰登山口 3158m")
         self.line_caption.textChanged.connect(self._on_caption_text_changed)
-        edit_layout.addWidget(self.line_caption, 3, 1)
+        edit_layout.addWidget(self.line_caption, 4, 1)
 
         right_layout.addWidget(edit_group)
         right_layout.addStretch()
@@ -811,14 +865,14 @@ class QtMediaManagerDialog(QDialog):
                 # 重新綁定後續列的刪除按鈕
                 for r in range(del_idx, self.table.rowCount()):
                     r_item = self.media_items[r]
-                    btn_del = self.table.cellWidget(r, 5)
+                    btn_del = self.table.cellWidget(r, 6)
                     if btn_del:
                         try:
                             btn_del.clicked.disconnect()
                         except Exception:
                             pass
                         btn_del.clicked.connect(lambda _, cur=r_item: self._delete_media_item(cur))
-                self.lbl_table_header.setText(f"媒體清單 (共 {len(self.media_items)} 項)")
+                self._update_stats_summary()
             finally:
                 self.table.setUpdatesEnabled(True)
                 self.table.blockSignals(False)
@@ -838,8 +892,70 @@ class QtMediaManagerDialog(QDialog):
 
         self.preview_widget.update()
 
+    def _on_add_files(self):
+        """可單選/複選照片或影片檔案新增至清單。"""
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "選擇照片或影片檔案 (可複選)",
+            "",
+            "媒體檔案 (*.jpg *.jpeg *.png *.webp *.bmp *.mp4 *.mov *.avi *.mkv *.webm *.m4v *.flv *.wmv);;照片檔案 (*.jpg *.jpeg *.png *.webp *.bmp);;影片檔案 (*.mp4 *.mov *.avi *.mkv *.webm *.m4v *.flv *.wmv);;所有檔案 (*.*)"
+        )
+        if not files:
+            return
+        self._import_media_paths(files)
+
+    def _on_add_folder(self):
+        """選擇資料夾匯入其內部所有照片與影片。"""
+        folder = QFileDialog.getExistingDirectory(self, "選擇媒體資料夾")
+        if not folder:
+            return
+        self._import_media_paths([folder])
+
+    def _import_media_paths(self, new_paths: list[str]):
+        """將新選取的檔案/資料夾掃描解析並合併至當前媒體清單。"""
+        from gpx_renderer.core.media import scan_media_files
+        new_items = scan_media_files(new_paths, time_offset_sec=self.spin_media_offset.value())
+        if not new_items:
+            QMessageBox.information(self, "提示", "未在所選路徑中發現可支援的照片或影片。")
+            return
+
+        existing_paths = {Path(it.file_path).resolve() for it in self.media_items}
+        added_count = 0
+        for it in new_items:
+            p = Path(it.file_path).resolve()
+            if p not in existing_paths:
+                existing_paths.add(p)
+                self.media_items.append(it)
+                added_count += 1
+
+        if added_count == 0:
+            QMessageBox.information(self, "提示", "所選媒體已全部在清單中，未重複新增。")
+            return
+
+        # 重新配對並更新
+        match_media_to_ride(self.media_items, self.ride_data, self.ride_data.gpx_times, time_offset_sec=self.spin_media_offset.value())
+        self.preview_widget.media_items = self.media_items
+        self._populate_tree()
+        self.preview_widget.update()
+        QMessageBox.information(self, "成功", f"已成功新增 {added_count} 個媒體項目！")
+
+    def _update_stats_summary(self):
+        """統計所有相片、影片與停留增加秒數。"""
+        total_items = len(self.media_items)
+        num_photos = sum(1 for it in self.media_items if it.media_type == "image")
+        num_videos = sum(1 for it in self.media_items if it.media_type == "video")
+        total_photo_sec = sum(it.effective_duration for it in self.media_items if it.media_type == "image")
+        total_video_sec = sum(it.effective_duration for it in self.media_items if it.media_type == "video")
+        total_media_sec = total_photo_sec + total_video_sec
+
+        self.lbl_table_header.setText(f"媒體清單 (共 {total_items} 項：🎬 {num_videos} 部影片, 📷 {num_photos} 張相片)")
+        self.lbl_stats_summary.setText(
+            f"📊 媒體統計：共 {total_items} 項（🎬 {num_videos} 部影片 + 📷 {num_photos} 張相片） | "
+            f"⏱️ 停留總增加：+{total_media_sec:.1f} 秒（影片增加 +{total_video_sec:.1f} 秒，相片增加 +{total_photo_sec:.1f} 秒）"
+        )
+
     def _populate_tree(self):
-        self.lbl_table_header.setText(f"媒體清單 (共 {len(self.media_items)} 項)")
+        self._update_stats_summary()
         saved_sizes = getattr(self, "left_vsplitter", None)
         sizes = saved_sizes.sizes() if saved_sizes else None
 
@@ -855,6 +971,8 @@ class QtMediaManagerDialog(QDialog):
                 km = item.current_km
                 km_label = f"{km:.2f} (手動)" if (item.manual_distance_km is not None and item.manual_distance_km >= 0) else f"{km:.2f}"
                 type_label = "🎬 影片" if item.media_type == "video" else "📷 相片"
+                dur_str = item.duration_str if item.media_type == "video" else "--"
+                trim_str = item.trim_summary_str
 
                 item_fn = QTableWidgetItem(item.filename)
                 item_fn.setToolTip(item.file_path)
@@ -866,23 +984,38 @@ class QtMediaManagerDialog(QDialog):
                 item_type.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
                 self.table.setItem(i, 1, item_type)
 
+                item_dur = QTableWidgetItem(dur_str)
+                item_dur.setTextAlignment(Qt.AlignCenter)
+                item_dur.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                self.table.setItem(i, 2, item_dur)
+
+                # 停留秒數欄位：支援雙擊修改或跳出影片裁剪視窗
+                item_trim = QTableWidgetItem(trim_str)
+                item_trim.setTextAlignment(Qt.AlignCenter)
+                item_trim.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+                if item.media_type == "video":
+                    item_trim.setToolTip("雙擊可彈出影片裁剪視窗以滑桿調整播放區間")
+                else:
+                    item_trim.setToolTip("雙擊可直接輸入自訂停留秒數")
+                self.table.setItem(i, 3, item_trim)
+
                 item_ts = QTableWidgetItem(ts_str)
                 item_ts.setTextAlignment(Qt.AlignCenter)
                 item_ts.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                self.table.setItem(i, 2, item_ts)
+                self.table.setItem(i, 4, item_ts)
 
                 # 匹配里程欄位：支援雙擊直接手動輸入里程 (km)
                 item_km = QTableWidgetItem(km_label)
                 item_km.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 item_km.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
                 item_km.setToolTip("雙擊可直接輸入自訂手動里程 (km)")
-                self.table.setItem(i, 3, item_km)
+                self.table.setItem(i, 5, item_km)
 
                 # 自訂說明欄位：支援雙擊直接編輯文字
                 item_cap = QTableWidgetItem(item.caption or "")
                 item_cap.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
                 item_cap.setToolTip("雙擊可直接編輯說明文字")
-                self.table.setItem(i, 4, item_cap)
+                self.table.setItem(i, 6, item_cap)
 
                 # 操作欄位：個別刪除按鈕
                 btn_del = QPushButton("🗑️ 刪除")
@@ -907,13 +1040,15 @@ class QtMediaManagerDialog(QDialog):
                     }
                 """)
                 btn_del.clicked.connect(lambda _, cur_item=item: self._delete_media_item(cur_item))
-                self.table.setCellWidget(i, 5, btn_del)
+                self.table.setCellWidget(i, 7, btn_del)
 
             # 欄位內容自適應緊湊調整
             self.table.resizeColumnToContents(1)
             self.table.resizeColumnToContents(2)
             self.table.resizeColumnToContents(3)
+            self.table.resizeColumnToContents(4)
             self.table.resizeColumnToContents(5)
+            self.table.resizeColumnToContents(7)
         finally:
             self.table.setUpdatesEnabled(True)
             self.table.blockSignals(False)
@@ -922,17 +1057,73 @@ class QtMediaManagerDialog(QDialog):
 
         self.preview_widget.update()
 
-    def _sync_table_km_cell(self, row: int, item: MediaItem):
-        """將 MediaItem 當前里程即時同步至表格第 3 欄 (匹配里程)。"""
+    def _sync_table_dur_cell(self, row: int, item: MediaItem):
+        """將 MediaItem 停留時長即時同步至表格第 3 欄 (停留秒數)。"""
         self.table.blockSignals(True)
-        km_item = self.table.item(row, 3)
+        dur_item = self.table.item(row, 3)
+        if dur_item:
+            dur_item.setText(item.trim_summary_str)
+        self.table.blockSignals(False)
+
+    def _sync_table_km_cell(self, row: int, item: MediaItem):
+        """將 MediaItem 當前里程即時同步至表格第 5 欄 (匹配里程)。"""
+        self.table.blockSignals(True)
+        km_item = self.table.item(row, 5)
         if km_item:
             km_label = f"{item.current_km:.2f} (手動)" if (item.manual_distance_km is not None and item.manual_distance_km >= 0) else f"{item.current_km:.2f}"
             km_item.setText(km_label)
         self.table.blockSignals(False)
 
+    def _on_table_double_clicked(self, row: int, col: int):
+        if not (0 <= row < len(self.media_items)):
+            return
+        item = self.media_items[row]
+        if col == 3 and item.media_type == "video":
+            self._open_trim_dialog_for_item(item, row)
+
+    def _open_trim_dialog_for_selected(self):
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            if item.media_type == "video":
+                self._open_trim_dialog_for_item(item, self.selected_index)
+
+    def _open_trim_dialog_for_item(self, item: MediaItem, row: int):
+        dlg = QtVideoTrimDialog(item, parent=self)
+        if dlg.exec() == QDialog.Accepted:
+            self._sync_table_dur_cell(row, item)
+            self._update_stats_summary()
+            if row == self.selected_index:
+                self.spin_item_dur.blockSignals(True)
+                self.spin_item_dur.setValue(item.effective_duration)
+                self.spin_item_dur.blockSignals(False)
+                self._update_photo_preview(item)
+
+    def _on_photo_default_changed(self, val: float):
+        self._update_stats_summary()
+
+    def _reset_all_durations_to_defaults(self):
+        default_photo_dur = float(self.spin_photo_dur.value())
+        for item in self.media_items:
+            if item.media_type == "video":
+                item.clip_start_sec = 0.0
+                item.popup_duration = round(item.duration_sec, 2) if item.duration_sec else 10.0
+            else:
+                item.popup_duration = default_photo_dur
+                item.clip_start_sec = 0.0
+        self._populate_tree()
+        if 0 <= self.selected_index < len(self.media_items):
+            self._update_photo_preview(self.media_items[self.selected_index])
+        QMessageBox.information(self, "重設完成", "已將所有相片設為預設停留秒數，所有影片還原為原始全片長度！")
+
+    def _on_item_dur_changed(self, val: float):
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            item.popup_duration = round(val, 2)
+            self._sync_table_dur_cell(self.selected_index, item)
+            self._update_stats_summary()
+
     def _on_table_item_changed(self, table_item: QTableWidgetItem):
-        """處理表格內直接編輯里程或說明的事件，即時自動更新並連動右側編輯區與地圖。"""
+        """處理表格內直接編輯停留秒數、里程或說明的事件，即時自動更新並連動右側編輯區與地圖。"""
         if not table_item or self.table.signalsBlocked():
             return
         row = table_item.row()
@@ -942,7 +1133,26 @@ class QtMediaManagerDialog(QDialog):
 
         item = self.media_items[row]
         if col == 3:
-            # 1. 編輯里程欄位
+            # 1. 編輯停留秒數
+            txt = table_item.text().strip()
+            import re
+            m = re.search(r"[-+]?(?:\d*\.\d+|\d+)", txt)
+            if m:
+                try:
+                    val = float(m.group(0))
+                    val = max(0.5, min(300.0, val))
+                    item.popup_duration = round(val, 2)
+                except Exception:
+                    pass
+            self._sync_table_dur_cell(row, item)
+            self._update_stats_summary()
+            if row == self.selected_index:
+                self.spin_item_dur.blockSignals(True)
+                self.spin_item_dur.setValue(item.effective_duration)
+                self.spin_item_dur.blockSignals(False)
+
+        elif col == 5:
+            # 2. 編輯里程欄位
             txt = table_item.text().strip()
             import re
             m = re.search(r"[-+]?(?:\d*\.\d+|\d+)", txt)
@@ -967,8 +1177,8 @@ class QtMediaManagerDialog(QDialog):
                 self.preview_widget.focus_active()
             self.preview_widget.update()
 
-        elif col == 4:
-            # 2. 編輯說明欄位
+        elif col == 6:
+            # 3. 編輯說明欄位
             item.caption = table_item.text().strip()
             if row == self.selected_index:
                 self.line_caption.blockSignals(True)
@@ -976,12 +1186,12 @@ class QtMediaManagerDialog(QDialog):
                 self.line_caption.blockSignals(False)
 
     def _on_caption_text_changed(self, text: str):
-        """右側說明輸入框內容變更時，即時自動儲存並同步至表格第 4 欄。"""
+        """右側說明輸入框內容變更時，即時自動儲存並同步至表格第 6 欄。"""
         if 0 <= self.selected_index < len(self.media_items):
             item = self.media_items[self.selected_index]
             item.caption = text.strip()
             self.table.blockSignals(True)
-            cap_item = self.table.item(self.selected_index, 4)
+            cap_item = self.table.item(self.selected_index, 6)
             if cap_item:
                 cap_item.setText(item.caption)
             self.table.blockSignals(False)
@@ -1055,11 +1265,19 @@ class QtMediaManagerDialog(QDialog):
 
         # 記錄目前保留項目之屬性覆寫
         for item in self.media_items:
-            if item.caption or (item.manual_distance_km is not None and item.manual_distance_km >= 0):
-                overrides[item.filename] = {
-                    "caption": item.caption,
-                    "manual_distance_km": item.manual_distance_km,
-                }
+            ovr = {}
+            if item.caption:
+                ovr["caption"] = item.caption
+            if item.manual_distance_km is not None and item.manual_distance_km >= 0:
+                ovr["manual_distance_km"] = item.manual_distance_km
+            if item.popup_duration is not None and item.popup_duration > 0:
+                ovr["popup_duration"] = float(round(item.popup_duration, 2))
+            if getattr(item, "clip_start_sec", 0.0) > 0.0:
+                ovr["clip_start_sec"] = float(round(item.clip_start_sec, 2))
+
+            if ovr:
+                overrides[item.filename] = ovr
+
         self.result_overrides = overrides
         self.accept()
 
@@ -1103,6 +1321,13 @@ class QtMediaManagerDialog(QDialog):
                 self.lbl_preview_image.setText("📷 無法載入照片縮圖")
             self.btn_view_full.setEnabled(Path(item.file_path).is_file())
 
+        if item.media_type == "video":
+            self.btn_view_full.setText("▶ 播放/檢視完整影片")
+            self.btn_view_full.setToolTip("使用系統預設播放器開啟影片原檔")
+        else:
+            self.btn_view_full.setText("🔍 檢視全螢幕原圖")
+            self.btn_view_full.setToolTip("使用系統預設相片檢視器開啟原檔")
+
         # 2. 更新 EXIF 與拍攝資訊面板
         self.lbl_info_filename.setText(item.filename)
         self.lbl_info_filename.setToolTip(item.file_path)
@@ -1124,10 +1349,17 @@ class QtMediaManagerDialog(QDialog):
         except Exception:
             size_str = ""
 
-        if dims:
-            self.lbl_info_res.setText(f"{dims[0]} × {dims[1]} px ({size_str})")
+        if item.media_type == "video":
+            dur_prefix = f"長度: {item.duration_str} | " if item.duration_str != "--" else ""
+            if dims:
+                self.lbl_info_res.setText(f"{dur_prefix}{dims[0]} × {dims[1]} px ({size_str})")
+            else:
+                self.lbl_info_res.setText(f"{dur_prefix}影片 ({size_str})" if size_str else f"{dur_prefix}影片")
         else:
-            self.lbl_info_res.setText(f"{item.media_type.upper()} ({size_str})" if size_str else item.media_type.upper())
+            if dims:
+                self.lbl_info_res.setText(f"{dims[0]} × {dims[1]} px ({size_str})")
+            else:
+                self.lbl_info_res.setText(f"相片 ({size_str})" if size_str else "相片")
 
         is_manual = (item.manual_distance_km is not None and item.manual_distance_km >= 0)
         km = item.current_km
@@ -1139,6 +1371,17 @@ class QtMediaManagerDialog(QDialog):
             self.lbl_info_match.setStyleSheet("color: #63b3ed; font-weight: bold;")
 
         # 3. 更新屬性編輯區
+        self.spin_item_dur.blockSignals(True)
+        self.spin_item_dur.setValue(item.effective_duration)
+        self.spin_item_dur.blockSignals(False)
+
+        if item.media_type == "video":
+            self.btn_trim_video.setVisible(True)
+            self.btn_trim_video.setEnabled(True)
+        else:
+            self.btn_trim_video.setVisible(False)
+            self.btn_trim_video.setEnabled(False)
+
         self.chk_manual_km.blockSignals(True)
         self.spin_manual_km.blockSignals(True)
         self.slider_manual_km.blockSignals(True)

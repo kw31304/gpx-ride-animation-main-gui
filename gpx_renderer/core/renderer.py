@@ -135,7 +135,7 @@ class RideRenderer:
 
         self.media_popups = []
         if config.ENABLE_MEDIA and media_items:
-            from gpx_renderer.core.media import prepare_thumbnail
+            from gpx_renderer.core.media import prepare_thumbnail, extract_video_frames_for_popup
 
             valid_items = [m for m in media_items if m.matched_index >= 0]
             # 嚴格依據當前有效里程與點位索引進行升冪排序
@@ -257,22 +257,40 @@ class RideRenderer:
                         items_at_spot = cluster_by_spot[pt_val]
 
                         for item in items_at_spot:
-                            item_dur_sec = float(config.MEDIA_POPUP_DURATION)
+                            item_dur_sec = float(item.effective_duration)
                             item_dur_frames = max(1, int(round(item_dur_sec * self.fps)))
 
                             start_f = len(main_idx_list) - 1
                             end_f = start_f + item_dur_frames
 
-                            if item.thumbnail is None:
-                                item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h)
+                            video_card_frames = None
+                            if getattr(item, "media_type", "") == "video":
+                                video_card_frames = extract_video_frames_for_popup(
+                                    item.file_path,
+                                    anim_frames_count=item_dur_frames,
+                                    anim_fps=self.fps,
+                                    max_w=max_thumb_w,
+                                    max_h=max_thumb_h,
+                                    start_time_sec=float(getattr(item, "clip_start_sec", 0.0) or 0.0),
+                                    ffmpeg_exe=getattr(config, "FFMPEG_EXE", None),
+                                )
+                                if item.thumbnail is None:
+                                    if video_card_frames and len(video_card_frames) > 0:
+                                        item.thumbnail = video_card_frames[0]
+                                    else:
+                                        item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h, is_video=True)
+                            else:
+                                if item.thumbnail is None:
+                                    item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h)
 
-                            if item.thumbnail is not None:
+                            if item.thumbnail is not None or (video_card_frames and len(video_card_frames) > 0):
                                 self.media_popups.append({
                                     "item": item,
                                     "start_frame": start_f,
                                     "end_frame": end_f,
                                     "fade_frames": fade_frames,
                                     "cluster_size": len(items_at_spot),
+                                    "video_frames": video_card_frames,
                                 })
 
                             main_idx_list.extend([pt_val] * item_dur_frames)
@@ -1158,7 +1176,14 @@ class RideRenderer:
                 continue
 
             item = popup["item"]
-            thumb = item.thumbnail
+            video_frames = popup.get("video_frames")
+            if video_frames and len(video_frames) > 0:
+                f_offset = max(0, frame_idx - sf)
+                v_idx = min(f_offset, len(video_frames) - 1)
+                thumb = video_frames[v_idx]
+            else:
+                thumb = item.thumbnail
+
             if thumb is None:
                 continue
 

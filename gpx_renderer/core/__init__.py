@@ -51,6 +51,9 @@ from gpx_renderer.core.media import (
     scan_media_files,
     match_media_to_ride,
     prepare_thumbnail,
+    load_media_thumbnail,
+    extract_video_frame,
+    extract_video_frames_for_popup,
 )
 
 from gpx_renderer.core.cache_manager import CacheManager
@@ -87,4 +90,11 @@ __all__ = [
     "performance_benchmark_job",
     "encode_video_parallel",
     "render_job",
+    "MediaItem",
+    "scan_media_files",
+    "match_media_to_ride",
+    "prepare_thumbnail",
+    "load_media_thumbnail",
+    "extract_video_frame",
+    "extract_video_frames_for_popup",
 ]

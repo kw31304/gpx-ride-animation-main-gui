@@ -6,6 +6,9 @@
 from __future__ import annotations
 import os
 import sys
+import io
+import math
+import shutil
 import json
 import re
 import subprocess
@@ -26,6 +29,9 @@ class MediaItem:
     file_path: str
     filename: str
     media_type: str  # "image" or "video"
+    duration_sec: Optional[float] = None  # 影片時長 (秒)
+    popup_duration: Optional[float] = None  # 個別自訂之停留展示秒數 (秒)
+    clip_start_sec: float = 0.0  # 影片截取播放起始秒數 (秒)
     timestamp: Optional[datetime] = None  # EXIF 拍攝時間
     has_exif_time: bool = False  # 是否具備真實 EXIF/Metadata 拍攝時間 (非檔案修改時間備援)
     lat: Optional[float] = None
@@ -44,6 +50,39 @@ class MediaItem:
         if self.manual_distance_km is not None and self.manual_distance_km >= 0:
             return float(self.manual_distance_km)
         return float(self.matched_km)
+
+    @property
+    def effective_duration(self) -> float:
+        """取得該媒體實際停留秒數：優先採用個別自訂值，影片預設原始長度，相片預設 3.0 秒。"""
+        if self.popup_duration is not None and self.popup_duration > 0:
+            return float(round(self.popup_duration, 2))
+        if self.media_type == "video" and self.duration_sec is not None and self.duration_sec > 0:
+            return float(round(self.duration_sec, 2))
+        return float(getattr(config, "MEDIA_POPUP_DURATION", 3.0))
+
+    @property
+    def trim_summary_str(self) -> str:
+        """格式化停留與裁剪摘要，如 4.5s (02.0~06.5s) 或 3.0s。"""
+        eff = self.effective_duration
+        if self.media_type == "video":
+            st = float(self.clip_start_sec or 0.0)
+            et = st + eff
+            if self.duration_sec is not None and abs(eff - self.duration_sec) < 0.1 and st < 0.1:
+                return f"{eff:.1f}s (全片)"
+            return f"{eff:.1f}s ({st:.1f}~{et:.1f}s)"
+        return f"{eff:.1f}s"
+
+    @property
+    def duration_str(self) -> str:
+        """格式化影片時長字串 (如 12.5s 或 01:23)。"""
+        if self.media_type != "video" or self.duration_sec is None or self.duration_sec <= 0:
+            return "--"
+        dur = float(self.duration_sec)
+        m = int(dur // 60)
+        s = dur % 60
+        if m > 0:
+            return f"{m:02d}:{int(s):02d} ({dur:.1f}s)"
+        return f"{dur:.1f}s"
 
 
 def _convert_dms_to_deg(dms, ref: str) -> float:
@@ -112,12 +151,28 @@ def parse_image_exif(file_path: str | Path) -> tuple[Optional[datetime], Optiona
     return dt_out, lat_out, lon_out
 
 
-def parse_video_metadata(file_path: str | Path, ffmpeg_exe: str | None = None) -> tuple[Optional[datetime], Optional[float], Optional[float]]:
-    """嘗試透過 ffprobe 解析影片 creation_time 與 location 標籤。"""
+def parse_video_metadata(file_path: str | Path, ffmpeg_exe: str | None = None) -> tuple[Optional[datetime], Optional[float], Optional[float], Optional[float]]:
+    """嘗試透過 ffprobe、ffmpeg 或 OpenCV 解析影片 creation_time、location 與 duration_sec。"""
     path = Path(file_path)
     dt_out = None
     lat_out = None
     lon_out = None
+    dur_out = None
+
+    # 1. 嘗試以 OpenCV VideoCapture 取得影片時長 (極速)
+    try:
+        import cv2
+        cap = cv2.VideoCapture(str(path))
+        if cap.isOpened():
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            if fps and fps > 0 and frames and frames > 0:
+                calc_dur = frames / float(fps)
+                if calc_dur > 0 and np.isfinite(calc_dur):
+                    dur_out = float(calc_dur)
+            cap.release()
+    except Exception:
+        pass
 
     ffprobe = None
     if ffmpeg_exe:
@@ -126,69 +181,144 @@ def parse_video_metadata(file_path: str | Path, ffmpeg_exe: str | None = None) -
             ffprobe = str(candidate)
 
     if not ffprobe:
-        import shutil
         ffprobe = shutil.which("ffprobe")
 
-    if not ffprobe:
-        return None, None, None
+    if ffprobe:
+        cmd = [
+            ffprobe, "-v", "quiet",
+            "-print_format", "json",
+            "-show_format", "-show_streams",
+            str(path),
+        ]
+        try:
+            kwargs = {}
+            if os.name == "nt":
+                kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8", **kwargs)
+            if res.returncode == 0:
+                data = json.loads(res.stdout)
+                fmt = data.get("format", {})
+                tags = fmt.get("tags", {})
 
-    cmd = [
-        ffprobe, "-v", "quiet",
-        "-print_format", "json",
-        "-show_format", "-show_streams",
-        str(path),
-    ]
-
-    try:
-        kwargs = {}
-        if os.name == "nt":
-            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8", **kwargs)
-        if res.returncode == 0:
-            data = json.loads(res.stdout)
-            tags = data.get("format", {}).get("tags", {})
-
-            for k, v in tags.items():
-                k_lower = k.lower()
-                if "creation_time" in k_lower and isinstance(v, str):
+                if dur_out is None and "duration" in fmt:
                     try:
-                        clean = v.replace("Z", "+00:00")
-                        dt_out = datetime.fromisoformat(clean).replace(tzinfo=None)
+                        dur_out = float(fmt["duration"])
                     except Exception:
                         pass
-                elif "location" in k_lower and isinstance(v, str):
-                    # 例如 "+25.0330+121.5654/"
-                    m = re.match(r"([+-]\d+\.\d+)([+-]\d+\.\d+)", v)
-                    if m:
-                        lat_out = float(m.group(1))
-                        lon_out = float(m.group(2))
-    except Exception:
-        pass
 
-    return dt_out, lat_out, lon_out
+                for k, v in tags.items():
+                    k_lower = k.lower()
+                    if "creation_time" in k_lower and isinstance(v, str):
+                        try:
+                            clean = v.replace("Z", "+00:00")
+                            dt_out = datetime.fromisoformat(clean).replace(tzinfo=None)
+                        except Exception:
+                            pass
+                    elif "location" in k_lower and isinstance(v, str):
+                        m = re.match(r"([+-]\d+\.\d+)([+-]\d+\.\d+)", v)
+                        if m:
+                            lat_out = float(m.group(1))
+                            lon_out = float(m.group(2))
+        except Exception:
+            pass
+
+    # 若 ffprobe 不存在或未解析出時間/座標，嘗試使用 ffmpeg -hide_banner -i 備援
+    if dt_out is None or lat_out is None or dur_out is None:
+        ff_candidate = ffmpeg_exe
+        if not ff_candidate:
+            try:
+                from gpx_renderer.core.encoder import find_ffmpeg
+                ff_candidate = find_ffmpeg()
+            except Exception:
+                ff_candidate = shutil.which("ffmpeg")
+
+        if ff_candidate and Path(ff_candidate).is_file():
+            try:
+                kwargs = {}
+                if os.name == "nt":
+                    kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                cmd_ff = [str(ff_candidate), "-hide_banner", "-i", str(path)]
+                res = subprocess.run(cmd_ff, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", **kwargs)
+                out_text = res.stderr or ""
+                if dt_out is None:
+                    m_time = re.search(r"creation_time\s*:\s*([0-9T:\-\.Z]+)", out_text, re.IGNORECASE)
+                    if m_time:
+                        try:
+                            clean = m_time.group(1).replace("Z", "+00:00")
+                            dt_out = datetime.fromisoformat(clean).replace(tzinfo=None)
+                        except Exception:
+                            pass
+                if lat_out is None or lon_out is None:
+                    m_loc = re.search(r"location\s*:\s*([+-]\d+\.\d+)([+-]\d+\.\d+)", out_text, re.IGNORECASE)
+                    if m_loc:
+                        try:
+                            lat_out = float(m_loc.group(1))
+                            lon_out = float(m_loc.group(2))
+                        except Exception:
+                            pass
+                if dur_out is None:
+                    m_dur = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", out_text)
+                    if m_dur:
+                        try:
+                            dh = float(m_dur.group(1))
+                            dm = float(m_dur.group(2))
+                            ds = float(m_dur.group(3))
+                            dur_out = dh * 3600.0 + dm * 60.0 + ds
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+    return dt_out, lat_out, lon_out, dur_out
 
 
 def scan_media_files(
-    path: str | Path,
+    path: str | Path | list[str | Path],
     time_offset_sec: float = 0.0,
     ffmpeg_exe: str | None = None,
 ) -> List[MediaItem]:
-    """掃描指定的檔案或資料夾，解析 EXIF/Metadata。"""
-    p = Path(path).expanduser().resolve()
-    if not p.exists():
+    """掃描指定的檔案、資料夾或混合清單，解析 EXIF/Metadata。"""
+    if not path:
         return []
 
+    input_paths = []
+    if isinstance(path, (list, tuple, set)):
+        input_paths = list(path)
+    elif isinstance(path, (str, Path)):
+        p_str = str(path).strip()
+        if ";" in p_str:
+            input_paths = [p.strip() for p in p_str.split(";") if p.strip()]
+        elif "\n" in p_str:
+            input_paths = [p.strip() for p in p_str.split("\n") if p.strip()]
+        else:
+            input_paths = [p_str] if p_str else []
+
     files = []
-    if p.is_file():
-        files = [p]
-    elif p.is_dir():
-        image_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-        video_exts = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
-        for root_dir, _, filenames in os.walk(p):
-            for fn in filenames:
-                ext = Path(fn).suffix.lower()
-                if ext in image_exts or ext in video_exts:
-                    files.append(Path(root_dir) / fn)
+    seen_paths = set()
+    image_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+    video_exts = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv", ".wmv"}
+
+    for p_item in input_paths:
+        p = Path(p_item).expanduser().resolve()
+        if not p.exists():
+            continue
+        if p.is_file():
+            ext = p.suffix.lower()
+            if ext in image_exts or ext in video_exts:
+                canon = str(p).lower()
+                if canon not in seen_paths:
+                    seen_paths.add(canon)
+                    files.append(p)
+        elif p.is_dir():
+            for root_dir, _, filenames in os.walk(p):
+                for fn in filenames:
+                    ext = Path(fn).suffix.lower()
+                    if ext in image_exts or ext in video_exts:
+                        full_f = Path(root_dir) / fn
+                        canon = str(full_f).lower()
+                        if canon not in seen_paths:
+                            seen_paths.add(canon)
+                            files.append(full_f)
 
     overrides = {}
     if getattr(config, "MEDIA_OVERRIDES_JSON", None):
@@ -200,12 +330,13 @@ def scan_media_files(
     items = []
     for f in sorted(files):
         ext = f.suffix.lower()
-        is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+        is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv", ".wmv"}
         media_type = "video" if is_video else "image"
 
         has_exif_dt = False
+        duration_sec = None
         if is_video:
-            dt, lat, lon = parse_video_metadata(f, ffmpeg_exe)
+            dt, lat, lon, duration_sec = parse_video_metadata(f, ffmpeg_exe)
             if dt is not None:
                 has_exif_dt = True
         else:
@@ -241,10 +372,34 @@ def scan_media_files(
             except Exception:
                 man_dist = None
 
+        popup_dur = item_ovr.get("popup_duration")
+        if popup_dur is not None:
+            try:
+                popup_dur = float(popup_dur)
+            except Exception:
+                popup_dur = None
+        else:
+            if is_video and duration_sec is not None and duration_sec > 0:
+                popup_dur = round(float(duration_sec), 2)
+            elif not is_video:
+                popup_dur = float(getattr(config, "MEDIA_POPUP_DURATION", 3.0))
+
+        clip_start = item_ovr.get("clip_start_sec")
+        if clip_start is not None:
+            try:
+                clip_start = float(clip_start)
+            except Exception:
+                clip_start = 0.0
+        else:
+            clip_start = 0.0
+
         items.append(MediaItem(
             file_path=str(f),
             filename=f.name,
             media_type=media_type,
+            duration_sec=duration_sec,
+            popup_duration=popup_dur,
+            clip_start_sec=clip_start,
             timestamp=dt,
             has_exif_time=has_exif_dt,
             lat=lat,
@@ -316,13 +471,163 @@ def match_media_to_ride(
     return media_items
 
 
-def load_media_thumbnail(file_path: str | Path, max_w: int = 600, max_h: int = 450) -> Optional[Image.Image]:
+def extract_video_frame(
+    file_path: str | Path,
+    time_sec: float = 0.0,
+    ffmpeg_exe: str | None = None,
+) -> Optional[Image.Image]:
+    """從影片檔案中擷取單一畫面 (RGB PIL Image)，具備 OpenCV 與 FFmpeg 雙重容錯。"""
+    p = Path(file_path).resolve()
+    if not p.is_file():
+        return None
+
+    # 1. 優先嘗試 OpenCV VideoCapture
+    try:
+        import cv2
+        cap = cv2.VideoCapture(str(p))
+        if cap.isOpened():
+            if time_sec > 0.0:
+                cap.set(cv2.CAP_PROP_POS_MSEC, time_sec * 1000.0)
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                # 若時間超出或首幀失敗，重設至第 0 畫格重試
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = cap.read()
+            cap.release()
+            if ret and frame is not None:
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                return Image.fromarray(rgb)
+    except Exception:
+        pass
+
+    # 2. OpenCV 失敗時，以 FFmpeg 作為可靠備援
+    ff = ffmpeg_exe
+    if not ff:
+        try:
+            from gpx_renderer.core.encoder import find_ffmpeg
+            ff = find_ffmpeg()
+        except Exception:
+            ff = shutil.which("ffmpeg")
+
+    if ff and Path(ff).is_file():
+        try:
+            kwargs = {}
+            if os.name == "nt":
+                kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            cmd = [
+                str(ff), "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", f"{max(0.0, time_sec):.3f}",
+                "-i", str(p),
+                "-frames:v", "1",
+                "-f", "image2pipe",
+                "-vcodec", "png",
+                "-",
+            ]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, **kwargs)
+            if res.returncode == 0 and res.stdout:
+                with Image.open(io.BytesIO(res.stdout)) as img:
+                    return img.convert("RGB")
+        except Exception:
+            pass
+
+    return None
+
+
+def extract_video_frames_for_popup(
+    file_path: str | Path,
+    anim_frames_count: int,
+    anim_fps: int = 60,
+    max_w: int = 800,
+    max_h: int = 800,
+    start_time_sec: float = 0.0,
+    ffmpeg_exe: str | None = None,
+) -> list[Image.Image]:
+    """為路線動畫彈出卡片提取動態影片畫格序列，並預先套用圓角與白邊遮罩。"""
+    p = Path(file_path).resolve()
+    if not p.is_file() or anim_frames_count <= 0:
+        return []
+
+    raw_video_frames = []
+    video_fps = float(anim_fps)
+
+    # 1. 嘗試透過 OpenCV 高速循序解碼連續畫格
+    try:
+        import cv2
+        cap = cv2.VideoCapture(str(p))
+        if cap.isOpened():
+            v_fps = cap.get(cv2.CAP_PROP_FPS)
+            if v_fps and np.isfinite(v_fps) and v_fps > 0:
+                video_fps = float(v_fps)
+
+            # 跳轉至指定裁剪起始時間
+            if start_time_sec > 0.0:
+                cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, float(start_time_sec)) * 1000.0)
+
+            duration_sec = anim_frames_count / float(max(1, anim_fps))
+            max_frames_to_read = int(math.ceil(duration_sec * video_fps)) + 10
+
+            for _ in range(max_frames_to_read):
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    break
+                h, w = frame.shape[:2]
+                scale = min(max_w / float(w), max_h / float(h), 1.0)
+                tw, th = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+                resized = cv2.resize(frame, (tw, th), interpolation=cv2.INTER_AREA) if scale < 0.99 else frame
+                rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                raw_video_frames.append(rgb)
+            cap.release()
+    except Exception:
+        raw_video_frames = []
+
+    # 2. 若 OpenCV 未能解碼多畫格，嘗試以 extract_video_frame 取得起始畫格作為單張卡片
+    if not raw_video_frames:
+        single_frame = extract_video_frame(p, time_sec=max(0.0, float(start_time_sec)), ffmpeg_exe=ffmpeg_exe)
+        if single_frame is not None:
+            card = prepare_thumbnail(single_frame, max_w=max_w, max_h=max_h, is_video=True)
+            if card is not None:
+                return [card] * anim_frames_count
+        return []
+
+    # 3. 預先建立卡片圓角遮罩與外邊框
+    target_h, target_w = raw_video_frames[0].shape[:2]
+    radius = max(14, int(min(target_w, target_h) * 0.05))
+    mask = Image.new("L", (target_w, target_h), 0)
+    mdraw = ImageDraw.Draw(mask)
+    mdraw.rounded_rectangle((0, 0, target_w - 1, target_h - 1), radius=radius, fill=255)
+
+    border_w = max(3, int(min(target_w, target_h) * 0.008))
+    border_img = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+    bdraw = ImageDraw.Draw(border_img)
+    bdraw.rounded_rectangle((0, 0, target_w - 1, target_h - 1), radius=radius, outline=(255, 255, 255, 245), width=border_w)
+
+    # 4. 將每個動畫畫格時間映射至對應的影片畫格並生成卡片
+    card_frames = []
+    num_v = len(raw_video_frames)
+    for af in range(anim_frames_count):
+        t_sec = af / float(max(1, anim_fps))
+        v_idx = min(int(round(t_sec * video_fps)), num_v - 1)
+        pil_img = Image.fromarray(raw_video_frames[v_idx])
+        card = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+        card.paste(pil_img, (0, 0), mask)
+        card.alpha_composite(border_img)
+        card_frames.append(card)
+
+    return card_frames
+
+
+def load_media_thumbnail(
+    file_path: str | Path,
+    max_w: int = 600,
+    max_h: int = 450,
+    ffmpeg_exe: str | None = None,
+) -> Optional[Image.Image]:
     """讀取相片或影片截圖並回傳經 EXIF 旋轉校正之 PIL Image 縮圖。"""
     p = Path(file_path)
     if not p.is_file():
         return None
     ext = p.suffix.lower()
-    is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+    is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv", ".wmv"}
     if not is_video:
         try:
             with Image.open(p) as img:
@@ -333,45 +638,62 @@ def load_media_thumbnail(file_path: str | Path, max_w: int = 600, max_h: int = 4
         except Exception:
             return None
     else:
-        # Video: 嘗試以 OpenCV 讀取第一畫格
-        try:
-            import cv2
-            cap = cv2.VideoCapture(str(p))
-            ret, frame = cap.read()
-            cap.release()
-            if ret and frame is not None:
-                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(rgb)
+        # Video: 透過 extract_video_frame 讀取首畫格截圖 (OpenCV + FFmpeg 備援)
+        img = extract_video_frame(p, time_sec=0.0, ffmpeg_exe=ffmpeg_exe)
+        if img is not None:
+            try:
                 img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
                 return img
-        except Exception:
-            pass
+            except Exception:
+                pass
         return None
 
 
-def prepare_thumbnail(file_path: str, max_w: int = 800, max_h: int = 800) -> Optional[Image.Image]:
+def prepare_thumbnail(
+    file_or_image: str | Path | Image.Image,
+    max_w: int = 800,
+    max_h: int = 800,
+    is_video: bool = False,
+    ffmpeg_exe: str | None = None,
+) -> Optional[Image.Image]:
     """生成帶圓角與邊框的精美媒體縮圖卡片（自適應影片解析度與劇院級邊框）。"""
-    path = Path(file_path)
-    if not path.is_file():
+    img = None
+    if isinstance(file_or_image, Image.Image):
+        img = file_or_image.copy()
+    else:
+        path = Path(file_or_image)
+        if not path.is_file():
+            return None
+        ext = path.suffix.lower()
+        is_vid = is_video or (ext in {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".flv", ".wmv"})
+        if is_vid:
+            img = extract_video_frame(path, time_sec=0.0, ffmpeg_exe=ffmpeg_exe)
+        else:
+            try:
+                with Image.open(path) as raw_img:
+                    img = ImageOps.exif_transpose(raw_img)
+                    img = img.convert("RGB")
+            except Exception:
+                img = None
+
+    if img is None:
         return None
 
     try:
-        with Image.open(path) as img:
-            img = ImageOps.exif_transpose(img)
-            img = img.convert("RGB")
-            img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
-            w, h = img.size
+        img = img.convert("RGB")
+        img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+        w, h = img.size
 
-            radius = max(14, int(min(w, h) * 0.05))
-            card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-            mask = Image.new("L", (w, h), 0)
-            mdraw = ImageDraw.Draw(mask)
-            mdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=255)
+        radius = max(14, int(min(w, h) * 0.05))
+        card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        mask = Image.new("L", (w, h), 0)
+        mdraw = ImageDraw.Draw(mask)
+        mdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=255)
 
-            card.paste(img, (0, 0), mask)
-            cdraw = ImageDraw.Draw(card)
-            border_w = max(3, int(min(w, h) * 0.008))
-            cdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, outline=(255, 255, 255, 245), width=border_w)
-            return card
+        card.paste(img, (0, 0), mask)
+        cdraw = ImageDraw.Draw(card)
+        border_w = max(3, int(min(w, h) * 0.008))
+        cdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, outline=(255, 255, 255, 245), width=border_w)
+        return card
     except Exception:
         return None

@@ -189,11 +189,64 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             w, h = self.get_current_resolution()
             fps = self.spin_fps.value()
             dur_text = self.lineEdit_duration.text().strip()
-            dur = float(dur_text) if dur_text else 30.0
+            base_dur = float(dur_text) if dur_text else 30.0
+            zoom_out_dur = float(self.lineEdit_zoomout.text().strip()) if hasattr(self, "lineEdit_zoomout") and self.lineEdit_zoomout.text().strip() else 0.0
+            end_hold_dur = float(self.lineEdit_end_hold.text().strip()) if hasattr(self, "lineEdit_end_hold") and self.lineEdit_end_hold.text().strip() else 0.0
+
+            media_item_count = 0
+            media_video_count = 0
+            media_photo_count = 0
+            media_added_sec = 0.0
+            video_added_sec = 0.0
+            photo_added_sec = 0.0
+
+            has_media_enabled = self.chk_enable_media_2.isChecked() and bool(self.lineEdit_media.text().strip())
+            if has_media_enabled:
+                media_p = self.lineEdit_media.text().strip()
+                try:
+                    from gpx_renderer.core.media import scan_media_files
+                    scanned = scan_media_files(media_p)
+                    media_item_count = len(scanned)
+                    media_video_count = sum(1 for it in scanned if it.media_type == "video")
+                    media_photo_count = sum(1 for it in scanned if it.media_type == "image")
+                    video_added_sec = sum(it.effective_duration for it in scanned if it.media_type == "video")
+                    photo_added_sec = sum(it.effective_duration for it in scanned if it.media_type == "image")
+                    media_added_sec = video_added_sec + photo_added_sec
+                except Exception:
+                    pass
+
+            total_anim_sec = base_dur + media_added_sec + zoom_out_dur + end_hold_dur
             is_auto = self.chk_auto_duration.isChecked()
-            dur_mode = f"自動時長 {dur:.1f}s" if is_auto else f"手動時長 {dur:.1f}s"
+
+            if media_item_count > 0:
+                if media_video_count > 0 and media_photo_count > 0:
+                    media_tag = f" + 媒體 {media_item_count}個(🎬{media_video_count}部+{video_added_sec:.1f}s, 📷{media_photo_count}張+{photo_added_sec:.1f}s) 總計+{media_added_sec:.1f}s"
+                elif media_video_count > 0:
+                    media_tag = f" + 影片 {media_video_count}部 (停留 +{video_added_sec:.1f}s)"
+                else:
+                    media_tag = f" + 相片 {media_photo_count}張 (停留 +{media_added_sec:.1f}s)"
+                dur_mode = f"基礎 {base_dur:.1f}s{media_tag} → 總時長約 {total_anim_sec:.1f}s"
+            else:
+                dur_mode = f"自動時長 {base_dur:.1f}s" if is_auto else f"手動時長 {base_dur:.1f}s"
+
             if hasattr(self, "label_cfg_res"):
                 self.label_cfg_res.setText(f"畫面規格: {w}x{h} @ {fps} FPS ({dur_mode})")
+
+            # 更新 GPX 距離與總時長資訊列
+            dist = self.state.get("gpx_distance_km")
+            if dist is not None and hasattr(self, "label_distance_info"):
+                m_total = int(total_anim_sec // 60)
+                s_total = int(round(total_anim_sec % 60))
+                time_str = f"{m_total:02d}:{s_total:02d}" if m_total > 0 else f"{total_anim_sec:.1f}s"
+                if media_item_count > 0:
+                    self.label_distance_info.setText(
+                        f"GPX 距離：{dist:.2f} km  |  主動畫：{base_dur:.1f}s  |  媒體 {media_item_count} 個 (+{media_added_sec:.1f}s，含影片 +{video_added_sec:.1f}s, 相片 +{photo_added_sec:.1f}s)  |  預估總時長：約 {total_anim_sec:.1f}s ({time_str})"
+                    )
+                else:
+                    mode_txt = "自動" if is_auto else "手動"
+                    self.label_distance_info.setText(
+                        f"GPX 距離：{dist:.2f} km  →  主動畫 {base_dur:.1f}s ({format_seconds_human(base_dur)}，{mode_txt})"
+                    )
 
             map_raw = self.combo_map_style_2.currentText()
             map_key = map_raw.split(".", 1)[0].strip()
@@ -205,7 +258,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             bitrate = self.combo_bitrate.currentText().strip()
             preset = self.combo_preset.currentText().strip()
-            has_media = "有媒體卡片" if self.chk_enable_media_2.isChecked() and self.lineEdit_media.text().strip() else "無媒體 Overlay"
+            if media_item_count > 0:
+                has_media = f"路線媒體: {media_item_count} 個 (🎬 {media_video_count} 部影片 +{video_added_sec:.1f}s, 📷 {media_photo_count} 張相片)"
+            elif has_media_enabled:
+                has_media = "已啟用媒體"
+            else:
+                has_media = "無媒體 Overlay"
+
             if hasattr(self, "label_cfg_enc"):
                 self.label_cfg_enc.setText(f"編碼設定: NVENC {bitrate} (preset: {preset}) | {has_media}")
 
@@ -431,19 +490,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.lineEdit_output.setText(p)
 
     def browse_media(self):
-        p = QFileDialog.getExistingDirectory(self, "選擇路線照片/影片資料夾")
-        if not p:
-            p, _ = QFileDialog.getOpenFileName(self, "選擇照片或影片檔", "", "媒體檔案 (*.jpg *.jpeg *.png *.webp *.mp4 *.mov)")
-        if p:
-            self.lineEdit_media.setText(p)
-            self.chk_enable_media_2.setChecked(True)
+        from PySide6.QtWidgets import QMenu
+        from PySide6.QtGui import QCursor
+
+        menu = QMenu(self)
+        act_files = menu.addAction("📷🎬 選擇照片或影片檔案 (可多選)...")
+        act_folder = menu.addAction("📁 選擇照片/影片資料夾...")
+        chosen = menu.exec_(QCursor.pos())
+
+        if chosen == act_files:
+            files, _ = QFileDialog.getOpenFileNames(
+                self,
+                "選擇路線照片或影片檔案 (可複選)",
+                "",
+                "媒體檔案 (*.jpg *.jpeg *.png *.webp *.bmp *.mp4 *.mov *.avi *.mkv *.webm *.m4v *.flv *.wmv);;照片檔案 (*.jpg *.jpeg *.png *.webp *.bmp);;影片檔案 (*.mp4 *.mov *.avi *.mkv *.webm *.m4v *.flv *.wmv);;所有檔案 (*.*)",
+            )
+            if files:
+                self.lineEdit_media.setText("; ".join(files))
+                self.chk_enable_media_2.setChecked(True)
+                self._update_dashboard_summary()
+        elif chosen == act_folder:
+            p = QFileDialog.getExistingDirectory(self, "選擇路線照片/影片資料夾")
+            if p:
+                self.lineEdit_media.setText(p)
+                self.chk_enable_media_2.setChecked(True)
+                self._update_dashboard_summary()
 
     def open_media_dialog(self):
         media_p = self.lineEdit_media.text().strip()
         gpx_p = self.lineEdit_gpx.text().strip()
-        if not media_p:
-            QMessageBox.warning(self, "提示", "請先選擇路線媒體路徑。")
-            return
         if not gpx_p or not Path(gpx_p).is_file():
             QMessageBox.warning(self, "提示", "請先選擇有效的 GPX 檔案。")
             return
@@ -459,11 +534,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 hide_start_km=self.spin_hide_start.value(),
                 hide_end_km=self.spin_hide_end.value(),
             )
-            scanned = scan_media_files(media_p, time_offset_sec=0.0)
-
-            if not scanned:
-                QMessageBox.information(self, "提示", "在指定的媒體路徑下未找到相應的照片或影片。")
-                return
+            scanned = scan_media_files(media_p, time_offset_sec=0.0) if media_p else []
 
             initial_dur = float(self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION)
             initial_offset = float(self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC)
@@ -471,12 +542,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if dlg.exec() == QDialog.Accepted:
                 overrides = dlg.result_overrides
                 self.state["media_overrides_json"] = json.dumps(overrides, ensure_ascii=False)
-                self.state["media_popup_duration"] = float(dlg.spin_media_dur.value())
+                self.state["media_popup_duration"] = float(dlg.spin_photo_dur.value())
                 self.state["media_time_offset_sec"] = float(dlg.spin_media_offset.value())
-                config.MEDIA_POPUP_DURATION = float(dlg.spin_media_dur.value())
+                config.MEDIA_POPUP_DURATION = float(dlg.spin_photo_dur.value())
                 config.MEDIA_TIME_OFFSET_SEC = float(dlg.spin_media_offset.value())
                 config.MEDIA_OVERRIDES_JSON = self.state["media_overrides_json"]
-                QMessageBox.information(self, "成功", f"已儲存 {len(overrides)} 個媒體自訂標籤與微調設定！")
+
+                # 若在對話框內新增或變更了媒體項目，同步回傳更新主介面路徑
+                if getattr(dlg, "media_items", None):
+                    all_paths = [it.file_path for it in dlg.media_items]
+                    if len(all_paths) > 0 and (not media_p or len(all_paths) > len(scanned)):
+                        self.lineEdit_media.setText("; ".join(all_paths))
+                        self.chk_enable_media_2.setChecked(True)
+
+                self._update_dashboard_summary()
+                QMessageBox.information(self, "成功", f"已儲存媒體自訂標籤與微調設定！")
         except Exception as exc:
             QMessageBox.critical(self, "錯誤", f"無法開啟媒體管理視窗：{exc}")
 
