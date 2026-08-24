@@ -17,11 +17,11 @@ import contextily as cx
 
 from PySide6.QtCore import Qt, Signal, QRectF, QPointF, QUrl, QSize, QObject, QTimer
 from PySide6.QtGui import (
-    QPainter, QPen, QBrush, QColor, QFont, QPixmap, QImage, QDesktopServices, QCursor, QPolygonF
+    QPainter, QPen, QBrush, QColor, QFont, QPixmap, QImage, QDesktopServices, QCursor, QPolygonF, QPainterPath
 )
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
-    QLineEdit, QDoubleSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
+    QLineEdit, QDoubleSpinBox, QSpinBox, QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QGroupBox, QMessageBox, QSplitter, QFrame, QScrollArea,
     QSizePolicy, QCheckBox, QComboBox, QSlider, QFileDialog
 )
@@ -30,6 +30,7 @@ from gpx_renderer.core.media import (
     MediaItem, match_media_to_ride, scan_media_files, load_media_thumbnail
 )
 from gpx_renderer.core.data import RideData
+from gpx_renderer import config
 from gpx_renderer.gui.qt_video_trim_dialog import QtVideoTrimDialog
 
 
@@ -447,6 +448,9 @@ class QtMediaManagerDialog(QDialog):
         media_duration: float = 3.0,
         media_offset_sec: float = 0.0,
         media_path: str = "",
+        default_caption_size: int = 22,
+        frame_width: int = 1920,
+        frame_height: int = 1080,
         parent=None,
     ):
         super().__init__(parent)
@@ -457,6 +461,10 @@ class QtMediaManagerDialog(QDialog):
         self.media_items = media_items
         self.ride_data = ride_data
         self.media_path = media_path
+        self.default_caption_size = int(default_caption_size if default_caption_size > 0 else getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22))
+        self.frame_width = int(frame_width if frame_width > 0 else getattr(config, "FRAME_WIDTH", 1920))
+        self.frame_height = int(frame_height if frame_height > 0 else getattr(config, "FRAME_HEIGHT", 1080))
+        self.result_frame_size = (self.frame_width, self.frame_height)
         self.total_distance_km = max(0.1, float(ride_data.distances[-1])) if len(ride_data.distances) > 0 else 100.0
         self.selected_index = -1
         self.deleted_filenames: set[str] = set()
@@ -469,6 +477,7 @@ class QtMediaManagerDialog(QDialog):
 
         self._init_ui()
         self.spin_photo_dur.setValue(media_duration if media_duration > 0 else 3.0)
+        self.spin_default_caption_size.setValue(self.default_caption_size)
         self.spin_media_offset.setValue(media_offset_sec)
         self._populate_tree()
 
@@ -482,7 +491,7 @@ class QtMediaManagerDialog(QDialog):
         main_layout.setContentsMargins(10, 10, 10, 10)
 
         # 1. 頂部控制列
-        top_group = QGroupBox(" 媒體播放與相機時間校正 ")
+        top_group = QGroupBox(" 媒體播放與說明設定 ")
         top_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         top_layout = QVBoxLayout(top_group)
         top_layout.setContentsMargins(10, 8, 10, 8)
@@ -490,12 +499,12 @@ class QtMediaManagerDialog(QDialog):
 
         # 第 1 列：相機時間校正說明與照片提示
         row1 = QHBoxLayout()
-        lbl_info = QLabel("💡 說明：相片預設停留 3.0 秒；影片預設保留原始片長（亦可透過「✂️ 裁剪」設定頭尾播放區間）。")
+        lbl_info = QLabel("💡 說明：相片預設停留 3.0 秒；影片預設保留原始片長（亦可透過「✂️ 裁剪」設定頭尾播放區間）。可自訂每張媒體說明文字與字級。")
         lbl_info.setStyleSheet("color: #a0aec0; font-size: 11px;")
         row1.addWidget(lbl_info)
         top_layout.addLayout(row1)
 
-        # 第 2 列：相片預設秒數、一鍵重設、秒數微調輸入與重新對齊按鈕
+        # 第 2 列：相片預設秒數、說明文字預設大小、一鍵重設、秒數微調輸入與重新對齊按鈕
         row2 = QHBoxLayout()
         row2.addWidget(QLabel("📷 相片預設停留："))
         self.spin_photo_dur = QDoubleSpinBox()
@@ -506,8 +515,19 @@ class QtMediaManagerDialog(QDialog):
         self.spin_photo_dur.valueChanged.connect(self._on_photo_default_changed)
         row2.addWidget(self.spin_photo_dur)
 
-        btn_reset_defaults = QPushButton("⚡ 一鍵套用 (相片預設 / 影片全片)")
-        btn_reset_defaults.setToolTip("將所有照片設為預設停留秒數，所有影片還原為原始片長")
+        row2.addSpacing(10)
+        row2.addWidget(QLabel("🔤 說明預設字級："))
+        self.spin_default_caption_size = QSpinBox()
+        self.spin_default_caption_size.setRange(10, 72)
+        self.spin_default_caption_size.setSingleStep(1)
+        self.spin_default_caption_size.setValue(self.default_caption_size)
+        self.spin_default_caption_size.setSuffix(" pt")
+        self.spin_default_caption_size.setToolTip("設定說明文字之預設字級大小 (10~72 pt)")
+        self.spin_default_caption_size.valueChanged.connect(self._on_default_caption_size_changed)
+        row2.addWidget(self.spin_default_caption_size)
+
+        btn_reset_defaults = QPushButton("⚡ 一鍵套用預設值 (停留/字級)")
+        btn_reset_defaults.setToolTip("將所有照片設為預設停留秒數與預設說明字級，所有影片還原為原始片長")
         btn_reset_defaults.setCursor(QCursor(Qt.PointingHandCursor))
         btn_reset_defaults.clicked.connect(self._reset_all_durations_to_defaults)
         row2.addWidget(btn_reset_defaults)
@@ -668,20 +688,30 @@ class QtMediaManagerDialog(QDialog):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # 2.2.1 照片縮圖預覽卡片 (固定高度避免直/橫式照片造成外框高度波動)
-        preview_group = QGroupBox(" 媒體照片預覽 ")
+        # 2.2.1 媒體照片預覽卡片 (依動畫長寬比與解析度同步模擬渲染)
+        preview_group = QGroupBox(" 媒體畫面預覽 (動畫解析度同步模擬) ")
         preview_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         preview_vbox = QVBoxLayout(preview_group)
         preview_vbox.setContentsMargins(8, 8, 8, 8)
         preview_vbox.setSpacing(6)
 
-        # 照片縮圖容器 (固定 210px 高度視框)
+        # 模擬解析度切換與同步列
+        res_row = QHBoxLayout()
+        res_row.addWidget(QLabel("🎬 模擬解析度："))
+        self.combo_preview_res = QComboBox()
+        self.combo_preview_res.setToolTip("切換預覽的動畫長寬比例與解析度，即時檢視不同螢幕尺寸下的照片與文字排版")
+        self._populate_resolution_combo()
+        self.combo_preview_res.currentIndexChanged.connect(self._on_preview_res_changed)
+        res_row.addWidget(self.combo_preview_res)
+        preview_vbox.addLayout(res_row)
+
+        # 畫面預覽容器 (高度依解析度長寬比動態自適應)
         self.lbl_preview_image = ClickablePreviewLabel()
         self.lbl_preview_image.setAlignment(Qt.AlignCenter)
-        self.lbl_preview_image.setFixedHeight(210)
-        self.lbl_preview_image.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.lbl_preview_image.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.lbl_preview_image.setMinimumHeight(160)
         self.lbl_preview_image.setStyleSheet(
-            "background-color: #1a202c; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;"
+            "background-color: #0b0f14; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;"
         )
         self.lbl_preview_image.setText("📷 請從清單或地圖選取照片")
         self.lbl_preview_image.clicked.connect(self._open_full_media)
@@ -788,9 +818,40 @@ class QtMediaManagerDialog(QDialog):
         self.line_caption.textChanged.connect(self._on_caption_text_changed)
         edit_layout.addWidget(self.line_caption, 4, 1)
 
+        edit_layout.addWidget(QLabel("說明文字大小："), 5, 0)
+        cap_size_h_layout = QHBoxLayout()
+        self.spin_caption_size = QSpinBox()
+        self.spin_caption_size.setRange(10, 72)
+        self.spin_caption_size.setSingleStep(1)
+        self.spin_caption_size.setValue(22)
+        self.spin_caption_size.setSuffix(" pt")
+        self.spin_caption_size.setToolTip("設定目前選取項目的說明文字字級大小 (10~72 pt)")
+        self.spin_caption_size.valueChanged.connect(self._on_caption_size_changed)
+        cap_size_h_layout.addWidget(self.spin_caption_size)
+
+        btn_apply_cap_all = QPushButton("⚡ 套用字級至全部")
+        btn_apply_cap_all.setToolTip("將目前的字級大小套用至清單中所有媒體項目")
+        btn_apply_cap_all.setCursor(QCursor(Qt.PointingHandCursor))
+        btn_apply_cap_all.clicked.connect(self._on_apply_caption_size_to_all)
+        cap_size_h_layout.addWidget(btn_apply_cap_all)
+
+        btn_reset_cap = QPushButton("恢復預設")
+        btn_reset_cap.setToolTip("將目前選取項目的字級重設為頂部預設字級")
+        btn_reset_cap.setCursor(QCursor(Qt.PointingHandCursor))
+        btn_reset_cap.clicked.connect(self._on_reset_item_caption_size)
+        cap_size_h_layout.addWidget(btn_reset_cap)
+
+        edit_layout.addLayout(cap_size_h_layout, 5, 1)
+
         right_layout.addWidget(edit_group)
         right_layout.addStretch()
-        main_splitter.addWidget(right_panel)
+
+        scroll_right = QScrollArea()
+        scroll_right.setWidgetResizable(True)
+        scroll_right.setFrameShape(QFrame.NoFrame)
+        scroll_right.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_right.setWidget(right_panel)
+        main_splitter.addWidget(scroll_right)
 
         # 主水平分割器比例 (左側清單+地圖約 760px，右側約 440px)
         main_splitter.setSizes([760, 440])
@@ -851,6 +912,7 @@ class QtMediaManagerDialog(QDialog):
             self.spin_manual_km.setValue(0.0)
             self.slider_manual_km.setValue(0)
             self.line_caption.setText("")
+            self.spin_caption_size.setValue(self.default_caption_size)
             self.preview_widget.selected_index = -1
             self.preview_widget.active_km = -1.0
             self._populate_tree()
@@ -865,7 +927,7 @@ class QtMediaManagerDialog(QDialog):
                 # 重新綁定後續列的刪除按鈕
                 for r in range(del_idx, self.table.rowCount()):
                     r_item = self.media_items[r]
-                    btn_del = self.table.cellWidget(r, 6)
+                    btn_del = self.table.cellWidget(r, 7)
                     if btn_del:
                         try:
                             btn_del.clicked.disconnect()
@@ -1101,9 +1163,45 @@ class QtMediaManagerDialog(QDialog):
     def _on_photo_default_changed(self, val: float):
         self._update_stats_summary()
 
+    def _on_default_caption_size_changed(self, val: int):
+        self.default_caption_size = val
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            if item.caption_size is None:
+                self.spin_caption_size.blockSignals(True)
+                self.spin_caption_size.setValue(val)
+                self.spin_caption_size.blockSignals(False)
+                self._update_photo_preview(item)
+
+    def _on_caption_size_changed(self, val: int):
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            item.caption_size = val
+            self._update_photo_preview(item)
+
+    def _on_apply_caption_size_to_all(self):
+        val = self.spin_caption_size.value()
+        for it in self.media_items:
+            it.caption_size = val
+        if 0 <= self.selected_index < len(self.media_items):
+            self._update_photo_preview(self.media_items[self.selected_index])
+        QMessageBox.information(self, "套用完成", f"已將所有媒體項目的說明文字大小設為 {val} pt！")
+
+    def _on_reset_item_caption_size(self):
+        if 0 <= self.selected_index < len(self.media_items):
+            item = self.media_items[self.selected_index]
+            item.caption_size = None
+            default_val = self.spin_default_caption_size.value()
+            self.spin_caption_size.blockSignals(True)
+            self.spin_caption_size.setValue(default_val)
+            self.spin_caption_size.blockSignals(False)
+            self._update_photo_preview(item)
+
     def _reset_all_durations_to_defaults(self):
         default_photo_dur = float(self.spin_photo_dur.value())
+        default_cap_size = int(self.spin_default_caption_size.value())
         for item in self.media_items:
+            item.caption_size = default_cap_size
             if item.media_type == "video":
                 item.clip_start_sec = 0.0
                 item.popup_duration = round(item.duration_sec, 2) if item.duration_sec else 10.0
@@ -1113,7 +1211,7 @@ class QtMediaManagerDialog(QDialog):
         self._populate_tree()
         if 0 <= self.selected_index < len(self.media_items):
             self._update_photo_preview(self.media_items[self.selected_index])
-        QMessageBox.information(self, "重設完成", "已將所有相片設為預設停留秒數，所有影片還原為原始全片長度！")
+        QMessageBox.information(self, "重設完成", f"已將所有相片設為預設停留 {default_photo_dur}s、說明文字大小 {default_cap_size}pt，所有影片還原為原始全片長度！")
 
     def _on_item_dur_changed(self, val: float):
         if 0 <= self.selected_index < len(self.media_items):
@@ -1186,7 +1284,7 @@ class QtMediaManagerDialog(QDialog):
                 self.line_caption.blockSignals(False)
 
     def _on_caption_text_changed(self, text: str):
-        """右側說明輸入框內容變更時，即時自動儲存並同步至表格第 6 欄。"""
+        """右側說明輸入框內容變更時，即時自動儲存並同步至表格第 6 欄與即時縮圖預覽。"""
         if 0 <= self.selected_index < len(self.media_items):
             item = self.media_items[self.selected_index]
             item.caption = text.strip()
@@ -1195,6 +1293,7 @@ class QtMediaManagerDialog(QDialog):
             if cap_item:
                 cap_item.setText(item.caption)
             self.table.blockSignals(False)
+            self._update_photo_preview(item)
 
     def _on_manual_km_toggled(self, checked: bool):
         self.spin_manual_km.setEnabled(checked)
@@ -1268,6 +1367,8 @@ class QtMediaManagerDialog(QDialog):
             ovr = {}
             if item.caption:
                 ovr["caption"] = item.caption
+            if getattr(item, "caption_size", None) is not None and item.caption_size > 0:
+                ovr["caption_size"] = int(item.caption_size)
             if item.manual_distance_km is not None and item.manual_distance_km >= 0:
                 ovr["manual_distance_km"] = item.manual_distance_km
             if item.popup_duration is not None and item.popup_duration > 0:
@@ -1302,23 +1403,184 @@ class QtMediaManagerDialog(QDialog):
         self._pixmap_cache[item.file_path] = None
         return None
 
+    def _populate_resolution_combo(self):
+        """填入常用影片解析度選項並預設選取當前設定。"""
+        self.combo_preview_res.blockSignals(True)
+        self.combo_preview_res.clear()
+
+        cur_w, cur_h = self.frame_width, self.frame_height
+        gcd_val = math.gcd(cur_w, cur_h)
+        aspect_ratio_str = f"{cur_w // gcd_val}:{cur_h // gcd_val}" if gcd_val > 0 else ""
+
+        preset_list = [
+            (f"當前專案設定 ({cur_w} × {cur_h}, {aspect_ratio_str})", cur_w, cur_h),
+            ("1920 × 1080 (16:9 橫向 Full HD)", 1920, 1080),
+            ("3840 × 2160 (16:9 橫向 4K UHD)", 3840, 2160),
+            ("2560 × 1440 (16:9 橫向 2K QHD)", 2560, 1440),
+            ("1280 × 720 (16:9 橫向 720p HD)", 1280, 720),
+            ("1080 × 1920 (9:16 直向 Shorts / Reels / TikTok)", 1080, 1920),
+            ("1080 × 1080 (1:1 正方形 Instagram)", 1080, 1080),
+            ("1440 × 1080 (4:3 傳統標準比例)", 1440, 1080),
+        ]
+
+        seen_res = set()
+        for idx, (label, w, h) in enumerate(preset_list):
+            key = (w, h)
+            if idx > 0 and key in seen_res:
+                continue
+            seen_res.add(key)
+            self.combo_preview_res.addItem(label, (w, h))
+
+        self.combo_preview_res.setCurrentIndex(0)
+        self.combo_preview_res.blockSignals(False)
+
+    def _on_preview_res_changed(self, idx: int):
+        """切換模擬解析度時，立即重新計算比例並刷新畫面預覽。"""
+        data = self.combo_preview_res.currentData()
+        if data and isinstance(data, (tuple, list)) and len(data) == 2:
+            self.frame_width = int(data[0])
+            self.frame_height = int(data[1])
+            self.result_frame_size = (self.frame_width, self.frame_height)
+            if 0 <= self.selected_index < len(self.media_items):
+                self._update_photo_preview(self.media_items[self.selected_index])
+
     def _update_photo_preview(self, item: MediaItem):
-        """更新右側預覽圖片與 EXIF 拍攝詳細資訊。"""
-        # 1. 讀取並渲染縮圖 (固定在 210px 視框內依比例置中縮放，不引發幾何尺寸抖動)
-        pixmap = self._load_item_pixmap(item)
-        if pixmap and not pixmap.isNull():
-            lbl_w = max(240, self.lbl_preview_image.width() - 8)
-            lbl_h = 200  # 固定在預覽視框高度內
-            scaled_pix = pixmap.scaled(
-                lbl_w, lbl_h, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            self.lbl_preview_image.setPixmap(scaled_pix)
+        """更新右側預覽圖片與 EXIF 拍攝詳細資訊，依當前動畫解析度進行精確等比例模擬渲染。"""
+        # 1. 取得當前模擬解析度與視框尺寸
+        fw = max(240, self.frame_width)
+        fh = max(240, self.frame_height)
+        aspect = fw / float(fh)
+
+        # 取得右側容器可用寬度 (扣除邊界 Padding)
+        parent_w = self.lbl_preview_image.parentWidget().width() if self.lbl_preview_image.parentWidget() else 380
+        avail_w = max(260, parent_w - 24)
+
+        # 根據解析度長寬比動態自適應計算預覽畫布尺寸與視框高度
+        if aspect >= 1.2:
+            # 橫向螢幕 (例如 16:9 橫向, 4:3 橫向)
+            disp_w = min(avail_w, 400)
+            disp_h = max(160, int(round(disp_w / aspect)))
+        elif aspect <= 0.8:
+            # 直向短影音 (例如 9:16 Shorts / Reels / TikTok)
+            disp_h = 320
+            disp_w = max(120, int(round(disp_h * aspect)))
+        else:
+            # 正方形或接近正方形 (例如 1:1 Instagram)
+            disp_w = min(avail_w, 260)
+            disp_h = max(160, int(round(disp_w / aspect)))
+
+        box_h = disp_h + 12
+        self.lbl_preview_image.setFixedHeight(box_h)
+
+        scale_to_disp = disp_h / float(fh)
+        ui_scale = min(fw, fh) / 1000.0
+
+        # 2. 建立主畫布 QPixmap
+        canvas = QPixmap(disp_w, disp_h)
+        canvas.fill(Qt.transparent)
+
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setRenderHint(QPainter.TextAntialiasing, True)
+
+        # 2.1 繪製主視訊畫面底色與外框 (深石板藍/黑底色 + 明確邊框)
+        frame_rect = QRectF(0, 0, disp_w, disp_h)
+        painter.setPen(QPen(QColor("#374151"), 1.5))
+        painter.setBrush(QBrush(QColor("#111827")))
+        painter.drawRoundedRect(frame_rect, 6, 6)
+
+        # 2.2 繪製角落長寬比標籤 (例如 16:9 1920×1080)
+        gcd_val = math.gcd(fw, fh)
+        aspect_ratio_str = f"{fw // gcd_val}:{fh // gcd_val}" if gcd_val > 0 else ""
+        res_tag = f"{aspect_ratio_str} ({fw}×{fh})"
+        painter.setFont(QFont("Segoe UI", 8, QFont.Bold))
+        painter.setPen(QColor(156, 163, 175, 180))
+        painter.drawText(QRectF(6, 4, disp_w - 12, 16), Qt.AlignRight | Qt.AlignTop, res_tag)
+
+        # 2.3 載入並繪製媒體卡片 (依 renderer.py 規範：卡片上限為畫面的 65% 寬度與 60% 高度)
+        max_card_w = max(20, int(disp_w * 0.65))
+        max_card_h = max(20, int(disp_h * 0.60))
+        raw_pix = self._load_item_pixmap(item)
+
+        if raw_pix and not raw_pix.isNull():
+            card_pix = raw_pix.scaled(max_card_w, max_card_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            cw, ch = card_pix.width(), card_pix.height()
+            cx = (disp_w - cw) // 2
+            cy = (disp_h - ch) // 2
+
+            # 劇院級中央圓角與精美白邊框
+            radius = max(3.0, min(cw, ch) * 0.05)
+            border_w = max(1.2, min(cw, ch) * 0.008)
+
+            path = QPainterPath()
+            path.addRoundedRect(QRectF(cx, cy, cw, ch), radius, radius)
+            painter.save()
+            painter.setClipPath(path)
+            painter.drawPixmap(cx, cy, card_pix)
+            painter.restore()
+
+            # 白邊框
+            painter.setPen(QPen(QColor(255, 255, 255, 245), border_w))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(QRectF(cx, cy, cw, ch), radius, radius)
+
+            # 2.4 說明文字標籤條渲染 (高對比、純白字體 + 陰影 + 亮白框線)
+            if item.caption:
+                eff_sz = item.effective_caption_size
+                actual_font_pt = max(10, int(round(float(eff_sz) * ui_scale)))
+                disp_font_pt = max(9, int(round(actual_font_pt * scale_to_disp)))
+                cap_font = QFont("Segoe UI", disp_font_pt, QFont.Bold)
+                painter.setFont(cap_font)
+                fm = painter.fontMetrics()
+
+                txt = item.caption
+                tb_w = fm.horizontalAdvance(txt)
+                tb_h = fm.height()
+
+                pad_x = max(8, int(round(26 * ui_scale * scale_to_disp)))
+                pad_y = max(4, int(round(12 * ui_scale * scale_to_disp)))
+                gap = max(4, int(round(16 * ui_scale * scale_to_disp)))
+
+                cap_w = min(disp_w - 12, tb_w + 2 * pad_x)
+                cap_h = tb_h + 2 * pad_y
+                cap_x = (disp_w - cap_w) // 2
+                cap_y = cy + ch + gap
+
+                # 若文字標籤超出畫面底部，向上移至卡片內部下方
+                if cap_y + cap_h > disp_h - 6:
+                    cap_y = cy + ch - cap_h - 6
+
+                cap_radius = max(4, int(round(16 * ui_scale * scale_to_disp)))
+
+                # 繪製質感深海藍浮雕背景框 (帶 1.5px 亮白邊框)
+                painter.setPen(QPen(QColor(255, 255, 255, 180), 1.5))
+                painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
+                painter.drawRoundedRect(QRectF(cap_x, cap_y, cap_w, cap_h), cap_radius, cap_radius)
+
+                # 繪製文字 (純亮白 + 微距陰影，確保 100% 清晰可見)
+                painter.setBrush(Qt.NoBrush)
+                elided_txt = fm.elidedText(txt, Qt.ElideRight, int(cap_w - 2 * pad_x))
+
+                # 微距黑陰影
+                painter.setPen(QPen(QColor(0, 0, 0, 220)))
+                painter.drawText(QRectF(cap_x + 1, cap_y + 1, cap_w, cap_h), Qt.AlignCenter, elided_txt)
+
+                # 純亮白文字
+                painter.setPen(QPen(QColor(255, 255, 255, 255)))
+                painter.drawText(QRectF(cap_x, cap_y, cap_w, cap_h), Qt.AlignCenter, elided_txt)
+
+            painter.end()
+            self.lbl_preview_image.setPixmap(canvas)
             self.btn_view_full.setEnabled(True)
         else:
-            if item.media_type == "video":
-                self.lbl_preview_image.setText("🎬 影片檔案\n(點擊下方按鈕檢視影片)")
-            else:
-                self.lbl_preview_image.setText("📷 無法載入照片縮圖")
+            # 無縮圖狀態
+            painter.setPen(QColor("#cbd5e0"))
+            painter.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            msg = "🎬 影片檔案\n(點擊下方按鈕播放)" if item.media_type == "video" else "📷 無法載入照片縮圖"
+            painter.drawText(frame_rect, Qt.AlignCenter, msg)
+            painter.end()
+            self.lbl_preview_image.setPixmap(canvas)
             self.btn_view_full.setEnabled(Path(item.file_path).is_file())
 
         if item.media_type == "video":
@@ -1328,7 +1590,7 @@ class QtMediaManagerDialog(QDialog):
             self.btn_view_full.setText("🔍 檢視全螢幕原圖")
             self.btn_view_full.setToolTip("使用系統預設相片檢視器開啟原檔")
 
-        # 2. 更新 EXIF 與拍攝資訊面板
+        # 3. 更新 EXIF 與拍攝資訊面板
         self.lbl_info_filename.setText(item.filename)
         self.lbl_info_filename.setToolTip(item.file_path)
 
@@ -1370,7 +1632,7 @@ class QtMediaManagerDialog(QDialog):
             self.lbl_info_match.setText(f"📍 {km:.2f} km (自動匹配)")
             self.lbl_info_match.setStyleSheet("color: #63b3ed; font-weight: bold;")
 
-        # 3. 更新屬性編輯區
+        # 4. 更新屬性編輯區
         self.spin_item_dur.blockSignals(True)
         self.spin_item_dur.setValue(item.effective_duration)
         self.spin_item_dur.blockSignals(False)
@@ -1386,6 +1648,7 @@ class QtMediaManagerDialog(QDialog):
         self.spin_manual_km.blockSignals(True)
         self.slider_manual_km.blockSignals(True)
         self.line_caption.blockSignals(True)
+        self.spin_caption_size.blockSignals(True)
 
         self.chk_manual_km.setChecked(is_manual)
         self.spin_manual_km.setEnabled(is_manual)
@@ -1393,11 +1656,13 @@ class QtMediaManagerDialog(QDialog):
         self.spin_manual_km.setValue(km)
         self.slider_manual_km.setValue(int(round(km * 100)))
         self.line_caption.setText(item.caption or "")
+        self.spin_caption_size.setValue(item.effective_caption_size)
 
         self.chk_manual_km.blockSignals(False)
         self.spin_manual_km.blockSignals(False)
         self.slider_manual_km.blockSignals(False)
         self.line_caption.blockSignals(False)
+        self.spin_caption_size.blockSignals(False)
 
     def _on_table_select(self):
         selected_rows = self.table.selectedIndexes()
@@ -1446,6 +1711,7 @@ class QtMediaManagerDialog(QDialog):
                 for item in self.media_items:
                     item.manual_distance_km = None
                     item.caption = ""
+                    item.caption_size = None
             self.preview_widget.media_items = self.media_items
             self._populate_tree()
             if self.media_items:
@@ -1454,13 +1720,4 @@ class QtMediaManagerDialog(QDialog):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if 0 <= self.selected_index < len(self.media_items):
-            # 重新縮放預覽縮圖以適應新視窗大小
-            item = self.media_items[self.selected_index]
-            pixmap = self._pixmap_cache.get(item.file_path)
-            if pixmap and not pixmap.isNull():
-                lbl_w = max(240, self.lbl_preview_image.width() - 10)
-                lbl_h = max(180, self.lbl_preview_image.height() - 10)
-                scaled_pix = pixmap.scaled(
-                    lbl_w, lbl_h, Qt.KeepAspectRatio, Qt.SmoothTransformation
-                )
-                self.lbl_preview_image.setPixmap(scaled_pix)
+            self._update_photo_preview(self.media_items[self.selected_index])

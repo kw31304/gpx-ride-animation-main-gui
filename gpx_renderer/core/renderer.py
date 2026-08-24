@@ -263,34 +263,31 @@ class RideRenderer:
                             start_f = len(main_idx_list) - 1
                             end_f = start_f + item_dur_frames
 
-                            video_card_frames = None
+                            video_reader = None
                             if getattr(item, "media_type", "") == "video":
-                                video_card_frames = extract_video_frames_for_popup(
+                                from gpx_renderer.core.media import VideoPopupReader
+                                video_reader = VideoPopupReader(
                                     item.file_path,
-                                    anim_frames_count=item_dur_frames,
+                                    start_time_sec=float(getattr(item, "clip_start_sec", 0.0) or 0.0),
                                     anim_fps=self.fps,
                                     max_w=max_thumb_w,
                                     max_h=max_thumb_h,
-                                    start_time_sec=float(getattr(item, "clip_start_sec", 0.0) or 0.0),
                                     ffmpeg_exe=getattr(config, "FFMPEG_EXE", None),
                                 )
                                 if item.thumbnail is None:
-                                    if video_card_frames and len(video_card_frames) > 0:
-                                        item.thumbnail = video_card_frames[0]
-                                    else:
-                                        item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h, is_video=True)
+                                    item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h, is_video=True)
                             else:
                                 if item.thumbnail is None:
                                     item.thumbnail = prepare_thumbnail(item.file_path, max_w=max_thumb_w, max_h=max_thumb_h)
 
-                            if item.thumbnail is not None or (video_card_frames and len(video_card_frames) > 0):
+                            if item.thumbnail is not None or video_reader is not None:
                                 self.media_popups.append({
                                     "item": item,
                                     "start_frame": start_f,
                                     "end_frame": end_f,
                                     "fade_frames": fade_frames,
                                     "cluster_size": len(items_at_spot),
-                                    "video_frames": video_card_frames,
+                                    "video_reader": video_reader,
                                 })
 
                             main_idx_list.extend([pt_val] * item_dur_frames)
@@ -386,7 +383,8 @@ class RideRenderer:
         self.font_summary_label = load_font(max(8, int(round(10 * ui_scale))), bold=True)
         self.font_summary_value = load_font(max(14, int(round(24 * ui_scale))), bold=True)
         self.font_summary_unit = load_font(max(8, int(round(11 * ui_scale))), bold=True)
-        self.font_caption = load_font(max(12, int(round(22 * ui_scale))), bold=True)
+        default_caption_size = int(getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22))
+        self.font_caption = load_font(max(10, int(round(default_caption_size * ui_scale))), bold=True)
 
         self.hud_update_every = max(1, int(round(self.fps / max(1, config.HUD_UPDATE_HZ))))
 
@@ -1176,11 +1174,12 @@ class RideRenderer:
                 continue
 
             item = popup["item"]
-            video_frames = popup.get("video_frames")
-            if video_frames and len(video_frames) > 0:
+            video_reader = popup.get("video_reader")
+            if video_reader is not None:
                 f_offset = max(0, frame_idx - sf)
-                v_idx = min(f_offset, len(video_frames) - 1)
-                thumb = video_frames[v_idx]
+                thumb = video_reader.get_frame(f_offset)
+                if thumb is None:
+                    thumb = item.thumbnail
             else:
                 thumb = item.thumbnail
 
@@ -1214,15 +1213,21 @@ class RideRenderer:
             caption_text = str(getattr(item, "caption", "") or "").strip()
             if caption_text:
                 odraw = ImageDraw.Draw(overlay)
-                font = self.font_caption
+                cap_sz = getattr(item, "caption_size", None)
+                if cap_sz is not None and cap_sz > 0:
+                    font_size = max(10, int(round(float(cap_sz) * self.ui_scale)))
+                    font = load_font(font_size, bold=True)
+                else:
+                    font = self.font_caption
+
                 tb = odraw.textbbox((0, 0), caption_text, font=font)
                 text_w = tb[2] - tb[0]
                 text_h = tb[3] - tb[1]
 
                 s = self.ui_scale
-                pad_x = max(20, int(round(26 * s)))
-                pad_y = max(10, int(round(12 * s)))
-                gap = max(12, int(round(16 * s)))
+                pad_x = max(16, int(round(26 * s)))
+                pad_y = max(8, int(round(12 * s)))
+                gap = max(10, int(round(16 * s)))
 
                 cap_w = text_w + 2 * pad_x
                 cap_h = text_h + 2 * pad_y
@@ -1233,7 +1238,7 @@ class RideRenderer:
                 if cap_y + cap_h > config.FRAME_HEIGHT - int(20 * s):
                     cap_y = cy + th - cap_h - int(12 * s)
 
-                radius = max(12, int(round(16 * s)))
+                radius = max(10, int(round(16 * s)))
                 odraw.rounded_rectangle(
                     (cap_x, cap_y, cap_x + cap_w - 1, cap_y + cap_h - 1),
                     radius=radius,

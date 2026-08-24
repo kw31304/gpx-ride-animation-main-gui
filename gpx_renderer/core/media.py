@@ -43,7 +43,15 @@ class MediaItem:
     matched_km: float = 0.0  # 匹配之實際里程 (km)
     thumbnail: Optional[Image.Image] = None  # 快取縮圖
     caption: str = ""  # 照片下方自訂說明文字
+    caption_size: Optional[int] = None  # 說明文字自訂字級大小 (pt)
     manual_distance_km: Optional[float] = None  # 手動指定之里程數 (km)
+
+    @property
+    def effective_caption_size(self) -> int:
+        """取得該媒體說明文字字級大小 (pt)：優先採用個別自訂值，預設為 MEDIA_CAPTION_FONT_SIZE (22)。"""
+        if self.caption_size is not None and self.caption_size > 0:
+            return int(self.caption_size)
+        return int(getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22))
 
     @property
     def current_km(self) -> float:
@@ -365,6 +373,15 @@ def scan_media_files(
             continue
 
         caption = str(item_ovr.get("caption", "") or "")
+        cap_sz = item_ovr.get("caption_size") or item_ovr.get("caption_font_size")
+        if cap_sz is not None:
+            try:
+                cap_sz = int(cap_sz)
+            except Exception:
+                cap_sz = None
+        else:
+            cap_sz = None
+
         man_dist = item_ovr.get("manual_distance_km")
         if man_dist is not None:
             try:
@@ -407,6 +424,7 @@ def scan_media_files(
             mercator_x=mx,
             mercator_y=my,
             caption=caption,
+            caption_size=cap_sz,
             manual_distance_km=man_dist,
         ))
 
@@ -533,6 +551,106 @@ def extract_video_frame(
     return None
 
 
+class VideoPopupReader:
+    """輕量化動態影片畫格讀取器，以串流按需解碼取代全量載入記憶體，將 RAM 佔用由數十 GB 降至數 MB。"""
+
+    def __init__(
+        self,
+        file_path: str | Path,
+        start_time_sec: float = 0.0,
+        anim_fps: int = 60,
+        max_w: int = 800,
+        max_h: int = 800,
+        ffmpeg_exe: str | None = None,
+    ):
+        self.file_path = str(Path(file_path).resolve())
+        self.start_time_sec = max(0.0, float(start_time_sec))
+        self.anim_fps = max(1, int(anim_fps))
+        self.max_w = max_w
+        self.max_h = max_h
+        self.ffmpeg_exe = ffmpeg_exe
+        self._cap = None
+        self._video_fps: float = float(self.anim_fps)
+        self._mask: Optional[Image.Image] = None
+        self._border_img: Optional[Image.Image] = None
+        self._cached_frame_offset: int = -1
+        self._cached_card: Optional[Image.Image] = None
+        self._init_metadata()
+
+    def _init_metadata(self):
+        try:
+            import cv2
+            cap = cv2.VideoCapture(self.file_path)
+            if cap.isOpened():
+                v_fps = cap.get(cv2.CAP_PROP_FPS)
+                if v_fps and np.isfinite(v_fps) and v_fps > 0:
+                    self._video_fps = float(v_fps)
+                cap.release()
+        except Exception:
+            pass
+
+    def get_frame(self, anim_frame_offset: int) -> Optional[Image.Image]:
+        """依動畫彈出畫格偏移量 (0..N) 即時解碼並產出圓角白邊卡片 (單格快取)。"""
+        if self._cached_frame_offset == anim_frame_offset and self._cached_card is not None:
+            return self._cached_card
+
+        import cv2
+        if self._cap is None or not self._cap.isOpened():
+            self._cap = cv2.VideoCapture(self.file_path)
+            if not self._cap.isOpened():
+                return None
+
+        # 計算影片時間點
+        t_sec = self.start_time_sec + (anim_frame_offset / float(self.anim_fps))
+        target_msec = t_sec * 1000.0
+        self._cap.set(cv2.CAP_PROP_POS_MSEC, target_msec)
+        ret, frame = self._cap.read()
+        if not ret or frame is None:
+            self._cap.set(cv2.CAP_PROP_POS_MSEC, self.start_time_sec * 1000.0)
+            ret, frame = self._cap.read()
+            if not ret or frame is None:
+                return None
+
+        # 縮放與格式轉換
+        h, w = frame.shape[:2]
+        scale = min(self.max_w / float(w), self.max_h / float(h), 1.0)
+        tw, th = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+        resized = cv2.resize(frame, (tw, th), interpolation=cv2.INTER_AREA) if scale < 0.99 else frame
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(rgb)
+
+        # 建立圓角遮罩與白邊框 (同尺寸快取重複使用)
+        if self._mask is None or self._mask.size != (tw, th):
+            radius = max(14, int(min(tw, th) * 0.05))
+            self._mask = Image.new("L", (tw, th), 0)
+            mdraw = ImageDraw.Draw(self._mask)
+            mdraw.rounded_rectangle((0, 0, tw - 1, th - 1), radius=radius, fill=255)
+
+            border_w = max(3, int(min(tw, th) * 0.008))
+            self._border_img = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+            bdraw = ImageDraw.Draw(self._border_img)
+            bdraw.rounded_rectangle((0, 0, tw - 1, th - 1), radius=radius, outline=(255, 255, 255, 245), width=border_w)
+
+        card = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+        card.paste(pil_img, (0, 0), self._mask)
+        card.alpha_composite(self._border_img)
+
+        self._cached_frame_offset = anim_frame_offset
+        self._cached_card = card
+        return card
+
+    def close(self):
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception:
+                pass
+            self._cap = None
+
+    def __del__(self):
+        self.close()
+
+
 def extract_video_frames_for_popup(
     file_path: str | Path,
     anim_frames_count: int,
@@ -542,77 +660,23 @@ def extract_video_frames_for_popup(
     start_time_sec: float = 0.0,
     ffmpeg_exe: str | None = None,
 ) -> list[Image.Image]:
-    """為路線動畫彈出卡片提取動態影片畫格序列，並預先套用圓角與白邊遮罩。"""
-    p = Path(file_path).resolve()
-    if not p.is_file() or anim_frames_count <= 0:
-        return []
-
-    raw_video_frames = []
-    video_fps = float(anim_fps)
-
-    # 1. 嘗試透過 OpenCV 高速循序解碼連續畫格
-    try:
-        import cv2
-        cap = cv2.VideoCapture(str(p))
-        if cap.isOpened():
-            v_fps = cap.get(cv2.CAP_PROP_FPS)
-            if v_fps and np.isfinite(v_fps) and v_fps > 0:
-                video_fps = float(v_fps)
-
-            # 跳轉至指定裁剪起始時間
-            if start_time_sec > 0.0:
-                cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, float(start_time_sec)) * 1000.0)
-
-            duration_sec = anim_frames_count / float(max(1, anim_fps))
-            max_frames_to_read = int(math.ceil(duration_sec * video_fps)) + 10
-
-            for _ in range(max_frames_to_read):
-                ret, frame = cap.read()
-                if not ret or frame is None:
-                    break
-                h, w = frame.shape[:2]
-                scale = min(max_w / float(w), max_h / float(h), 1.0)
-                tw, th = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
-                resized = cv2.resize(frame, (tw, th), interpolation=cv2.INTER_AREA) if scale < 0.99 else frame
-                rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-                raw_video_frames.append(rgb)
-            cap.release()
-    except Exception:
-        raw_video_frames = []
-
-    # 2. 若 OpenCV 未能解碼多畫格，嘗試以 extract_video_frame 取得起始畫格作為單張卡片
-    if not raw_video_frames:
-        single_frame = extract_video_frame(p, time_sec=max(0.0, float(start_time_sec)), ffmpeg_exe=ffmpeg_exe)
-        if single_frame is not None:
-            card = prepare_thumbnail(single_frame, max_w=max_w, max_h=max_h, is_video=True)
-            if card is not None:
-                return [card] * anim_frames_count
-        return []
-
-    # 3. 預先建立卡片圓角遮罩與外邊框
-    target_h, target_w = raw_video_frames[0].shape[:2]
-    radius = max(14, int(min(target_w, target_h) * 0.05))
-    mask = Image.new("L", (target_w, target_h), 0)
-    mdraw = ImageDraw.Draw(mask)
-    mdraw.rounded_rectangle((0, 0, target_w - 1, target_h - 1), radius=radius, fill=255)
-
-    border_w = max(3, int(min(target_w, target_h) * 0.008))
-    border_img = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
-    bdraw = ImageDraw.Draw(border_img)
-    bdraw.rounded_rectangle((0, 0, target_w - 1, target_h - 1), radius=radius, outline=(255, 255, 255, 245), width=border_w)
-
-    # 4. 將每個動畫畫格時間映射至對應的影片畫格並生成卡片
+    """為路線動畫彈出卡片提取動態影片畫格序列 (限制最大畫格數以防記憶體溢出)。"""
+    reader = VideoPopupReader(
+        file_path=file_path,
+        start_time_sec=start_time_sec,
+        anim_fps=anim_fps,
+        max_w=max_w,
+        max_h=max_h,
+        ffmpeg_exe=ffmpeg_exe,
+    )
+    # 若請求畫格量過大，取關鍵畫格避免 MemoryError
+    safe_count = min(anim_frames_count, 120)
     card_frames = []
-    num_v = len(raw_video_frames)
-    for af in range(anim_frames_count):
-        t_sec = af / float(max(1, anim_fps))
-        v_idx = min(int(round(t_sec * video_fps)), num_v - 1)
-        pil_img = Image.fromarray(raw_video_frames[v_idx])
-        card = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
-        card.paste(pil_img, (0, 0), mask)
-        card.alpha_composite(border_img)
-        card_frames.append(card)
-
+    for af in range(safe_count):
+        f = reader.get_frame(af)
+        if f is not None:
+            card_frames.append(f)
+    reader.close()
     return card_frames
 
 

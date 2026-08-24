@@ -57,21 +57,14 @@ class SubprocessReaderThread(QThread):
         self.proc = proc
 
     def run(self):
-        buf = ""
         try:
-            assert self.proc.stdout is not None
-            while True:
-                ch = self.proc.stdout.read(1)
-                if ch == "":
-                    if buf:
-                        self.line_signal.emit(buf)
-                    break
-                if ch in "\r\n":
-                    if buf.strip():
-                        self.line_signal.emit(buf)
-                    buf = ""
-                else:
-                    buf += ch
+            if self.proc.stdout is not None:
+                for line in iter(self.proc.stdout.readline, ""):
+                    line_str = line.strip()
+                    if line_str:
+                        self.line_signal.emit(line_str)
+        except Exception:
+            pass
         finally:
             rc = self.proc.wait()
             self.finished_signal.emit(rc)
@@ -92,6 +85,19 @@ class GpxDistanceThread(QThread):
             self.success_signal.emit(dist)
         except Exception as exc:
             self.failed_signal.emit(str(exc))
+
+
+class CacheSizeWorkerThread(QThread):
+    """背景計算快取容量的執行緒，避免數萬張切片檔案遍歷阻塞 Qt 主執行緒"""
+    size_signal = Signal(float)
+
+    def run(self):
+        try:
+            from gpx_renderer.core.cache_manager import CacheManager
+            mb = CacheManager.get_cache_size_mb(max_age_sec=30.0)
+            self.size_signal.emit(mb)
+        except Exception:
+            pass
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -125,10 +131,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         CacheManager.init_cache_system()
 
+        # 媒體摘要快取 (避免各 UI 元件事件觸發重複磁碟掃描)
+        self._cached_media_path: str = ""
+        self._cached_media_summary: Optional[tuple] = None
+
         self._init_combos()
         self._init_default_values()
         self._connect_signals()
-        self._update_dashboard_summary()
+        self._update_dashboard_summary(force_media_rescan=True)
 
         # 隱藏進階設定 (預設折疊)
         if hasattr(self, "groupBox"):
@@ -136,16 +146,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "btn_toggle_advanced_2"):
             self.btn_toggle_advanced_2.setText("進階設定 ▼")
 
-        # 初始適應精簡高度並置中螢幕
-        self.adjustSize()
-        self.center_on_screen()
+        # 快取大小背景計算執行緒
+        self._cache_size_thread: Optional[CacheSizeWorkerThread] = None
 
-        # 開局自動刷新 GPX 距離
+        # 開局自動非同步刷新 GPX 距離與快取容量
         QTimer.singleShot(200, self.refresh_gpx_distance)
+        QTimer.singleShot(400, self.refresh_cache_size_display)
 
-        # 每 5 秒週期性自動刷新快取容量顯示
+        # 每 30 秒週期性背景自動刷新快取容量顯示 (完全非同步，0 阻斷)
         self.cache_timer = QTimer(self)
-        self.cache_timer.setInterval(5000)
+        self.cache_timer.setInterval(30000)
         self.cache_timer.timeout.connect(self.refresh_cache_size_display)
         self.cache_timer.start()
 
@@ -184,7 +194,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.groupBox_main_progress.setTitle(f"主進度與整體 ETA - {msg}")
         self.statusBar().showMessage(msg)
 
-    def _update_dashboard_summary(self):
+    def _update_dashboard_summary(self, force_media_rescan: bool = False):
         try:
             w, h = self.get_current_resolution()
             fps = self.spin_fps.value()
@@ -203,17 +213,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             has_media_enabled = self.chk_enable_media_2.isChecked() and bool(self.lineEdit_media.text().strip())
             if has_media_enabled:
                 media_p = self.lineEdit_media.text().strip()
-                try:
-                    from gpx_renderer.core.media import scan_media_files
-                    scanned = scan_media_files(media_p)
-                    media_item_count = len(scanned)
-                    media_video_count = sum(1 for it in scanned if it.media_type == "video")
-                    media_photo_count = sum(1 for it in scanned if it.media_type == "image")
-                    video_added_sec = sum(it.effective_duration for it in scanned if it.media_type == "video")
-                    photo_added_sec = sum(it.effective_duration for it in scanned if it.media_type == "image")
-                    media_added_sec = video_added_sec + photo_added_sec
-                except Exception:
-                    pass
+                if force_media_rescan or media_p != getattr(self, "_cached_media_path", "") or self._cached_media_summary is None:
+                    try:
+                        from gpx_renderer.core.media import scan_media_files
+                        scanned = scan_media_files(media_p)
+                        media_item_count = len(scanned)
+                        media_video_count = sum(1 for it in scanned if it.media_type == "video")
+                        media_photo_count = sum(1 for it in scanned if it.media_type == "image")
+                        video_added_sec = sum(it.effective_duration for it in scanned if it.media_type == "video")
+                        photo_added_sec = sum(it.effective_duration for it in scanned if it.media_type == "image")
+                        media_added_sec = video_added_sec + photo_added_sec
+                        self._cached_media_path = media_p
+                        self._cached_media_summary = (media_item_count, media_video_count, media_photo_count, media_added_sec, video_added_sec, photo_added_sec)
+                    except Exception:
+                        self._cached_media_summary = (0, 0, 0, 0.0, 0.0, 0.0)
+                else:
+                    media_item_count, media_video_count, media_photo_count, media_added_sec, video_added_sec, photo_added_sec = self._cached_media_summary
 
             total_anim_sec = base_dur + media_added_sec + zoom_out_dur + end_hold_dur
             is_auto = self.chk_auto_duration.isChecked()
@@ -424,17 +439,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "btn_apply_benchmark"):
             self.btn_apply_benchmark.clicked.connect(self.apply_benchmark_recommendation)
 
-        self.refresh_cache_size_display()
-
     # ---------- Slot Implementations ----------
     def refresh_cache_size_display(self):
-        try:
-            mb = CacheManager.get_cache_size_mb()
-            if hasattr(self, "lbl_cache_size"):
-                self.lbl_cache_size.setText(f"快取: {mb:.1f} MB")
-        except Exception:
-            if hasattr(self, "lbl_cache_size"):
-                self.lbl_cache_size.setText("快取: 0.0 MB")
+        """背景啟動執行緒計算快取容量，不卡頓 Qt 主執行緒"""
+        if hasattr(self, "_cache_size_thread") and self._cache_size_thread is not None:
+            if self._cache_size_thread.isRunning():
+                return
+        self._cache_size_thread = CacheSizeWorkerThread(self)
+        self._cache_size_thread.size_signal.connect(self._on_cache_size_calculated)
+        self._cache_size_thread.start()
+
+    def _on_cache_size_calculated(self, mb: float):
+        if hasattr(self, "lbl_cache_size"):
+            self.lbl_cache_size.setText(f"快取: {mb:.1f} MB")
 
     def on_cache_mode_change(self, idx: int):
         mode = "session" if idx == 0 else "persistent"
@@ -538,15 +555,39 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             initial_dur = float(self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION)
             initial_offset = float(self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC)
-            dlg = QtMediaManagerDialog(scanned, data, media_duration=initial_dur, media_offset_sec=initial_offset, media_path=media_p, parent=self)
+            initial_caption_size = int(self.state.get("media_caption_font_size") or getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22))
+            cur_w = int(self.spin_width.value())
+            cur_h = int(self.spin_height.value())
+            dlg = QtMediaManagerDialog(
+                scanned,
+                data,
+                media_duration=initial_dur,
+                media_offset_sec=initial_offset,
+                media_path=media_p,
+                default_caption_size=initial_caption_size,
+                frame_width=cur_w,
+                frame_height=cur_h,
+                parent=self,
+            )
             if dlg.exec() == QDialog.Accepted:
                 overrides = dlg.result_overrides
                 self.state["media_overrides_json"] = json.dumps(overrides, ensure_ascii=False)
                 self.state["media_popup_duration"] = float(dlg.spin_photo_dur.value())
+                self.state["media_caption_font_size"] = int(dlg.spin_default_caption_size.value())
                 self.state["media_time_offset_sec"] = float(dlg.spin_media_offset.value())
                 config.MEDIA_POPUP_DURATION = float(dlg.spin_photo_dur.value())
+                config.MEDIA_CAPTION_FONT_SIZE = int(dlg.spin_default_caption_size.value())
                 config.MEDIA_TIME_OFFSET_SEC = float(dlg.spin_media_offset.value())
                 config.MEDIA_OVERRIDES_JSON = self.state["media_overrides_json"]
+
+                # 若在對話框內切換了模擬解析度，同步更新主畫面解析度
+                if hasattr(dlg, "result_frame_size") and dlg.result_frame_size:
+                    new_w, new_h = dlg.result_frame_size
+                    if new_w > 0 and new_h > 0 and (new_w != cur_w or new_h != cur_h):
+                        self.spin_width.setValue(new_w)
+                        self.spin_height.setValue(new_h)
+                        config.FRAME_WIDTH = new_w
+                        config.FRAME_HEIGHT = new_h
 
                 # 若在對話框內新增或變更了媒體項目，同步回傳更新主介面路徑
                 if getattr(dlg, "media_items", None):
@@ -752,6 +793,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             "ENABLE_MEDIA": dict_self.chk_enable_media_2.isChecked(),
             "MEDIA_PATH": dict_self.lineEdit_media.text().strip(),
             "MEDIA_POPUP_DURATION": float(dict_self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION),
+            "MEDIA_CAPTION_FONT_SIZE": int(dict_self.state.get("media_caption_font_size") or getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22)),
             "MEDIA_TIME_OFFSET_SEC": float(dict_self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC),
             "MEDIA_OVERRIDES_JSON": dict_self.state.get("media_overrides_json", "{}"),
             "USE_REAL_SPEED": dict_self.chk_real_speed_2.isChecked(),
@@ -822,14 +864,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._spawn_job(cfg, "benchmark")
 
     def _write_log(self, text: str):
-        """將訊息寫入根目錄 logs 資料夾中的 log 檔案 (附加時間戳記並即時同步硬碟)"""
+        """將訊息寫入根目錄 logs 資料夾中的 log 檔案 (附加時間戳記並即時緩衝刷新)"""
         f = self.state.get("log_file")
         if f and not f.closed:
             try:
                 ts = time.strftime("%Y-%m-%d %H:%M:%S")
                 f.write(f"[{ts}] {text}\n")
                 f.flush()
-                os.fsync(f.fileno())  # 強制將快取即時寫入實體硬碟，讓 VS Code 等編輯器可逐行即時刷新
             except Exception:
                 pass
 

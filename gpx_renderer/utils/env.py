@@ -78,6 +78,10 @@ def _font_candidates(bold: bool):
     return [Path(p) for p in names]
 
 
+import functools
+
+
+@functools.lru_cache(maxsize=128)
 def load_font(size: int, bold: bool = False):
     for path in _font_candidates(bold):
         if path.exists():

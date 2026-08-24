@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 PySide6 原生影片裁剪與播放預覽對話框 (QtVideoTrimDialog)。
 支援滑桿調整影片頭尾 (起點與結束點)、視窗內即時 30FPS 循環播放預覽、時間戳記跳轉與非破壞性時間軸儲存。
@@ -56,10 +56,15 @@ class QtVideoTrimDialog(QDialog):
         self.current_play_sec = self.start_sec
         self.is_playing = False
         self._cap: Optional[cv2.VideoCapture] = None
+        try:
+            self._cap = cv2.VideoCapture(self.file_path)
+        except Exception:
+            self._cap = None
 
-        # 播放定時器 (30 FPS)
+        # 播放定時器 (依影片真實 FPS 計算間隔)
+        interval_ms = max(16, int(round(1000.0 / max(1.0, self.video_fps))))
         self.play_timer = QTimer(self)
-        self.play_timer.setInterval(33)
+        self.play_timer.setInterval(interval_ms)
         self.play_timer.timeout.connect(self._on_playback_tick)
 
         self._init_ui()
@@ -265,8 +270,22 @@ class QtVideoTrimDialog(QDialog):
         rem_s = s % 60
         return f"{m:02d}:{rem_s:04.1f}"
 
+    def _display_cv2_frame(self, bgr_frame: np.ndarray):
+        """將 OpenCV BGR 畫格以極速零拷貝/直接轉換方式渲染至視窗預覽標籤。"""
+        if bgr_frame is None:
+            return
+        rgb = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qimg = QImage(rgb.data, w, h, w * ch, QImage.Format_RGB888)
+        pix = QPixmap.fromImage(qimg)
+
+        target_w = max(320, self.lbl_viewport.width() - 8)
+        target_h = max(220, self.lbl_viewport.height() - 8)
+        scaled = pix.scaled(target_w, target_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.lbl_viewport.setPixmap(scaled)
+
     def _seek_to(self, sec: float):
-        """跳轉至指定秒數並繪製畫格。"""
+        """跳轉至指定秒數並繪製畫格 (以常駐 VideoCapture 快速跳轉)。"""
         self.current_play_sec = max(0.0, min(self.total_duration_sec, sec))
         self.lbl_time_display.setText(f"{self._fmt_time(self.current_play_sec)} / {self._fmt_time(self.total_duration_sec)}")
 
@@ -276,7 +295,16 @@ class QtVideoTrimDialog(QDialog):
         self.slider_progress.setValue(pct)
         self.slider_progress.blockSignals(False)
 
-        # 讀取並渲染畫面
+        # 優先使用常駐 VideoCapture 快速定位
+        if self._cap is not None and self._cap.isOpened():
+            target_msec = self.current_play_sec * 1000.0
+            self._cap.set(cv2.CAP_PROP_POS_MSEC, target_msec)
+            ret, frame = self._cap.read()
+            if ret and frame is not None:
+                self._display_cv2_frame(frame)
+                return
+
+        # 備援讀取
         img = extract_video_frame(self.file_path, time_sec=self.current_play_sec)
         if img is not None:
             rgb = img.convert("RGB")
@@ -296,8 +324,17 @@ class QtVideoTrimDialog(QDialog):
             self._start_playback()
 
     def _start_playback(self):
+        if self._cap is None or not self._cap.isOpened():
+            try:
+                self._cap = cv2.VideoCapture(self.file_path)
+            except Exception:
+                pass
+
         if self.current_play_sec >= self.end_sec or self.current_play_sec < self.start_sec:
             self.current_play_sec = self.start_sec
+            if self._cap and self._cap.isOpened():
+                self._cap.set(cv2.CAP_PROP_POS_MSEC, self.start_sec * 1000.0)
+
         self.is_playing = True
         self.btn_play.setText("⏸ 暫停")
         self.play_timer.start()
@@ -312,12 +349,34 @@ class QtVideoTrimDialog(QDialog):
         self._seek_to(self.start_sec)
 
     def _on_playback_tick(self):
-        step_sec = 0.033
-        next_sec = self.current_play_sec + step_sec
-        if next_sec >= self.end_sec:
-            # 循環回起點播放
-            next_sec = self.start_sec
-        self._seek_to(next_sec)
+        """定時順序解碼下一個影片畫格，實現 60FPS 極速流暢無延遲播放。"""
+        if not self.is_playing or self._cap is None or not self._cap.isOpened():
+            return
+
+        ret, frame = self._cap.read()
+        if not ret or frame is None:
+            # 播放到底，跳回起點循環
+            self._seek_to(self.start_sec)
+            return
+
+        pos_msec = self._cap.get(cv2.CAP_PROP_POS_MSEC)
+        step_sec = 1.0 / max(1.0, self.video_fps)
+        curr_sec = (pos_msec / 1000.0) if (pos_msec and pos_msec > 0) else (self.current_play_sec + step_sec)
+
+        if curr_sec >= self.end_sec:
+            # 超出裁剪結束範圍，循環跳回起點
+            self._seek_to(self.start_sec)
+            return
+
+        self.current_play_sec = curr_sec
+        self.lbl_time_display.setText(f"{self._fmt_time(self.current_play_sec)} / {self._fmt_time(self.total_duration_sec)}")
+
+        pct = int(round((self.current_play_sec / self.total_duration_sec) * 1000))
+        self.slider_progress.blockSignals(True)
+        self.slider_progress.setValue(pct)
+        self.slider_progress.blockSignals(False)
+
+        self._display_cv2_frame(frame)
 
     def _on_progress_slider_moved(self, val: int):
         target_sec = (val / 1000.0) * self.total_duration_sec
@@ -399,13 +458,26 @@ class QtVideoTrimDialog(QDialog):
             f"⏱️ 裁剪後停留時長：{dur:.1f} 秒  |  播放區間：{self._fmt_time(self.start_sec)} ~ {self._fmt_time(self.end_sec)}  |  原片長度：{self._fmt_time(self.total_duration_sec)}"
         )
 
-    def _on_apply(self):
+    def _release_cap(self):
         self._pause_playback()
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception:
+                pass
+            self._cap = None
+
+    def _on_apply(self):
+        self._release_cap()
         dur = max(0.1, round(self.end_sec - self.start_sec, 2))
         self.item.clip_start_sec = round(self.start_sec, 2)
         self.item.popup_duration = dur
         self.accept()
 
+    def reject(self):
+        self._release_cap()
+        super().reject()
+
     def closeEvent(self, event):
-        self._pause_playback()
+        self._release_cap()
         super().closeEvent(event)

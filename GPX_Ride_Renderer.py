@@ -15,8 +15,6 @@ import sys
 import multiprocessing as mp
 
 from gpx_renderer.utils import _force_utf8_stdio, _load_config_file, _hide_frozen_console_for_gui
-from gpx_renderer.gui import launch_gui
-from gpx_renderer.core import render_job, performance_benchmark_job
 
 _force_utf8_stdio()
 
@@ -29,15 +27,20 @@ def main():
 
     # 預設直接開 GUI；--render-config 只給 GUI 啟動的 render subprocess 使用。
     if len(sys.argv) >= 3 and sys.argv[1] == "--render-config":
+        from gpx_renderer.core import render_job
         render_job(_load_config_file(sys.argv[2]))
         return
     if len(sys.argv) >= 3 and sys.argv[1] == "--benchmark-config":
+        from gpx_renderer.core import performance_benchmark_job
         performance_benchmark_job(_load_config_file(sys.argv[2]))
         return
     if len(sys.argv) >= 2 and sys.argv[1] == "--cli":
+        from gpx_renderer.core import render_job
         # CLI 使用目前預設設定，不詢問地圖選單。
         render_job({"map_style_key": "1"})
         return
+
+    from gpx_renderer.gui import launch_gui
     launch_gui()
 
 

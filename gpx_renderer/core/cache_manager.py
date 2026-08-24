@@ -226,11 +226,25 @@ class CacheManager:
         except Exception:
             pass
 
+    _CACHED_SIZE_BYTES: int = 0
+    _LAST_SIZE_CHECK_TIME: float = 0.0
+
     @classmethod
-    def get_cache_size_bytes(cls) -> int:
-        """計算 .map_cache 目錄下所有快取檔案的總位元組數"""
+    def invalidate_cache_size(cls):
+        """主動使快取容量快取失效，下次讀取將強制重新計算。"""
+        cls._LAST_SIZE_CHECK_TIME = 0.0
+
+    @classmethod
+    def get_cache_size_bytes(cls, max_age_sec: float = 15.0) -> int:
+        """計算 .map_cache 目錄下所有快取檔案的總位元組數 (具備 15s 記憶體快取防止頻繁磁碟遍歷造成 UI 延遲)"""
+        now = time.time()
+        if (now - cls._LAST_SIZE_CHECK_TIME) < max_age_sec and cls._LAST_SIZE_CHECK_TIME > 0:
+            return cls._CACHED_SIZE_BYTES
+
         base = cls.get_base_dir()
         if not base.exists():
+            cls._CACHED_SIZE_BYTES = 0
+            cls._LAST_SIZE_CHECK_TIME = now
             return 0
         total = 0
         try:
@@ -243,12 +257,14 @@ class CacheManager:
                         pass
         except Exception:
             pass
+        cls._CACHED_SIZE_BYTES = total
+        cls._LAST_SIZE_CHECK_TIME = now
         return total
 
     @classmethod
-    def get_cache_size_mb(cls) -> float:
+    def get_cache_size_mb(cls, max_age_sec: float = 15.0) -> float:
         """計算目前快取容量 (MB)"""
-        return cls.get_cache_size_bytes() / (1024.0 * 1024.0)
+        return cls.get_cache_size_bytes(max_age_sec=max_age_sec) / (1024.0 * 1024.0)
 
     @classmethod
     def prune_if_exceeds(cls, max_mb: Optional[float] = None, target_mb: Optional[float] = None):

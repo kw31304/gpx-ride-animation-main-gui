@@ -789,6 +789,7 @@ def _print_render_job_summary(
         ("ENABLE_MEDIA", config.ENABLE_MEDIA),
         ("MEDIA_PATH", config.MEDIA_PATH or "(None)"),
         ("MEDIA_POPUP_DURATION", f"{config.MEDIA_POPUP_DURATION}s"),
+        ("MEDIA_CAPTION_FONT_SIZE", f"{config.MEDIA_CAPTION_FONT_SIZE}pt"),
         ("MEDIA_TIME_OFFSET_SEC", f"{config.MEDIA_TIME_OFFSET_SEC}s"),
         ("MATCHED_MEDIA_COUNT", len(matched_media)),
     ]
