@@ -6,28 +6,353 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>980</width>
-    <height>984</height>
+    <width>960</width>
+    <height>720</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>GPX Ride Renderer V1.3.4</string>
+   <string>GPX Ride Renderer V1.3.5</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout_4">
-    <item row="3" column="0" colspan="5">
-     <widget class="QGroupBox" name="groupBox">
+  <widget class="QWidget" name="centralwidget"><layout class="QVBoxLayout" name="verticalLayout_main"><property name="spacing"><number>4</number></property><property name="leftMargin"><number>6</number></property><property name="topMargin"><number>6</number></property><property name="rightMargin"><number>6</number></property><property name="bottomMargin"><number>6</number></property><item><widget class="QGroupBox" name="groupBox_files">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>檔案</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_files">
+       <item row="0" column="0">
+        <widget class="QLabel" name="lbl_gpx">
+         <property name="text">
+          <string>GPX 檔案</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEdit_gpx">
+         <property name="toolTip">
+          <string>選擇欲渲染的 GPX 軌跡路徑檔案 (.gpx)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="btn_browse_gpx">
+         <property name="text">
+          <string>瀏覽…</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="lbl_output">
+         <property name="text">
+          <string>輸出影片</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="lineEdit_output">
+         <property name="toolTip">
+          <string>指定輸出的 MP4 影片檔名與資料夾路徑</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QPushButton" name="btn_browse_output">
+         <property name="text">
+          <string>瀏覽…</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="lbl_media">
+         <property name="toolTip">
+          <string>用途：選擇包含照片或影片的資料夾或檔案。程式會自動讀取 EXIF 時間與 GPS 座標點插入時間軸。</string>
+         </property>
+         <property name="text">
+          <string>路線媒體</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="lineEdit_media">
+         <property name="toolTip">
+          <string>用途：選擇包含照片或影片的資料夾或檔案。程式會自動讀取 EXIF 時間與 GPS 座標點插入時間軸。</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_media">
+         <item>
+          <widget class="QPushButton" name="btn_browse_media">
+           <property name="text">
+            <string>瀏覽…</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_media_dialog">
+           <property name="text">
+            <string>媒體管理</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item><item><widget class="QTabWidget" name="tabWidget"><property name="currentIndex"><number>0</number></property><widget class="QWidget" name="tab_general"><attribute name="title"><string>一般設定</string></attribute><layout class="QVBoxLayout" name="verticalLayout_tab_general"><property name="spacing"><number>4</number></property><property name="leftMargin"><number>4</number></property><property name="topMargin"><number>4</number></property><property name="rightMargin"><number>4</number></property><property name="bottomMargin"><number>4</number></property><item><widget class="QGroupBox" name="groupBox_settings_2">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
-      <property name="maximumSize">
+      <property name="minimumSize">
        <size>
-        <width>16777215</width>
-        <height>250</height>
+        <width>0</width>
+        <height>0</height>
        </size>
+      </property>
+      <property name="title">
+       <string>渲染設定</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <item>
+          <widget class="QLabel" name="lbl_profile_2">
+           <property name="toolTip">
+            <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
+           </property>
+           <property name="text">
+            <string>預設模式</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="combo_profile_2">
+           <property name="toolTip">
+            <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="chk_parallel_2">
+         <property name="toolTip">
+          <string>用途：允許同時啟動多個 worker 平行渲染主動畫。</string>
+         </property>
+         <property name="text">
+          <string>多程序</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_11">
+         <item>
+          <widget class="QLabel" name="lbl_map_style_2">
+           <property name="toolTip">
+            <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
+建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
+           </property>
+           <property name="text">
+            <string>地圖風格</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="combo_map_style_2">
+           <property name="toolTip">
+            <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
+建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="chk_basemap_2">
+         <property name="toolTip">
+          <string>用途：是否下載並顯示道路或衛星等地圖底圖。</string>
+         </property>
+         <property name="text">
+          <string>底圖</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_10">
+         <item>
+          <widget class="QLabel" name="lbl_camera_mode_2">
+           <property name="toolTip">
+            <string>用途：決定路線動畫的鏡頭視角朝向與 3D 地形透視。
+• 正北朝上 (North-Up)
+• 跟隨行進方向 (Heading-Up)
+• 3D 真地形 (3D-Terrain)</string>
+           </property>
+           <property name="text">
+            <string>視角模式</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="combo_camera_mode_2">
+           <property name="toolTip">
+            <string>用途：決定路線動畫的鏡頭視角朝向與 3D 地形透視。
+• 正北朝上 (North-Up)
+• 跟隨行進方向 (Heading-Up)
+• 3D 真地形 (3D-Terrain)</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="chk_enable_media_2">
+         <property name="toolTip">
+          <string>用途：是否在路線動畫中顯示相片/影片懸浮卡片。</string>
+         </property>
+         <property name="text">
+          <string>路線媒體卡片</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <item>
+          <widget class="QLabel" name="lbl_resolution_2">
+           <property name="toolTip">
+            <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
+           </property>
+           <property name="text">
+            <string>解析度預設</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="combo_resolution_2">
+           <property name="toolTip">
+            <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="chk_real_speed_2">
+         <property name="toolTip">
+          <string>用途：控制騎乘動畫在路線上的移動速度模式（等速 vs 實際 GPS 速度）。</string>
+         </property>
+         <property name="text">
+          <string>跟隨 GPX 實際速度</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <item>
+          <widget class="QLabel" name="lbl_track_color_2">
+           <property name="toolTip">
+            <string>用途：控制主畫面軌跡線條與升降彩帶的配色風格。
+• 海拔動態漸層
+• 亮綠、黃、紅單色
+• 騎乘速度漸層</string>
+           </property>
+           <property name="text">
+            <string>軌跡顏色</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="combo_track_color_2">
+           <property name="toolTip">
+            <string>用途：控制主畫面軌跡線條與升降彩帶的配色風格。
+• 海拔動態漸層
+• 亮綠、黃、紅單色
+• 騎乘速度漸層</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="chk_dynamic_speed_zoom">
+         <property name="toolTip">
+          <string>用途：根據當前 GPX 騎乘速度動態縮放鏡頭（高速拉遠、低速拉近），如同車用導航視覺效果。</string>
+         </property>
+         <property name="text">
+          <string>速度動態鏡頭</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="2">
+         <layout class="QHBoxLayout" name="horizontalLayout_panels">
+          <item>
+           <widget class="QLabel" name="lbl_panels">
+            <property name="toolTip">
+             <string>用途：控制是否在動畫主畫面中顯示速度儀表、路線縮圖或海拔高度剖面圖。</string>
+            </property>
+            <property name="text">
+             <string>資訊面板</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_show_speed">
+            <property name="toolTip">
+             <string>用途：控制是否在畫面左上角顯示即時速度與數據面板。</string>
+            </property>
+            <property name="text">
+             <string>速度面板</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_show_minimap">
+            <property name="toolTip">
+             <string>用途：控制是否在畫面右上角顯示路線縮圖與進度面板。</string>
+            </property>
+            <property name="text">
+             <string>路線縮圖</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="chk_show_elevation">
+            <property name="toolTip">
+             <string>用途：控制是否在畫面下方顯示全景高度剖面圖。</string>
+            </property>
+            <property name="text">
+             <string>海拔圖</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+      </layout>
+     </widget>
+    </item></layout></widget><widget class="QWidget" name="tab_advanced"><attribute name="title"><string>進階設定</string></attribute><layout class="QVBoxLayout" name="verticalLayout_tab_advanced"><property name="spacing"><number>4</number></property><property name="leftMargin"><number>4</number></property><property name="topMargin"><number>4</number></property><property name="rightMargin"><number>4</number></property><property name="bottomMargin"><number>4</number></property><item><widget class="QGroupBox" name="groupBox">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
       </property>
       <property name="title">
        <string>進階設定</string>
@@ -715,120 +1040,7 @@
        </item>
       </layout>
      </widget>
-    </item>
-    <item row="6" column="2">
-     <spacer name="verticalSpacer_4">
-      <property name="orientation">
-       <enum>Qt::Orientation::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>93</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="4" column="0" rowspan="2" colspan="5">
-     <widget class="QGroupBox" name="groupBox_dashboard">
-      <property name="title">
-       <string>渲染進度儀表板</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_dashboard">
-       <item>
-        <widget class="QGroupBox" name="groupBox_summary">
-         <property name="title">
-          <string>渲染設定摘要</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_summary">
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_cfg_map">
-            <property name="text">
-             <string>地圖視角: 風格 [1] | North-Up | Zoom: 17</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLabel" name="label_cfg_enc">
-            <property name="text">
-             <string>編碼設定: NVENC 30M (preset: p5) | 無媒體 Overlay</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_cfg_res">
-            <property name="text">
-             <string>畫面規格: 1440x1440 @ 60 FPS (自動時長 20.0s)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLabel" name="label_cfg_perf">
-            <property name="text">
-             <string>效能模式: 多程序 (6 Workers × 4 chunks) | 停用 Cache</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="groupBox_main_progress">
-         <property name="title">
-          <string>主進度與整體 ETA</string>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout_main_progress">
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_eta">
-            <item>
-             <widget class="QLabel" name="label_eta_elapsed">
-              <property name="text">
-               <string>渲染計時: 00:00:00</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_eta_time">
-              <property name="text">
-               <string>預估剩餘時間: --</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_eta_clock">
-              <property name="text">
-               <string>預計完成時刻: --:--:--</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_eta_speed">
-              <property name="text">
-               <string>渲染速度: -- frame/s</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_eta_frames">
-              <property name="text">
-               <string>已完成幀數: 0 / 0</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QProgressBar" name="progressBar_main">
-            <property name="value">
-             <number>0</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="groupBox_workers">
+    </item></layout></widget><widget class="QWidget" name="tab_workers"><attribute name="title"><string>子進度條</string></attribute><layout class="QVBoxLayout" name="verticalLayout_tab_workers"><property name="spacing"><number>4</number></property><property name="leftMargin"><number>4</number></property><property name="topMargin"><number>4</number></property><property name="rightMargin"><number>4</number></property><property name="bottomMargin"><number>4</number></property><item><widget class="QGroupBox" name="groupBox_workers">
          <property name="title">
           <string>各 Worker 子進度條</string>
          </property>
@@ -985,104 +1197,106 @@
           </item>
          </layout>
         </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="0" rowspan="2" colspan="4">
-     <widget class="QGroupBox" name="groupBox_files">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
+       </item></layout></widget></widget></item><item><widget class="QGroupBox" name="groupBox_dashboard">
       <property name="title">
-       <string>檔案</string>
+       <string>渲染進度儀表板</string>
       </property>
-      <layout class="QGridLayout" name="gridLayout_files">
-       <item row="0" column="0">
-        <widget class="QLabel" name="lbl_gpx">
-         <property name="text">
-          <string>GPX 檔案</string>
+      <layout class="QVBoxLayout" name="verticalLayout_dashboard">
+       <item>
+        <widget class="QGroupBox" name="groupBox_summary">
+         <property name="title">
+          <string>渲染設定摘要</string>
          </property>
+         <layout class="QGridLayout" name="gridLayout_summary">
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_cfg_map">
+            <property name="text">
+             <string>地圖視角: 風格 [1] | North-Up | Zoom: 17</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_cfg_enc">
+            <property name="text">
+             <string>編碼設定: NVENC 30M (preset: p5) | 無媒體 Overlay</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_cfg_res">
+            <property name="text">
+             <string>畫面規格: 1440x1440 @ 60 FPS (自動時長 20.0s)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_cfg_perf">
+            <property name="text">
+             <string>效能模式: 多程序 (6 Workers × 4 chunks) | 停用 Cache</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="lineEdit_gpx">
-         <property name="toolTip">
-          <string>選擇欲渲染的 GPX 軌跡路徑檔案 (.gpx)</string>
+       <item>
+        <widget class="QGroupBox" name="groupBox_main_progress">
+         <property name="title">
+          <string>主進度與整體 ETA</string>
          </property>
+         <layout class="QVBoxLayout" name="verticalLayout_main_progress">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_eta">
+            <item>
+             <widget class="QLabel" name="label_eta_elapsed">
+              <property name="text">
+               <string>渲染計時: 00:00:00</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_eta_time">
+              <property name="text">
+               <string>預估剩餘時間: --</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_eta_clock">
+              <property name="text">
+               <string>預計完成時刻: --:--:--</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_eta_speed">
+              <property name="text">
+               <string>渲染速度: -- frame/s</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_eta_frames">
+              <property name="text">
+               <string>已完成幀數: 0 / 0</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QProgressBar" name="progressBar_main">
+            <property name="value">
+             <number>0</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QPushButton" name="btn_browse_gpx">
-         <property name="text">
-          <string>瀏覽…</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="lbl_output">
-         <property name="text">
-          <string>輸出影片</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEdit_output">
-         <property name="toolTip">
-          <string>指定輸出的 MP4 影片檔名與資料夾路徑</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QPushButton" name="btn_browse_output">
-         <property name="text">
-          <string>瀏覽…</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="lbl_media">
-         <property name="toolTip">
-          <string>用途：選擇包含照片或影片的資料夾或檔案。程式會自動讀取 EXIF 時間與 GPS 座標點插入時間軸。</string>
-         </property>
-         <property name="text">
-          <string>路線媒體</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="lineEdit_media">
-         <property name="toolTip">
-          <string>用途：選擇包含照片或影片的資料夾或檔案。程式會自動讀取 EXIF 時間與 GPS 座標點插入時間軸。</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_media">
-         <item>
-          <widget class="QPushButton" name="btn_browse_media">
-           <property name="text">
-            <string>瀏覽…</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_media_dialog">
-           <property name="text">
-            <string>媒體管理</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
        </item>
       </layout>
      </widget>
-    </item>
-    <item row="7" column="0" colspan="5">
-     <layout class="QHBoxLayout" name="horizontalLayout_actions">
+    </item><item><layout class="QHBoxLayout" name="horizontalLayout_actions">
       <item>
        <widget class="QPushButton" name="btn_start_render">
         <property name="sizePolicy">
@@ -1135,296 +1349,7 @@
        </widget>
       </item>
      </layout>
-    </item>
-    <item row="0" column="4">
-     <widget class="QGroupBox" name="groupBox_settings_2">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="title">
-       <string>渲染設定</string>
-      </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_9">
-         <item>
-          <widget class="QLabel" name="lbl_profile_2">
-           <property name="toolTip">
-            <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
-           </property>
-           <property name="text">
-            <string>預設模式</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="combo_profile_2">
-           <property name="toolTip">
-            <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="0" column="1">
-        <widget class="QCheckBox" name="chk_parallel_2">
-         <property name="toolTip">
-          <string>用途：允許同時啟動多個 worker 平行渲染主動畫。</string>
-         </property>
-         <property name="text">
-          <string>多程序</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_11">
-         <item>
-          <widget class="QLabel" name="lbl_map_style_2">
-           <property name="toolTip">
-            <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
-建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
-           </property>
-           <property name="text">
-            <string>地圖風格</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="combo_map_style_2">
-           <property name="toolTip">
-            <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
-建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="chk_basemap_2">
-         <property name="toolTip">
-          <string>用途：是否下載並顯示道路或衛星等地圖底圖。</string>
-         </property>
-         <property name="text">
-          <string>底圖</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_10">
-         <item>
-          <widget class="QLabel" name="lbl_camera_mode_2">
-           <property name="toolTip">
-            <string>用途：決定路線動畫的鏡頭視角朝向與 3D 地形透視。
-• 正北朝上 (North-Up)
-• 跟隨行進方向 (Heading-Up)
-• 3D 真地形 (3D-Terrain)</string>
-           </property>
-           <property name="text">
-            <string>視角模式</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="combo_camera_mode_2">
-           <property name="toolTip">
-            <string>用途：決定路線動畫的鏡頭視角朝向與 3D 地形透視。
-• 正北朝上 (North-Up)
-• 跟隨行進方向 (Heading-Up)
-• 3D 真地形 (3D-Terrain)</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="1">
-        <widget class="QCheckBox" name="chk_enable_media_2">
-         <property name="toolTip">
-          <string>用途：是否在路線動畫中顯示相片/影片懸浮卡片。</string>
-         </property>
-         <property name="text">
-          <string>路線媒體卡片</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <item>
-          <widget class="QLabel" name="lbl_resolution_2">
-           <property name="toolTip">
-            <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
-           </property>
-           <property name="text">
-            <string>解析度預設</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="combo_resolution_2">
-           <property name="toolTip">
-            <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="3" column="1">
-        <widget class="QCheckBox" name="chk_real_speed_2">
-         <property name="toolTip">
-          <string>用途：控制騎乘動畫在路線上的移動速度模式（等速 vs 實際 GPS 速度）。</string>
-         </property>
-         <property name="text">
-          <string>跟隨 GPX 實際速度</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <widget class="QLabel" name="lbl_track_color_2">
-           <property name="toolTip">
-            <string>用途：控制主畫面軌跡線條與升降彩帶的配色風格。
-• 海拔動態漸層
-• 亮綠、黃、紅單色
-• 騎乘速度漸層</string>
-           </property>
-           <property name="text">
-            <string>軌跡顏色</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="combo_track_color_2">
-           <property name="toolTip">
-            <string>用途：控制主畫面軌跡線條與升降彩帶的配色風格。
-• 海拔動態漸層
-• 亮綠、黃、紅單色
-• 騎乘速度漸層</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="4" column="1">
-        <widget class="QCheckBox" name="chk_dynamic_speed_zoom">
-         <property name="toolTip">
-          <string>用途：根據當前 GPX 騎乘速度動態縮放鏡頭（高速拉遠、低速拉近），如同車用導航視覺效果。</string>
-         </property>
-         <property name="text">
-          <string>速度動態鏡頭</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0" colspan="2">
-         <layout class="QHBoxLayout" name="horizontalLayout_panels">
-          <item>
-           <widget class="QLabel" name="lbl_panels">
-            <property name="toolTip">
-             <string>用途：控制是否在動畫主畫面中顯示速度儀表、路線縮圖或海拔高度剖面圖。</string>
-            </property>
-            <property name="text">
-             <string>資訊面板</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="chk_show_speed">
-            <property name="toolTip">
-             <string>用途：控制是否在畫面左上角顯示即時速度與數據面板。</string>
-            </property>
-            <property name="text">
-             <string>速度面板</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="chk_show_minimap">
-            <property name="toolTip">
-             <string>用途：控制是否在畫面右上角顯示路線縮圖與進度面板。</string>
-            </property>
-            <property name="text">
-             <string>路線縮圖</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="chk_show_elevation">
-            <property name="toolTip">
-             <string>用途：控制是否在畫面下方顯示全景高度剖面圖。</string>
-            </property>
-            <property name="text">
-             <string>海拔圖</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="2" column="0" colspan="5">
-     <widget class="QPushButton" name="btn_toggle_advanced_2">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="toolTip">
-       <string>點擊展開或折疊進階設定選單（含自訂尺寸、FPS、NVENC 碼率、Local Zoom、Workers 與 Auto Tune 測試）。</string>
-      </property>
-      <property name="autoFillBackground">
-       <bool>false</bool>
-      </property>
-      <property name="text">
-       <string>進階設定 ▼</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
- <widget class="QMenuBar" name="menubar">
+    </item></layout></widget><widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
@@ -1669,10 +1594,10 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>顯示進階設定面板</string>
+    <string>切換至進階設定分頁</string>
    </property>
    <property name="toolTip">
-    <string>展開或折疊進階參數設定面板 (包含自訂解析度、FPS、碼率等) [Ctrl+Shift+A]</string>
+    <string>切換至進階參數設定分頁 (包含自訂解析度、FPS、碼率等) [Ctrl+Shift+A]</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+A</string>
@@ -1865,7 +1790,7 @@
     <string>關於 GPX Ride Renderer...</string>
    </property>
   </action>
-</widget>
+<property name="minimumSize"><size><width>880</width><height>640</height></size></property><property name="maximumSize"><size><width>1020</width><height>780</height></size></property></widget>
  <resources />
  <connections />
 </ui>

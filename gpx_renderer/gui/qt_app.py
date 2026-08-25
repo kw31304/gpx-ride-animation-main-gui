@@ -150,11 +150,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._connect_signals()
         self._update_dashboard_summary(force_media_rescan=True)
 
-        # 隱藏進階設定 (預設折疊)
-        if hasattr(self, "groupBox"):
-            self.groupBox.setVisible(False)
-        if hasattr(self, "btn_toggle_advanced_2"):
-            self.btn_toggle_advanced_2.setText("進階設定 ▼")
+        # 預設選取「一般設定」分頁 (Tab Index 0)
+        if hasattr(self, "tabWidget"):
+            self.tabWidget.setCurrentIndex(0)
 
         # 快取大小背景計算執行緒
         self._cache_size_thread: Optional[CacheSizeWorkerThread] = None
@@ -338,6 +336,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "action_refresh_distance"): self.action_refresh_distance.triggered.connect(self.refresh_gpx_distance)
 
         # 檢視選單動作
+        # 分頁切換與進階設定按鈕同步
+        if hasattr(self, "tabWidget"):
+            self.tabWidget.currentChanged.connect(self._on_tab_changed)
         if hasattr(self, "action_toggle_toolbar") and hasattr(self, "toolBar"):
             self.action_toggle_toolbar.toggled.connect(self.toolBar.setVisible)
         if hasattr(self, "action_toggle_advanced"):
@@ -410,6 +411,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "action_about"):
             self.action_about.triggered.connect(self.show_about_dialog)
 
+    def _on_tab_changed(self, idx: int):
+        if hasattr(self, "action_toggle_advanced"):
+            self.action_toggle_advanced.blockSignals(True)
+            self.action_toggle_advanced.setChecked(idx == 1)
+            self.action_toggle_advanced.blockSignals(False)
+
     def _on_toggle_summary(self, visible: bool):
         if hasattr(self, "groupBox_summary"):
             self.groupBox_summary.setVisible(visible)
@@ -417,10 +424,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.adjustSize()
 
     def _on_toggle_workers(self, visible: bool):
-        if hasattr(self, "groupBox_workers"):
-            self.groupBox_workers.setVisible(visible)
-            QApplication.processEvents()
-            self.adjustSize()
+        if hasattr(self, "tabWidget"):
+            if visible:
+                self.tabWidget.setCurrentIndex(2)
+            elif self.tabWidget.currentIndex() == 2:
+                self.tabWidget.setCurrentIndex(0)
 
     def _select_profile(self, name: str):
         if hasattr(self, "combo_profile_2"):
@@ -583,7 +591,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gpx_debounce_timer.timeout.connect(self.refresh_gpx_distance)
         self.lineEdit_gpx.textChanged.connect(lambda: self.gpx_debounce_timer.start(400))
 
-        self.btn_toggle_advanced_2.clicked.connect(lambda: self.toggle_advanced())
+        if hasattr(self, "btn_toggle_advanced_2"): self.btn_toggle_advanced_2.clicked.connect(lambda: self.toggle_advanced())
 
         self.btn_start_render.clicked.connect(self.start_render)
         self.btn_stop_render.clicked.connect(self.stop_render)
@@ -637,26 +645,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.refresh_cache_size_display()
             QMessageBox.information(self, "快取已清除", "所有底圖與高程快取已全數清空！")
     def toggle_advanced(self, *args, show: Optional[bool] = None):
-        is_visible = self.groupBox.isVisible()
-        next_state = not is_visible if show is None else bool(show)
-        if is_visible == next_state:
+        if hasattr(self, "tabWidget"):
+            cur_idx = self.tabWidget.currentIndex()
+            if show is True:
+                target_idx = 1
+            elif show is False:
+                target_idx = 0 if cur_idx == 1 else cur_idx
+            else:
+                target_idx = 0 if cur_idx == 1 else 1
+            self.tabWidget.setCurrentIndex(target_idx)
+            if hasattr(self, "action_toggle_advanced"):
+                self.action_toggle_advanced.blockSignals(True)
+                self.action_toggle_advanced.setChecked(target_idx == 1)
+                self.action_toggle_advanced.blockSignals(False)
             return
-        self.groupBox.setVisible(next_state)
+
+        is_visible = self.groupBox.isVisible() if hasattr(self, "groupBox") else False
+        next_state = not is_visible if show is None else bool(show)
+        if hasattr(self, "groupBox"):
+            self.groupBox.setVisible(next_state)
         if hasattr(self, "btn_toggle_advanced_2"):
             self.btn_toggle_advanced_2.setText("進階設定 ▲" if next_state else "進階設定 ▼")
         if hasattr(self, "action_toggle_advanced"):
             self.action_toggle_advanced.blockSignals(True)
             self.action_toggle_advanced.setChecked(next_state)
             self.action_toggle_advanced.blockSignals(False)
-
-        # 重新計算 Layout 尺寸並自適應調整主視窗高度
-        QApplication.processEvents()
-        if not next_state:
-            self.resize(self.width(), self.sizeHint().height())
-            self.adjustSize()
-        else:
-            self.adjustSize()
-            self.center_on_screen()
 
     def browse_gpx(self):
         p, _ = QFileDialog.getOpenFileName(self, "選擇 GPX 檔案", "", "GPX 檔案 (*.gpx);;所有檔案 (*.*)")

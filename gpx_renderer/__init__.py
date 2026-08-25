@@ -9,7 +9,7 @@ from gpx_renderer.utils import _force_utf8_stdio
 # before freeze_support() diverts execution to the worker target.
 _force_utf8_stdio()
 
-__version__ = "1.3.4"
+__version__ = "1.3.5"
 
 
 def launch_gui():
