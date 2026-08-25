@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>GPX Ride Renderer V1.3.3</string>
+   <string>GPX Ride Renderer V1.3.4</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_4">
@@ -681,7 +681,7 @@
             <string>用途：用短 benchmark 實測不同 Workers 數量的等效 FPS，再推薦接近峰值效能的最低 worker 數。</string>
            </property>
            <property name="text">
-            <string>⚡ 效能測試 / Auto Tune</string>
+            <string>效能測試 / Auto Tune</string>
            </property>
           </widget>
          </item>
@@ -1134,43 +1134,6 @@
         </property>
        </widget>
       </item>
-      <item>
-       <spacer name="horizontalSpacer_7">
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="btn_open_log_folder">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>50</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>12</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>📁 開啟 Log 資料夾</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </item>
     <item row="0" column="4">
@@ -1461,7 +1424,448 @@
     </item>
    </layout>
   </widget>
- </widget>
- <resources/>
- <connections/>
+ <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>980</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_file">
+    <property name="title">
+     <string>檔案(&amp;F)</string>
+    </property>
+    <addaction name="action_open_gpx" />
+    <addaction name="action_save_output" />
+    <addaction name="action_select_media" />
+    <addaction name="action_media_dialog" />
+    <addaction name="separator" />
+    <addaction name="action_open_log_folder" />
+    <addaction name="separator" />
+    <addaction name="action_exit" />
+   </widget>
+   <widget class="QMenu" name="menu_edit">
+    <property name="title">
+     <string>編輯與工具(&amp;E)</string>
+    </property>
+    <addaction name="action_benchmark" />
+    <addaction name="action_apply_benchmark" />
+    <addaction name="separator" />
+    <addaction name="action_clear_cache" />
+    <addaction name="action_refresh_distance" />
+   </widget>
+   <widget class="QMenu" name="menu_view">
+    <property name="title">
+     <string>檢視(&amp;V)</string>
+    </property>
+    <addaction name="action_toggle_toolbar" />
+    <addaction name="action_toggle_advanced" />
+    <addaction name="separator" />
+    <addaction name="action_toggle_summary" />
+    <addaction name="action_toggle_workers" />
+   </widget>
+   <widget class="QMenu" name="menu_settings">
+    <property name="title">
+     <string>設定(&amp;S)</string>
+    </property>
+    <widget class="QMenu" name="menu_profile">
+     <property name="title">
+      <string>預設畫質風格</string>
+     </property>
+     <addaction name="action_profile_fast" />
+     <addaction name="action_profile_balanced" />
+     <addaction name="action_profile_quality" />
+    </widget>
+    <widget class="QMenu" name="menu_hud_panels">
+     <property name="title">
+      <string>資訊面板</string>
+     </property>
+     <addaction name="action_show_speed" />
+     <addaction name="action_show_minimap" />
+     <addaction name="action_show_elevation" />
+    </widget>
+    <widget class="QMenu" name="menu_cache_mode">
+     <property name="title">
+      <string>地圖快取模式</string>
+     </property>
+     <addaction name="action_cache_session" />
+     <addaction name="action_cache_persistent" />
+    </widget>
+    <addaction name="menu_profile" />
+    <addaction name="separator" />
+    <addaction name="menu_hud_panels" />
+    <addaction name="action_dynamic_speed_zoom" />
+    <addaction name="action_real_speed" />
+    <addaction name="action_basemap" />
+    <addaction name="action_parallel" />
+    <addaction name="action_enable_media" />
+    <addaction name="action_preview" />
+    <addaction name="separator" />
+    <addaction name="menu_cache_mode" />
+   </widget>
+   <widget class="QMenu" name="menu_help">
+    <property name="title">
+     <string>說明(&amp;H)</string>
+    </property>
+    <addaction name="action_help_shortcuts" />
+    <addaction name="action_about" />
+   </widget>
+   <addaction name="menu_file" />
+   <addaction name="menu_edit" />
+   <addaction name="menu_view" />
+   <addaction name="menu_settings" />
+   <addaction name="menu_help" />
+  </widget><widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>快捷工具列</string>
+   </property>
+   <property name="movable">
+    <bool>false</bool>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>22</width>
+     <height>22</height>
+    </size>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_open_gpx" />
+   <addaction name="action_media_dialog" />
+   <addaction name="action_benchmark" />
+   <addaction name="action_clear_cache" />
+   <addaction name="action_open_log_folder" />
+   <addaction name="separator" />
+   <addaction name="action_toggle_advanced" />
+   <addaction name="separator" />
+   <addaction name="action_start_render" />
+   <addaction name="action_stop_render" />
+  </widget><action name="action_open_gpx">
+   <property name="text">
+    <string>選擇 GPX 檔案...</string>
+   </property>
+   <property name="toolTip">
+    <string>選擇欲渲染的 GPX 軌跡路徑檔案 (.gpx) [Ctrl+O]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_save_output">
+   <property name="text">
+    <string>指定輸出影片路徑...</string>
+   </property>
+   <property name="toolTip">
+    <string>指定輸出的 MP4 影片檔名與路徑 [Ctrl+S]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="action_select_media">
+   <property name="text">
+    <string>選擇路線媒體...</string>
+   </property>
+   <property name="toolTip">
+    <string>選擇路線照片或影片資料夾/檔案</string>
+   </property>
+  </action>
+  <action name="action_media_dialog">
+   <property name="text">
+    <string>開啟媒體管理器...</string>
+   </property>
+   <property name="toolTip">
+    <string>開啟路線照片與影片管理編輯器，設定停留時間、標籤與精確位置 [Ctrl+M]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+M</string>
+   </property>
+  </action>
+  <action name="action_open_log_folder">
+   <property name="text">
+    <string>開啟 Log 資料夾</string>
+   </property>
+   <property name="toolTip">
+    <string>開啟儲存渲染記錄與偵錯資訊的 Log 資料夾 [Ctrl+L]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="action_exit">
+   <property name="text">
+    <string>結束</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="action_benchmark">
+   <property name="text">
+    <string>效能測試 / Auto Tune</string>
+   </property>
+   <property name="toolTip">
+    <string>實測不同 Workers 數量的渲染 FPS，推薦最合適的 Worker 設定 [Ctrl+T]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+T</string>
+   </property>
+  </action>
+  <action name="action_apply_benchmark">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>套用 Auto Tune 最佳建議</string>
+   </property>
+   <property name="toolTip">
+    <string>自動套用測試推薦之最佳 Worker 數量</string>
+   </property>
+  </action>
+  <action name="action_clear_cache">
+   <property name="text">
+    <string>清除本機地圖與高程快取...</string>
+   </property>
+   <property name="toolTip">
+    <string>立即清除所有本機磁碟底圖與高程快取資料</string>
+   </property>
+  </action>
+  <action name="action_refresh_distance">
+   <property name="text">
+    <string>重新整理 GPX 距離與時長</string>
+   </property>
+   <property name="toolTip">
+    <string>重新計算 GPX 軌跡總里程與預估時長 [F5]</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
+   </property>
+  </action>
+  <action name="action_toggle_toolbar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>顯示快捷工具列</string>
+   </property>
+   <property name="toolTip">
+    <string>切換是否顯示頂部快捷工具列</string>
+   </property>
+  </action>
+  <action name="action_toggle_advanced">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>顯示進階設定面板</string>
+   </property>
+   <property name="toolTip">
+    <string>展開或折疊進階參數設定面板 (包含自訂解析度、FPS、碼率等) [Ctrl+Shift+A]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+A</string>
+   </property>
+  </action>
+  <action name="action_toggle_summary">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>顯示設定摘要面板</string>
+   </property>
+   <property name="toolTip">
+    <string>切換顯示或隱藏渲染設定摘要面板</string>
+   </property>
+  </action>
+  <action name="action_toggle_workers">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>顯示 Worker 子進度條</string>
+   </property>
+   <property name="toolTip">
+    <string>切換顯示或隱藏各 Worker 子進度條，節省視窗版面垂直高度</string>
+   </property>
+  </action>
+  <action name="action_profile_fast">
+   <property name="text">
+    <string>快速模式 (720p / p3 / 12M)</string>
+   </property>
+  </action>
+  <action name="action_profile_balanced">
+   <property name="text">
+    <string>平衡模式 (1080p / p4 / 20M)</string>
+   </property>
+  </action>
+  <action name="action_profile_quality">
+   <property name="text">
+    <string>高畫質模式 (1440p / p5 / 30M)</string>
+   </property>
+  </action>
+  <action name="action_show_speed">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>速度面板 (Speed HUD)</string>
+   </property>
+  </action>
+  <action name="action_show_minimap">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>路線縮圖 (Minimap)</string>
+   </property>
+  </action>
+  <action name="action_show_elevation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>海拔圖 (Elevation)</string>
+   </property>
+  </action>
+  <action name="action_dynamic_speed_zoom">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>速度動態鏡頭</string>
+   </property>
+  </action>
+  <action name="action_real_speed">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>跟隨 GPX 實際速度</string>
+   </property>
+  </action>
+  <action name="action_basemap">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>地圖底圖</string>
+   </property>
+  </action>
+  <action name="action_parallel">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>多程序渲染</string>
+   </property>
+  </action>
+  <action name="action_enable_media">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>路線媒體卡片</string>
+   </property>
+  </action>
+  <action name="action_preview">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Preview 預覽模式</string>
+   </property>
+  </action>
+  <action name="action_cache_session">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>自動暫存 (關閉清除)</string>
+   </property>
+  </action>
+  <action name="action_cache_persistent">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>永久保留 (加速渲染)</string>
+   </property>
+  </action>
+  <action name="action_start_render">
+   <property name="text">
+    <string>開始渲染</string>
+   </property>
+   <property name="toolTip">
+    <string>根據目前設定啟動 GPX 動畫渲染程序 [Ctrl+R / F5]</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="action_stop_render">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>停止渲染</string>
+   </property>
+   <property name="toolTip">
+    <string>終止當前正在執行的渲染或測試程序 [Esc]</string>
+   </property>
+  </action>
+  <action name="action_help_shortcuts">
+   <property name="text">
+    <string>快捷鍵與使用手冊...</string>
+   </property>
+   <property name="shortcut">
+    <string>F1</string>
+   </property>
+  </action>
+  <action name="action_about">
+   <property name="text">
+    <string>關於 GPX Ride Renderer...</string>
+   </property>
+  </action>
+</widget>
+ <resources />
+ <connections />
 </ui>

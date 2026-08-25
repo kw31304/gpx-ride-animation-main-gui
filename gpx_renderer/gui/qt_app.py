@@ -14,7 +14,8 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer, QSettings
+from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer, QSettings, QSize
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar
 )
@@ -25,6 +26,14 @@ from gpx_renderer.utils import _self_subprocess_command, application_dir
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
 from gpx_renderer.core.cache_manager import CacheManager
+
+
+def _get_icon(name: str) -> QIcon:
+    """載入 gui/icons 目錄中的 SVG 向量圖示"""
+    icon_p = Path(__file__).parent / "icons" / f"{name}.svg"
+    if icon_p.is_file():
+        return QIcon(str(icon_p))
+    return QIcon()
 
 
 RESOLUTION_PRESETS = [
@@ -137,6 +146,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self._init_combos()
         self._init_default_values()
+        self._init_toolbar_and_menus()
         self._connect_signals()
         self._update_dashboard_summary(force_media_rescan=True)
 
@@ -235,7 +245,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             if media_item_count > 0:
                 if media_video_count > 0 and media_photo_count > 0:
-                    media_tag = f" + 媒體 {media_item_count}個(🎬{media_video_count}部+{video_added_sec:.1f}s, 📷{media_photo_count}張+{photo_added_sec:.1f}s) 總計+{media_added_sec:.1f}s"
+                    media_tag = f" + 媒體 {media_item_count}個(影片 {media_video_count}部 +{video_added_sec:.1f}s, 相片 {media_photo_count}張 +{photo_added_sec:.1f}s) 總計+{media_added_sec:.1f}s"
                 elif media_video_count > 0:
                     media_tag = f" + 影片 {media_video_count}部 (停留 +{video_added_sec:.1f}s)"
                 else:
@@ -274,7 +284,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             bitrate = self.combo_bitrate.currentText().strip()
             preset = self.combo_preset.currentText().strip()
             if media_item_count > 0:
-                has_media = f"路線媒體: {media_item_count} 個 (🎬 {media_video_count} 部影片 +{video_added_sec:.1f}s, 📷 {media_photo_count} 張相片)"
+                has_media = f"路線媒體: {media_item_count} 個 (影片 {media_video_count} 部 +{video_added_sec:.1f}s, 相片 {media_photo_count} 張)"
             elif has_media_enabled:
                 has_media = "已啟用媒體"
             else:
@@ -292,6 +302,153 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.label_cfg_perf.setText(f"效能模式: {perf_text}")
         except Exception:
             pass
+
+    def _init_toolbar_and_menus(self):
+        """初始化頂部選單列與 SVG 快捷工具列"""
+        if hasattr(self, "toolBar"):
+            self.toolBar.setIconSize(QSize(22, 22))
+            self.toolBar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+
+        # 載入並綁定 SVG 向量圖示
+        if hasattr(self, "action_open_gpx"): self.action_open_gpx.setIcon(_get_icon("file_gpx"))
+        if hasattr(self, "action_save_output"): self.action_save_output.setIcon(_get_icon("video_output"))
+        if hasattr(self, "action_media_dialog"): self.action_media_dialog.setIcon(_get_icon("media_manager"))
+        if hasattr(self, "action_benchmark"): self.action_benchmark.setIcon(_get_icon("benchmark"))
+        if hasattr(self, "action_clear_cache"): self.action_clear_cache.setIcon(_get_icon("clear_cache"))
+        if hasattr(self, "action_open_log_folder"): self.action_open_log_folder.setIcon(_get_icon("log_folder"))
+        if hasattr(self, "action_toggle_advanced"): self.action_toggle_advanced.setIcon(_get_icon("settings"))
+        if hasattr(self, "action_start_render"): self.action_start_render.setIcon(_get_icon("start_render"))
+        if hasattr(self, "action_stop_render"): self.action_stop_render.setIcon(_get_icon("stop_render"))
+        if hasattr(self, "action_refresh_distance"): self.action_refresh_distance.setIcon(_get_icon("refresh"))
+        if hasattr(self, "action_help_shortcuts"): self.action_help_shortcuts.setIcon(_get_icon("help"))
+        if hasattr(self, "action_about"): self.action_about.setIcon(_get_icon("help"))
+
+        # 連接檔案選單動作
+        if hasattr(self, "action_open_gpx"): self.action_open_gpx.triggered.connect(self.browse_gpx)
+        if hasattr(self, "action_save_output"): self.action_save_output.triggered.connect(self.browse_output)
+        if hasattr(self, "action_select_media"): self.action_select_media.triggered.connect(self.browse_media)
+        if hasattr(self, "action_media_dialog"): self.action_media_dialog.triggered.connect(self.open_media_dialog)
+        if hasattr(self, "action_open_log_folder"): self.action_open_log_folder.triggered.connect(self.open_log_folder)
+        if hasattr(self, "action_exit"): self.action_exit.triggered.connect(self.close)
+
+        # 編輯與工具選單動作
+        if hasattr(self, "action_benchmark"): self.action_benchmark.triggered.connect(self.start_benchmark)
+        if hasattr(self, "action_apply_benchmark"): self.action_apply_benchmark.triggered.connect(self.apply_benchmark_recommendation)
+        if hasattr(self, "action_clear_cache"): self.action_clear_cache.triggered.connect(self.on_clear_cache_clicked)
+        if hasattr(self, "action_refresh_distance"): self.action_refresh_distance.triggered.connect(self.refresh_gpx_distance)
+
+        # 檢視選單動作
+        if hasattr(self, "action_toggle_toolbar") and hasattr(self, "toolBar"):
+            self.action_toggle_toolbar.toggled.connect(self.toolBar.setVisible)
+        if hasattr(self, "action_toggle_advanced"):
+            self.action_toggle_advanced.toggled.connect(lambda chk: self.toggle_advanced(show=chk))
+        if hasattr(self, "action_toggle_summary"):
+            self.action_toggle_summary.toggled.connect(self._on_toggle_summary)
+        if hasattr(self, "action_toggle_workers"):
+            self.action_toggle_workers.toggled.connect(self._on_toggle_workers)
+
+        # 預設風格選單動作
+        if hasattr(self, "action_profile_fast"):
+            self.action_profile_fast.triggered.connect(lambda: self._select_profile("快速"))
+        if hasattr(self, "action_profile_balanced"):
+            self.action_profile_balanced.triggered.connect(lambda: self._select_profile("平衡"))
+        if hasattr(self, "action_profile_quality"):
+            self.action_profile_quality.triggered.connect(lambda: self._select_profile("高畫質"))
+
+        # 資訊面板雙向連動
+        if hasattr(self, "action_show_speed") and hasattr(self, "chk_show_speed"):
+            self.action_show_speed.toggled.connect(self.chk_show_speed.setChecked)
+            self.chk_show_speed.toggled.connect(self.action_show_speed.setChecked)
+        if hasattr(self, "action_show_minimap") and hasattr(self, "chk_show_minimap"):
+            self.action_show_minimap.toggled.connect(self.chk_show_minimap.setChecked)
+            self.chk_show_minimap.toggled.connect(self.action_show_minimap.setChecked)
+        if hasattr(self, "action_show_elevation") and hasattr(self, "chk_show_elevation"):
+            self.action_show_elevation.toggled.connect(self.chk_show_elevation.setChecked)
+            self.chk_show_elevation.toggled.connect(self.action_show_elevation.setChecked)
+
+        # 鏡頭與渲染特性雙向連動
+        if hasattr(self, "action_dynamic_speed_zoom") and hasattr(self, "chk_dynamic_speed_zoom"):
+            self.action_dynamic_speed_zoom.toggled.connect(self.chk_dynamic_speed_zoom.setChecked)
+            self.chk_dynamic_speed_zoom.toggled.connect(self.action_dynamic_speed_zoom.setChecked)
+        if hasattr(self, "action_real_speed") and hasattr(self, "chk_real_speed_2"):
+            self.action_real_speed.toggled.connect(self.chk_real_speed_2.setChecked)
+            self.chk_real_speed_2.toggled.connect(self.action_real_speed.setChecked)
+        if hasattr(self, "action_basemap") and hasattr(self, "chk_basemap_2"):
+            self.action_basemap.toggled.connect(self.chk_basemap_2.setChecked)
+            self.chk_basemap_2.toggled.connect(self.action_basemap.setChecked)
+        if hasattr(self, "action_parallel") and hasattr(self, "chk_parallel_2"):
+            self.action_parallel.toggled.connect(self.chk_parallel_2.setChecked)
+            self.chk_parallel_2.toggled.connect(self.action_parallel.setChecked)
+        if hasattr(self, "action_enable_media") and hasattr(self, "chk_enable_media_2"):
+            self.action_enable_media.toggled.connect(self.chk_enable_media_2.setChecked)
+            self.chk_enable_media_2.toggled.connect(self.action_enable_media.setChecked)
+        if hasattr(self, "action_preview") and hasattr(self, "chk_preview"):
+            self.action_preview.toggled.connect(self.chk_preview.setChecked)
+            self.chk_preview.toggled.connect(self.action_preview.setChecked)
+
+        # 快取模式互斥群組與雙向連動
+        from PySide6.QtGui import QActionGroup
+        self.cache_action_group = QActionGroup(self)
+        if hasattr(self, "action_cache_session") and hasattr(self, "action_cache_persistent"):
+            self.action_cache_session.setActionGroup(self.cache_action_group)
+            self.action_cache_persistent.setActionGroup(self.cache_action_group)
+            cur_idx = 1 if getattr(config, "MAP_CACHE_MODE", "session") == "persistent" else 0
+            self.action_cache_session.setChecked(cur_idx == 0)
+            self.action_cache_persistent.setChecked(cur_idx == 1)
+            self.action_cache_session.triggered.connect(lambda: self.combo_cache_mode.setCurrentIndex(0))
+            self.action_cache_persistent.triggered.connect(lambda: self.combo_cache_mode.setCurrentIndex(1))
+
+        # 啟動與停止渲染動作
+        if hasattr(self, "action_start_render"):
+            self.action_start_render.triggered.connect(self.start_render)
+        if hasattr(self, "action_stop_render"):
+            self.action_stop_render.triggered.connect(self.stop_render)
+
+        # 說明與手冊動作
+        if hasattr(self, "action_help_shortcuts"):
+            self.action_help_shortcuts.triggered.connect(self.show_shortcuts_dialog)
+        if hasattr(self, "action_about"):
+            self.action_about.triggered.connect(self.show_about_dialog)
+
+    def _on_toggle_summary(self, visible: bool):
+        if hasattr(self, "groupBox_summary"):
+            self.groupBox_summary.setVisible(visible)
+            QApplication.processEvents()
+            self.adjustSize()
+
+    def _on_toggle_workers(self, visible: bool):
+        if hasattr(self, "groupBox_workers"):
+            self.groupBox_workers.setVisible(visible)
+            QApplication.processEvents()
+            self.adjustSize()
+
+    def _select_profile(self, name: str):
+        if hasattr(self, "combo_profile_2"):
+            self.combo_profile_2.setCurrentText(name)
+
+    def show_shortcuts_dialog(self):
+        shortcuts_info = (
+            "GPX Ride Renderer 快捷鍵一覽：\\n\\n"
+            "• Ctrl+O : 選擇 GPX 軌跡檔案\\n"
+            "• Ctrl+S : 指定輸出 MP4 影片路徑\\n"
+            "• Ctrl+M : 開啟路線照片與影片媒體管理器\\n"
+            "• Ctrl+T : 執行 Auto Tune 效能基準測試\\n"
+            "• Ctrl+L : 開啟 Log 日誌儲存資料夾\\n"
+            "• Ctrl+R / F5 : 啟動影片渲染\\n"
+            "• Esc : 停止當前渲染程序\\n"
+            "• Ctrl+Shift+A : 展開 / 折疊進階設定面板\\n"
+            "• Ctrl+Q : 關閉應用程式"
+        )
+        QMessageBox.information(self, "快捷鍵與使用手冊", shortcuts_info)
+
+    def show_about_dialog(self):
+        about_info = (
+            f"GPX Ride Renderer V{__version__}\\n\\n"
+            "高速 GPX / Strava 風格摩托車與單車騎乘路線動畫渲染器。\\n"
+            "支援 3D 地形、自訂地圖風格、路線照片/影片即時解碼懸浮卡片與 NVIDIA NVENC 硬體加速。\\n\\n"
+            "授權：MIT License"
+        )
+        QMessageBox.about(self, "關於 GPX Ride Renderer", about_info)
 
     def _init_combos(self):
         # 1. 預設模式
@@ -370,9 +527,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chk_enable_media_2.setChecked(config.ENABLE_MEDIA)
         self.chk_real_speed_2.setChecked(config.USE_REAL_SPEED)
 
-        self.chk_preview.setChecked(config.PREVIEW_MODE)
-        self.chk_contextily_cache.setChecked(config.MAP_USE_CACHE)
-        self.chk_disable_parallel_cache.setChecked(config.PARALLEL_DISABLE_TILE_CACHE)
+        if hasattr(self, "chk_preview"): self.chk_preview.setChecked(config.PREVIEW_MODE)
+        if hasattr(self, "chk_contextily_cache"): self.chk_contextily_cache.setChecked(config.MAP_USE_CACHE)
+        if hasattr(self, "chk_disable_parallel_cache"): self.chk_disable_parallel_cache.setChecked(config.PARALLEL_DISABLE_TILE_CACHE)
 
         self.chk_show_speed.setChecked(getattr(config, "SHOW_SPEED_HUD", True))
         self.chk_show_minimap.setChecked(getattr(config, "SHOW_MINIMAP", True))
@@ -409,7 +566,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chk_dynamic_speed_zoom.toggled.connect(lambda: self._update_dashboard_summary())
         self.spin_workers.valueChanged.connect(lambda: self._update_dashboard_summary())
         self.spin_chunks.valueChanged.connect(lambda: self._update_dashboard_summary())
-        self.chk_disable_parallel_cache.toggled.connect(lambda: self._update_dashboard_summary())
+        if hasattr(self, "chk_disable_parallel_cache"): self.chk_disable_parallel_cache.toggled.connect(lambda: self._update_dashboard_summary())
         self.chk_enable_media_2.toggled.connect(lambda: self._update_dashboard_summary())
         self.lineEdit_media.textChanged.connect(lambda: self._update_dashboard_summary())
 
@@ -430,7 +587,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.btn_start_render.clicked.connect(self.start_render)
         self.btn_stop_render.clicked.connect(self.stop_render)
-        self.btn_open_log_folder.clicked.connect(self.open_log_folder)
+        if hasattr(self, "btn_open_log_folder"): self.btn_open_log_folder.clicked.connect(self.open_log_folder)
 
         if hasattr(self, "btn_autotune"):
             self.btn_autotune.clicked.connect(self.start_benchmark)
@@ -459,6 +616,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "settings"):
             self.settings.setValue("map_cache_mode", mode)
         CacheManager.init_cache_system()
+        if hasattr(self, "action_cache_session") and hasattr(self, "action_cache_persistent"):
+            self.action_cache_session.blockSignals(True)
+            self.action_cache_persistent.blockSignals(True)
+            self.action_cache_session.setChecked(idx == 0)
+            self.action_cache_persistent.setChecked(idx == 1)
+            self.action_cache_session.blockSignals(False)
+            self.action_cache_persistent.blockSignals(False)
         self.refresh_cache_size_display()
         self._update_dashboard_summary()
 
@@ -480,6 +644,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.groupBox.setVisible(next_state)
         if hasattr(self, "btn_toggle_advanced_2"):
             self.btn_toggle_advanced_2.setText("進階設定 ▲" if next_state else "進階設定 ▼")
+        if hasattr(self, "action_toggle_advanced"):
+            self.action_toggle_advanced.blockSignals(True)
+            self.action_toggle_advanced.setChecked(next_state)
+            self.action_toggle_advanced.blockSignals(False)
 
         # 重新計算 Layout 尺寸並自適應調整主視窗高度
         QApplication.processEvents()
@@ -511,8 +679,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         from PySide6.QtGui import QCursor
 
         menu = QMenu(self)
-        act_files = menu.addAction("📷🎬 選擇照片或影片檔案 (可多選)...")
-        act_folder = menu.addAction("📁 選擇照片/影片資料夾...")
+        act_files = menu.addAction("選擇照片或影片檔案 (可多選)...")
+        act_folder = menu.addAction("選擇照片/影片資料夾...")
         chosen = menu.exec_(QCursor.pos())
 
         if chosen == act_files:
@@ -809,9 +977,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def set_running(self, running: bool):
         self.btn_start_render.setEnabled(not running)
+        if hasattr(self, "action_start_render"): self.action_start_render.setEnabled(not running)
         if hasattr(self, "btn_autotune"): self.btn_autotune.setEnabled(not running)
         if hasattr(self, "btn_benchmark"): self.btn_benchmark.setEnabled(not running)
+        if hasattr(self, "action_benchmark"): self.action_benchmark.setEnabled(not running)
         self.btn_stop_render.setEnabled(running)
+        if hasattr(self, "action_stop_render"): self.action_stop_render.setEnabled(running)
 
     def start_render(self):
         if self.state["proc"] is not None: return
@@ -1033,6 +1204,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.label_autotune_result.setText(result_text)
                 if hasattr(self, "lbl_benchmark_result"):
                     self.lbl_benchmark_result.setText(result_text)
+                if hasattr(self, "action_apply_benchmark"): self.action_apply_benchmark.setEnabled(True)
                 if hasattr(self, "btn_apply_benchmark"):
                     self.btn_apply_benchmark.setEnabled(True)
                 self.set_status_message(f"Auto Tune 完成：建議 {rec} Workers")
