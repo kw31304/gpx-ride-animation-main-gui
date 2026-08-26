@@ -40,7 +40,6 @@ hidden_imports = [
     "gpx_renderer.gui.widgets",
     "gpx_renderer.gui.widgets.py_circular_progress",
     "gpx_renderer.gui.qt_app",
-    "gpx_renderer.gui.ui_main_window",
     "gpx_renderer.gui.qt_media_dialog",
     "gpx_renderer.gui.qt_video_trim_dialog",
     "PySide6",

@@ -17,8 +17,7 @@ from typing import Optional, Dict, Any, List
 from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer, QSettings, QSize
 from PySide6.QtGui import QIcon, QActionGroup
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar,
-    QHBoxLayout, QVBoxLayout, QGridLayout
+    QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar
 )
 
 from gpx_renderer import config, __version__
@@ -26,7 +25,6 @@ from gpx_renderer.gui.main_window.ui_main_window import Ui_MainWindow
 from gpx_renderer.gui.main_window.main_workers import (
     SubprocessReaderThread, GpxDistanceThread, CacheSizeWorkerThread
 )
-from gpx_renderer.gui.widgets.py_circular_progress import PyCircularProgress
 from gpx_renderer.utils import _self_subprocess_command, application_dir
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
@@ -96,9 +94,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._cached_media_path: str = ""
         self._cached_media_summary: Optional[tuple] = None
 
-        # 升級主進度區為現代化圓形進度儀表板
-        self._setup_circular_dashboard()
-
         self._init_combos()
         self._init_default_values()
         self._init_toolbar_and_menus()
@@ -113,83 +108,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._cache_size_thread: Optional[CacheSizeWorkerThread] = None
 
         # 開局自動非同步刷新 GPX 距離與快取容量
-        QTimer.singleShot(200, self.refresh_gpx_distance)
-        QTimer.singleShot(400, self.refresh_cache_size_display)
-
-        # 每 30 秒週期性背景自動刷新快取容量顯示 (完全非同步，0 阻斷)
-        self.cache_timer = QTimer(self)
-        self.cache_timer.setInterval(30000)
-        self.cache_timer.timeout.connect(self.refresh_cache_size_display)
-        self.cache_timer.start()
-
-        # 渲染計時器 (計算從開始渲染至完成所經過的時間)
-        self._render_start_time: Optional[float] = None
-        self._render_timer = QTimer(self)
-        self._render_timer.setInterval(500)
-        self._render_timer.timeout.connect(self._update_render_timer)
-
-    def _setup_circular_dashboard(self):
-        """將 groupBox_main_progress 升級為現代化圓形進度儀表板"""
-        if not hasattr(self, "groupBox_main_progress"):
-            return
-
-        # 隱藏原有水平 progressBar_main
-        if hasattr(self, "progressBar_main") and self.progressBar_main is not None:
-            self.progressBar_main.hide()
-
-        # 建立圓形進度條 (科技青藍配色、正圓置中、柔和陰影)
-        self.circular_progress_main = PyCircularProgress(
-            value=0,
-            progress_width=10,
-            is_rounded=True,
-            max_value=100,
-            progress_color="#00adb5",
-            bg_color="#2b2d42",
-            text_color="#ffffff",
-            font_size=15,
-            suffix="%",
-            parent=self.groupBox_main_progress,
-        )
-        self.circular_progress_main.setFixedSize(115, 115)
-        self.circular_progress_main.add_shadow(True)
-
-        # 重新排版 groupBox_main_progress 內部：左邊放置圓形進度環，右邊放置 ETA 資訊網格
-        container_layout = QHBoxLayout()
-        container_layout.setContentsMargins(6, 4, 6, 4)
-        container_layout.setSpacing(16)
-
-        container_layout.addWidget(self.circular_progress_main, 0, Qt.AlignCenter)
-
-        eta_grid = QGridLayout()
-        eta_grid.setHorizontalSpacing(14)
-        eta_grid.setVerticalSpacing(6)
-
-        if hasattr(self, "label_eta_elapsed"):
-            eta_grid.addWidget(self.label_eta_elapsed, 0, 0)
-        if hasattr(self, "label_eta_time"):
-            eta_grid.addWidget(self.label_eta_time, 0, 1)
-        if hasattr(self, "label_eta_clock"):
-            eta_grid.addWidget(self.label_eta_clock, 1, 0)
-        if hasattr(self, "label_eta_speed"):
-            eta_grid.addWidget(self.label_eta_speed, 1, 1)
-        if hasattr(self, "label_eta_frames"):
-            eta_grid.addWidget(self.label_eta_frames, 2, 0, 1, 2)
-
-        container_layout.addLayout(eta_grid, 1)
-
-        # 加入主進度排版
-        if hasattr(self, "verticalLayout_main_progress"):
-            # 若已有水平 ETA 佈局，將其隱藏以避免重複
-            if hasattr(self, "horizontalLayout_eta"):
-                for i in range(self.horizontalLayout_eta.count()):
-                    w = self.horizontalLayout_eta.itemAt(i).widget()
-                    if w:
-                        w.setParent(None)
-            self.verticalLayout_main_progress.addLayout(container_layout)
-
-        # 將 self.progressBar_main 指向圓形進度條實例，實現 API 完全相容
-        self.progressBar_main = self.circular_progress_main
-
         QTimer.singleShot(200, self.refresh_gpx_distance)
         QTimer.singleShot(400, self.refresh_cache_size_display)
 
@@ -578,6 +496,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.spin_hide_start.setValue(config.HIDE_START_DISTANCE_KM)
         self.spin_hide_end.setValue(config.HIDE_END_DISTANCE_KM)
+
+        # 初始化圓形進度條視覺樣式
+        if hasattr(self, "progressBar_main"):
+            self.progressBar_main.progress_width = 10
+            self.progressBar_main.font_size = 14
+            self.progressBar_main.set_progress_color("#00adb5")
+            self.progressBar_main.add_shadow(True)
+
+        for bar in self.worker_bars:
+            bar.progress_width = 6
+            bar.font_size = 11
+            bar.set_progress_color("#2196f3")
+            bar.add_shadow(True)
 
         self.on_auto_duration_toggle()
 

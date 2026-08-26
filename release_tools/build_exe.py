@@ -135,7 +135,7 @@ hidden_imports = [
     "gpx_renderer.gui.media_dialog.map_worker", "gpx_renderer.gui.video_trim_dialog",
     "gpx_renderer.gui.video_trim_dialog.video_trim_controller", "gpx_renderer.gui.widgets",
     "gpx_renderer.gui.widgets.py_circular_progress", "gpx_renderer.gui.qt_app",
-    "gpx_renderer.gui.ui_main_window", "gpx_renderer.gui.qt_media_dialog", "gpx_renderer.gui.qt_video_trim_dialog",
+    "gpx_renderer.gui.qt_media_dialog", "gpx_renderer.gui.qt_video_trim_dialog",
     "PySide6", "PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets",
     "PIL", "PIL.Image", "PIL.ImageDraw", "PIL.ImageFont", "PIL.ImageFilter",
     "cv2", "numpy", "matplotlib", "gpxpy", "requests", "contextily",
