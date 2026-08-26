@@ -58,6 +58,22 @@ def main():
     project_root = cur_dir if (cur_dir / "gpx_renderer").exists() else cur_dir.parent
     version = detect_version(project_root)
 
+    # 確保環境 PATH 包含當前 Python 的 DLLs 與 Library/bin (避免從 GUI 或非 Conda Prompt 啟動時遺漏 DLL)
+    python_dir = Path(sys.executable).parent
+    paths_to_add = [
+        str(python_dir),
+        str(python_dir / "Scripts"),
+        str(python_dir / "DLLs"),
+        str(python_dir / "Library" / "bin"),
+        str(python_dir / "Library" / "usr" / "bin"),
+        str(python_dir / "Library" / "mingw-w64" / "bin"),
+    ]
+    current_path = os.environ.get("PATH", "")
+    current_paths = current_path.split(os.pathsep)
+    new_paths = [p for p in paths_to_add if Path(p).exists() and p not in current_paths]
+    if new_paths:
+        os.environ["PATH"] = os.pathsep.join(new_paths + [current_path])
+
     print("=" * 70)
     print(f"[INFO] 開始執行 GPX Ride Renderer 一鍵 EXE 打包與壓縮作業...")
     print(f"• 偵測目標版本：v{version}")

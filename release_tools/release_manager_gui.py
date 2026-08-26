@@ -86,6 +86,22 @@ class WorkerThread(QThread):
             if self.env:
                 full_env.update(self.env)
 
+            # 確保環境變數 PATH 包含完整 Conda / Python DLL 與執行檔路徑 (避免 GUI 啟動時遺漏 Library/bin)
+            python_dir = Path(sys.executable).parent
+            paths_to_add = [
+                str(python_dir),
+                str(python_dir / "Scripts"),
+                str(python_dir / "DLLs"),
+                str(python_dir / "Library" / "bin"),
+                str(python_dir / "Library" / "usr" / "bin"),
+                str(python_dir / "Library" / "mingw-w64" / "bin"),
+            ]
+            current_path = full_env.get("PATH", "")
+            current_paths = current_path.split(os.pathsep)
+            new_paths = [p for p in paths_to_add if Path(p).exists() and p not in current_paths]
+            if new_paths:
+                full_env["PATH"] = os.pathsep.join(new_paths + [current_path])
+
             proc = subprocess.Popen(
                 self.cmd,
                 cwd=str(self.cwd),
