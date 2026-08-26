@@ -42,6 +42,8 @@ hidden_imports = [
     "gpx_renderer.gui.qt_app",
     "gpx_renderer.gui.qt_media_dialog",
     "gpx_renderer.gui.qt_video_trim_dialog",
+    "ctypes",
+    "_ctypes",
     "PySide6",
     "PySide6.QtCore",
     "PySide6.QtGui",
@@ -92,6 +94,20 @@ for pkg in ["rasterio", "shapely", "pyproj"]:
         binaries.extend(collect_dynamic_libs(pkg))
     except Exception:
         pass
+
+import sys
+conda_lib_bin = Path(sys.prefix) / "Library" / "bin"
+if conda_lib_bin.exists():
+    for pattern in ["*ffi*.dll", "*ssl*.dll", "*crypto*.dll", "*sqlite*.dll", "*bz2*.dll", "*lzma*.dll", "*zlib*.dll"]:
+        for dll_file in conda_lib_bin.glob(pattern):
+            binaries.append((str(dll_file), "."))
+
+python_dlls = Path(sys.prefix) / "DLLs"
+if python_dlls.exists():
+    for pyd_file in python_dlls.glob("_ctypes*.pyd"):
+        binaries.append((str(pyd_file), "."))
+    for dll_file in python_dlls.glob("*.dll"):
+        binaries.append((str(dll_file), "."))
 
 a = Analysis(
     ["GPX_Ride_Renderer.py"],
