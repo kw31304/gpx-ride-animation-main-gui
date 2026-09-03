@@ -24,27 +24,23 @@ class QtRoutePreviewWidget(QWidget):
     """PySide6 向量路線預覽 Canvas，支援 Google 街道圖底圖、多層級動態縮放、平移與動態媒體標記點連動。"""
     item_selected = Signal(int)
 
-    def __init__(self, ride_data: RideData, parent=None):
+    def __init__(self, parent=None, ride_data: Optional[RideData] = None):
+        # 兼容 Qt uic 預設 (parent) 與直接傳入 (ride_data, parent) 兩種呼叫簽名
+        if isinstance(parent, RideData):
+            ride_data, parent = parent, ride_data
         super().__init__(parent)
-        self.ride_data = ride_data
+        self.ride_data: Optional[RideData] = ride_data
         self.media_items: List[MediaItem] = []
         self.selected_index: int = -1
         self.active_km: float = -1.0
-
-        self.view_center_x = float(ride_data.route_center_x)
-        self.view_center_y = float(ride_data.route_center_y)
-
-        min_x, max_x = float(ride_data.xs.min()), float(ride_data.xs.max())
-        min_y, max_y = float(ride_data.ys.min()), float(ride_data.ys.max())
-        self.route_w = max(max_x - min_x, 100.0)
-        self.route_h = max(max_y - min_y, 100.0)
 
         self.scale = 1.0  # pixels per meter
         self.drag_start_pos: Optional[QPointF] = None
         self.is_dragging = False
 
-        # 底圖狀態 (固定為 Google 街道圖並支援指定/動態縮放層級)
+        # 底圖狀態 (支援依風格設定或 Google 街道圖)
         self.map_source = GOOGLE_STREETS_URL
+        self.map_style_label = "Google Maps 街道圖"
         self.map_zoom: int | str = "auto"
         self.map_qimage: Optional[QImage] = None
         self.map_extent: Optional[tuple[float, float, float, float]] = None
@@ -61,16 +57,42 @@ class QtRoutePreviewWidget(QWidget):
         self._reload_timer.setInterval(200)  # 200ms 防抖
         self._reload_timer.timeout.connect(self._do_fetch_viewport_basemap)
 
+        self.setMouseTracking(True)
+        self.setMinimumSize(320, 240)
+
+        if ride_data is not None:
+            self.set_ride_data(ride_data)
+        else:
+            self.view_center_x = 0.0
+            self.view_center_y = 0.0
+            self.route_w = 100.0
+            self.route_h = 100.0
+            self.sampled_xs = np.array([])
+            self.sampled_ys = np.array([])
+
+    def set_ride_data(self, ride_data: RideData):
+        """設置或更新 GPX 騎乘軌跡資料，重新初始化視圖座標與抽樣點。"""
+        self.ride_data = ride_data
+        self.view_center_x = float(ride_data.route_center_x)
+        self.view_center_y = float(ride_data.route_center_y)
+
+        min_x, max_x = float(ride_data.xs.min()), float(ride_data.xs.max())
+        min_y, max_y = float(ride_data.ys.min()), float(ride_data.ys.max())
+        self.route_w = max(max_x - min_x, 100.0)
+        self.route_h = max(max_y - min_y, 100.0)
+
         # 抽樣軌跡點以提升畫圖效率
         step = max(1, len(ride_data.xs) // 600)
         self.sampled_xs = ride_data.xs[::step]
         self.sampled_ys = ride_data.ys[::step]
 
-        self.setMouseTracking(True)
-        self.setMinimumSize(320, 240)
-
         # 初始載入全景視野
         self.reset_view()
+
+    def set_map_style(self, source=None, label: str = ""):
+        """路線軌跡預覽底圖固定使用 Google 街道圖。"""
+        self.map_source = GOOGLE_STREETS_URL
+        self.map_style_label = "Google Maps 街道圖"
 
     def compute_auto_zoom_level(self) -> int:
         """根據當前 Canvas scale (pixels per meter) 自動計算最佳 Google Map 瓦片層級 (10~19)。"""
@@ -279,20 +301,21 @@ class QtRoutePreviewWidget(QWidget):
             painter.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, txt)
 
         # 5. 右上角底圖載入指示與左下角標籤
+        label_text = self.map_style_label or "Google Maps 街道圖"
         if self.is_loading_map:
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(0, 0, 0, 180)))
-            painter.drawRoundedRect(QRectF(self.width() - 190, 8, 182, 24), 4, 4)
+            painter.drawRoundedRect(QRectF(self.width() - 200, 8, 192, 24), 4, 4)
             painter.setPen(QPen(QColor("#ffcc00")))
             painter.setFont(QFont("Segoe UI", 8))
-            painter.drawText(QRectF(self.width() - 190, 8, 182, 24), Qt.AlignCenter, "📡 載入 Google 街道圖中...")
+            painter.drawText(QRectF(self.width() - 200, 8, 192, 24), Qt.AlignCenter, f"📡 載入 {label_text}...")
 
         # 水印標籤
         painter.setPen(QPen(QColor(0, 0, 0, 160)))
         painter.setFont(QFont("Segoe UI", 7, QFont.Bold))
-        painter.drawText(QRectF(9, self.height() - 19, 180, 16), Qt.AlignLeft | Qt.AlignVCenter, "Google Maps 街道圖")
+        painter.drawText(QRectF(9, self.height() - 19, 220, 16), Qt.AlignLeft | Qt.AlignVCenter, label_text)
         painter.setPen(QPen(QColor(255, 255, 255, 200)))
-        painter.drawText(QRectF(8, self.height() - 20, 180, 16), Qt.AlignLeft | Qt.AlignVCenter, "Google Maps 街道圖")
+        painter.drawText(QRectF(8, self.height() - 20, 220, 16), Qt.AlignLeft | Qt.AlignVCenter, label_text)
 
     # --- 滑鼠互動事件 ---
     def wheelEvent(self, event):

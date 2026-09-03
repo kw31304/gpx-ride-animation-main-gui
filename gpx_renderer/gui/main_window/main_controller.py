@@ -29,6 +29,7 @@ from gpx_renderer.utils import _self_subprocess_command, application_dir
 from gpx_renderer.core.data import quick_gpx_distance_km, auto_duration_seconds, format_seconds_human
 from gpx_renderer.core.parallel import _default_benchmark_candidates
 from gpx_renderer.core.cache_manager import CacheManager
+from gpx_renderer.gui.widgets.checkable_combo_box import CheckableComboBox
 
 
 def _get_icon(name: str) -> QIcon:
@@ -174,7 +175,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if force_media_rescan or media_p != getattr(self, "_cached_media_path", "") or self._cached_media_summary is None:
                     try:
                         from gpx_renderer.core.media import scan_media_files
-                        scanned = scan_media_files(media_p)
+                        if self.state.get("media_overrides_json"):
+                            config.MEDIA_OVERRIDES_JSON = self.state["media_overrides_json"]
+                        if self.state.get("media_popup_duration"):
+                            config.MEDIA_POPUP_DURATION = float(self.state["media_popup_duration"])
+                        offset_sec = float(self.state.get("media_time_offset_sec") or getattr(config, "MEDIA_TIME_OFFSET_SEC", 0.0))
+                        scanned = scan_media_files(media_p, time_offset_sec=offset_sec)
                         media_item_count = len(scanned)
                         media_video_count = sum(1 for it in scanned if it.media_type == "video")
                         media_photo_count = sum(1 for it in scanned if it.media_type == "image")
@@ -190,64 +196,140 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             total_anim_sec = base_dur + media_added_sec + zoom_out_dur + end_hold_dur
             is_auto = self.chk_auto_duration.isChecked()
+            dist = self.state.get("gpx_distance_km")
+            has_gpx = dist is not None and dist > 0
 
-            if media_item_count > 0:
-                if media_video_count > 0 and media_photo_count > 0:
-                    media_tag = f" + 媒體 {media_item_count}個(影片 {media_video_count}部 +{video_added_sec:.1f}s, 相片 {media_photo_count}張 +{photo_added_sec:.1f}s) 總計+{media_added_sec:.1f}s"
-                elif media_video_count > 0:
-                    media_tag = f" + 影片 {media_video_count}部 (停留 +{video_added_sec:.1f}s)"
-                else:
-                    media_tag = f" + 相片 {media_photo_count}張 (停留 +{media_added_sec:.1f}s)"
-                dur_mode = f"基礎 {base_dur:.1f}s{media_tag} → 總時長約 {total_anim_sec:.1f}s"
+            # 1. 畫面規格與時長
+            if not has_gpx:
+                dur_html = "<span style='color: #f59e0b; font-weight: bold;'>請先匯入 GPX</span>"
             else:
-                dur_mode = f"自動時長 {base_dur:.1f}s" if is_auto else f"手動時長 {base_dur:.1f}s"
+                human_total = format_seconds_human(total_anim_sec)
+                if media_item_count > 0:
+                    dur_breakdown = f"(主動畫 {base_dur:.1f}s + 媒體停頓 {media_added_sec:.1f}s)"
+                else:
+                    mode_str = "自動計算" if is_auto else "手動指定"
+                    dur_breakdown = f"({mode_str} {base_dur:.1f}s)"
+
+                dur_html = (
+                    f"<b style='color: #38bdf8;'>約 {total_anim_sec:.1f}s</b> "
+                    f"<span style='color: #38bdf8; font-size: 11px;'>({human_total})</span> "
+                    f"<span style='color: #64748b; font-size: 11px;'>{dur_breakdown}</span>"
+                )
 
             if hasattr(self, "label_cfg_res"):
-                self.label_cfg_res.setText(f"畫面規格: {w}x{h} @ {fps} FPS ({dur_mode})")
+                self.label_cfg_res.setText(
+                    f"<span style='color: #94a3b8; font-weight: bold;'>畫面規格：</span>"
+                    f"<b style='color: #ffffff;'>{w}×{h} @ {fps} FPS</b>"
+                    f"<span style='color: #475569;'> │ </span>"
+                    f"<span style='color: #94a3b8;'>總時長：</span>"
+                    f"{dur_html}"
+                )
 
             # 更新 GPX 距離與總時長資訊列
-            dist = self.state.get("gpx_distance_km")
-            if dist is not None and hasattr(self, "label_distance_info"):
+            if has_gpx and hasattr(self, "label_distance_info"):
                 m_total = int(total_anim_sec // 60)
                 s_total = int(round(total_anim_sec % 60))
                 time_str = f"{m_total:02d}:{s_total:02d}" if m_total > 0 else f"{total_anim_sec:.1f}s"
                 if media_item_count > 0:
                     self.label_distance_info.setText(
-                        f"GPX 距離：{dist:.2f} km  |  主動畫：{base_dur:.1f}s  |  媒體 {media_item_count} 個 (+{media_added_sec:.1f}s，含影片 +{video_added_sec:.1f}s, 相片 +{photo_added_sec:.1f}s)  |  預估總時長：約 {total_anim_sec:.1f}s ({time_str})"
+                        f"<span style='color: #94a3b8;'>GPX 距離：</span><b style='color: #38bdf8;'>{dist:.2f} km</b>"
+                        f"<span style='color: #475569;'> │ </span>"
+                        f"<span style='color: #94a3b8;'>主動畫：</span><b style='color: #e2e8f0;'>{base_dur:.1f}s</b>"
+                        f"<span style='color: #475569;'> │ </span>"
+                        f"<span style='color: #94a3b8;'>媒體停頓：</span><b style='color: #c084fc;'>+{media_added_sec:.1f}s</b>"
+                        f"<span style='color: #475569;'> │ </span>"
+                        f"<span style='color: #94a3b8;'>預估總時長：</span><b style='color: #34d399;'>約 {total_anim_sec:.1f}s ({time_str})</b>"
                     )
                 else:
                     mode_txt = "自動" if is_auto else "手動"
                     self.label_distance_info.setText(
-                        f"GPX 距離：{dist:.2f} km  →  主動畫 {base_dur:.1f}s ({format_seconds_human(base_dur)}，{mode_txt})"
+                        f"<span style='color: #94a3b8;'>GPX 距離：</span><b style='color: #38bdf8;'>{dist:.2f} km</b>"
+                        f"<span style='color: #475569;'> │ </span>"
+                        f"<span style='color: #94a3b8;'>主動畫：</span><b style='color: #34d399;'>{base_dur:.1f}s</b> "
+                        f"<span style='color: #64748b;'>({format_seconds_human(base_dur)}，{mode_txt})</span>"
                     )
+            elif hasattr(self, "label_distance_info"):
+                self.label_distance_info.setText(
+                    "<span style='color: #94a3b8;'>GPX 距離：</span><span style='color: #f59e0b;'>請先匯入 GPX 路線檔案</span>"
+                )
 
+            # 2. 地圖視角
             map_raw = self.combo_map_style_2.currentText()
             map_key = map_raw.split(".", 1)[0].strip()
             map_label = config.MAP_STYLE_OPTIONS.get(map_key, ("", ""))[0]
             cam_mode = self.combo_camera_mode_2.currentText()
             zoom = self.combo_local_zoom.currentText()
             if hasattr(self, "label_cfg_map"):
-                self.label_cfg_map.setText(f"地圖視角: 風格 [{map_key}] {map_label} | {cam_mode} | Zoom: {zoom}")
+                self.label_cfg_map.setText(
+                    f"<span style='color: #94a3b8; font-weight: bold;'>地圖視角：</span>"
+                    f"<b style='color: #ffffff;'>[{map_key}] {map_label}</b>"
+                    f"<span style='color: #475569;'> │ </span>"
+                    f"<span style='color: #e2e8f0;'>{cam_mode}</span>"
+                    f"<span style='color: #475569;'> │ </span>"
+                    f"<span style='color: #94a3b8;'>Zoom: </span><b style='color: #34d399;'>{zoom}</b>"
+                )
 
+            # 3. 編碼設定與媒體
             bitrate = self.combo_bitrate.currentText().strip()
             preset = self.combo_preset.currentText().strip()
             if media_item_count > 0:
-                has_media = f"路線媒體: {media_item_count} 個 (影片 {media_video_count} 部 +{video_added_sec:.1f}s, 相片 {media_photo_count} 張)"
+                if media_video_count > 0 and media_photo_count > 0:
+                    media_detail = f"影片 {media_video_count} 部 +{video_added_sec:.1f}s · 相片 {media_photo_count} 張 +{photo_added_sec:.1f}s"
+                elif media_video_count > 0:
+                    media_detail = f"影片 {media_video_count} 部 +{video_added_sec:.1f}s"
+                else:
+                    media_detail = f"相片 {media_photo_count} 張 +{photo_added_sec:.1f}s"
+                media_html = (
+                    f"<span style='color: #94a3b8;'>路線媒體：</span>"
+                    f"<b style='color: #c084fc;'>{media_item_count} 個</b> "
+                    f"<span style='color: #cbd5e1;'>({media_detail})</span>"
+                )
             elif has_media_enabled:
-                has_media = "已啟用媒體"
+                media_html = (
+                    f"<span style='color: #94a3b8;'>路線媒體：</span>"
+                    f"<span style='color: #f59e0b;'>已啟用 (未載入媒體)</span>"
+                )
             else:
-                has_media = "無媒體 Overlay"
+                media_html = (
+                    f"<span style='color: #94a3b8;'>路線媒體：</span>"
+                    f"<span style='color: #64748b;'>無媒體 Overlay</span>"
+                )
 
             if hasattr(self, "label_cfg_enc"):
-                self.label_cfg_enc.setText(f"編碼設定: NVENC {bitrate} (preset: {preset}) | {has_media}")
+                self.label_cfg_enc.setText(
+                    f"<span style='color: #94a3b8; font-weight: bold;'>編碼設定：</span>"
+                    f"<b style='color: #ffffff;'>NVENC {bitrate}</b> "
+                    f"<span style='color: #64748b;'>(Preset: {preset})</span>"
+                    f"<span style='color: #475569;'> │ </span>"
+                    f"{media_html}"
+                )
 
+            # 4. 效能模式與快取
             parallel = self.chk_parallel_2.isChecked()
             workers = self.spin_workers.value()
             chunks = self.spin_chunks.value()
-            cache_mode_txt = "永久保留快取" if self.combo_cache_mode.currentIndex() == 1 else "自動暫存 (關閉清除)"
-            perf_text = f"多程序 ({workers} Workers × {chunks} chunks) | {cache_mode_txt}" if parallel else f"單程序渲染 | {cache_mode_txt}"
+            if self.combo_cache_mode.currentIndex() == 1:
+                cache_html = "<span style='color: #38bdf8; font-weight: bold;'>永久保留快取</span>"
+            else:
+                cache_html = "<span style='color: #94a3b8;'>自動暫存 (關閉清除)</span>"
+
+            if parallel:
+                perf_html = (
+                    f"<b style='color: #fbbf24;'>多程序運算</b> "
+                    f"<span style='color: #e2e8f0;'>({workers} Workers × {chunks} chunks)</span>"
+                )
+            else:
+                perf_html = "<b style='color: #e2e8f0;'>單程序循序渲染</b>"
+
             if hasattr(self, "label_cfg_perf"):
-                self.label_cfg_perf.setText(f"效能模式: {perf_text}")
+                self.label_cfg_perf.setText(
+                    f"<span style='color: #94a3b8; font-weight: bold;'>效能模式：</span>"
+                    f"{perf_html}"
+                    f"<span style='color: #475569;'> │ </span>"
+                    f"<span style='color: #94a3b8;'>快取：</span>{cache_html}"
+                )
+        except Exception:
+            pass
         except Exception:
             pass
 
@@ -453,7 +535,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.combo_cache_mode.setCurrentIndex(1 if getattr(config, "MAP_CACHE_MODE", "session") == "persistent" else 0)
 
     def _init_default_values(self):
-        self.lineEdit_gpx.setText(str(Path(config.gpx_filename).resolve()))
+        default_gpx = Path(config.gpx_filename)
+        if default_gpx.is_file():
+            self.lineEdit_gpx.setText(str(default_gpx.resolve()))
+        else:
+            self.lineEdit_gpx.setText("")
+            self.lineEdit_gpx.setPlaceholderText("請選擇或拖曳 GPX 軌跡檔案...")
         self.lineEdit_output.setText(str(Path(config.output_filename).resolve()))
         self.lineEdit_media.setText(config.MEDIA_PATH)
 
@@ -467,7 +554,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spin_width.setValue(config.FRAME_WIDTH)
         self.spin_height.setValue(config.FRAME_HEIGHT)
         self.spin_fps.setValue(config.FPS)
-        self.lineEdit_duration.setText(str(config.VIDEO_DURATION))
+        if default_gpx.is_file():
+            self.lineEdit_duration.setText(str(config.VIDEO_DURATION))
+        else:
+            self.lineEdit_duration.setText("")
+            self.lineEdit_duration.setPlaceholderText("自動計算 (待載入 GPX)")
         self.chk_auto_duration.setChecked(config.AUTO_DURATION_DEFAULT)
         self.spin_seconds_per_100km.setRange(1, 9999)
         self.spin_seconds_per_100km.setValue(int(config.AUTO_SECONDS_PER_100KM))
@@ -494,6 +585,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chk_show_elevation.setChecked(getattr(config, "SHOW_ELEVATION", True))
         self.chk_dynamic_speed_zoom.setChecked(getattr(config, "ENABLE_DYNAMIC_SPEED_ZOOM", True))
 
+        # 建立主介面資訊面板複選下拉選單並隱藏舊勾選框
+        self.combo_hud_panels = CheckableComboBox(self.groupBox_settings_2)
+        self.combo_hud_panels.setObjectName(u"combo_hud_panels")
+        self.combo_hud_panels.setMinimumWidth(210)
+        self.combo_hud_panels.setToolTip("點擊可複數勾選或取消要在影片畫面上顯示的資訊面板")
+        self.combo_hud_panels.add_checkable_item("速度與里程 HUD", data="speed", checked=self.chk_show_speed.isChecked())
+        self.combo_hud_panels.add_checkable_item("路線小地圖", data="minimap", checked=self.chk_show_minimap.isChecked())
+        self.combo_hud_panels.add_checkable_item("全景高程剖面", data="elevation", checked=self.chk_show_elevation.isChecked())
+
+        # 將舊 CheckBox 隱藏並將 combo_hud_panels 置入版面
+        self.chk_show_speed.setVisible(False)
+        self.chk_show_minimap.setVisible(False)
+        self.chk_show_elevation.setVisible(False)
+        if hasattr(self, "horizontalLayout_panels"):
+            self.horizontalLayout_panels.addWidget(self.combo_hud_panels)
+
+        # 雙向同步事件綁定
+        def _on_main_hud_selection_changed(checked_list):
+            is_speed = "速度與里程 HUD" in checked_list
+            is_mini = "路線小地圖" in checked_list
+            is_elev = "全景高程剖面" in checked_list
+            self.chk_show_speed.setChecked(is_speed)
+            self.chk_show_minimap.setChecked(is_mini)
+            self.chk_show_elevation.setChecked(is_elev)
+            config.SHOW_SPEED_HUD = is_speed
+            config.SHOW_MINIMAP = is_mini
+            config.SHOW_ELEVATION = is_elev
+            self._update_dashboard_summary()
+
+        self.combo_hud_panels.selection_changed.connect(_on_main_hud_selection_changed)
+
         self.spin_hide_start.setValue(config.HIDE_START_DISTANCE_KM)
         self.spin_hide_end.setValue(config.HIDE_END_DISTANCE_KM)
 
@@ -509,6 +631,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             bar.font_size = 11
             bar.set_progress_color("#2196f3")
             bar.add_shadow(True)
+
+        # 優化設定摘要區塊字體與排版設定
+        for lbl in (getattr(self, "label_cfg_res", None),
+                    getattr(self, "label_cfg_map", None),
+                    getattr(self, "label_cfg_enc", None),
+                    getattr(self, "label_cfg_perf", None)):
+            if lbl is not None:
+                lbl.setWordWrap(True)
+        if hasattr(self, "verticalLayout_17"):
+            self.verticalLayout_17.setSpacing(6)
 
         self.on_auto_duration_toggle()
 
@@ -700,8 +832,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             initial_dur = float(self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION)
             initial_offset = float(self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC)
             initial_caption_size = int(self.state.get("media_caption_font_size") or getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22))
-            cur_w = int(self.spin_width.value())
-            cur_h = int(self.spin_height.value())
+            cur_w, cur_h = self.get_current_resolution()
+            map_raw = self.combo_map_style_2.currentText()
+            map_key = map_raw.split(".", 1)[0].strip()
+            map_label, map_source = config.MAP_STYLE_OPTIONS.get(map_key, ("", None))
+
             dlg = QtMediaManagerDialog(
                 scanned,
                 data,
@@ -711,6 +846,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 default_caption_size=initial_caption_size,
                 frame_width=cur_w,
                 frame_height=cur_h,
+                map_style_key=map_key,
+                map_style_label=map_label,
+                map_source=map_source,
+                camera_mode=self.combo_camera_mode_2.currentText(),
+                resolution_preset=self.combo_resolution_2.currentText(),
+                track_color=self.combo_track_color_2.currentText(),
+                hud_checked_items=self.combo_hud_panels.checked_items(),
+                local_zoom=self.combo_local_zoom.currentText(),
                 parent=self,
             )
             if dlg.exec() == QDialog.Accepted:
@@ -724,6 +867,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 config.MEDIA_TIME_OFFSET_SEC = float(dlg.spin_media_offset.value())
                 config.MEDIA_OVERRIDES_JSON = self.state["media_overrides_json"]
 
+                # 同步回傳渲染設定至主介面
+                if hasattr(dlg, "result_map_style_text") and dlg.result_map_style_text:
+                    self.combo_map_style_2.setCurrentText(dlg.result_map_style_text)
+                if hasattr(dlg, "result_camera_mode") and dlg.result_camera_mode:
+                    self.combo_camera_mode_2.setCurrentText(dlg.result_camera_mode)
+                if hasattr(dlg, "result_resolution_preset") and dlg.result_resolution_preset:
+                    self.combo_resolution_2.setCurrentText(dlg.result_resolution_preset)
+                if hasattr(dlg, "result_track_color") and dlg.result_track_color:
+                    self.combo_track_color_2.setCurrentText(dlg.result_track_color)
+                if hasattr(dlg, "result_local_zoom") and dlg.result_local_zoom:
+                    self.combo_local_zoom.setCurrentText(dlg.result_local_zoom)
+                if hasattr(dlg, "result_hud_checked_items") and dlg.result_hud_checked_items is not None:
+                    for i in range(self.combo_hud_panels.model().rowCount()):
+                        item = self.combo_hud_panels.model().item(i)
+                        item.setCheckState(Qt.Checked if item.text() in dlg.result_hud_checked_items else Qt.Unchecked)
+                    self.combo_hud_panels._update_display_text()
+
+                # 若在對話框內新增或變更了媒體項目，同步回傳更新主介面路徑
+                if getattr(dlg, "media_items", None) is not None:
+                    active_items = dlg.media_items
+                    all_paths = [it.file_path for it in active_items]
+                    if len(all_paths) > 0:
+                        if not media_p or len(all_paths) != len(scanned) or ";" in media_p:
+                            if not (Path(media_p).is_dir() if media_p else False):
+                                self.lineEdit_media.setText("; ".join(all_paths))
+                        self.chk_enable_media_2.setChecked(True)
+
+                    # 直接使用對話框中編輯完成的最新媒體清單即時更新摘要快取
+                    media_item_count = len(active_items)
+                    media_video_count = sum(1 for it in active_items if it.media_type == "video")
+                    media_photo_count = sum(1 for it in active_items if it.media_type == "image")
+                    video_added_sec = sum(it.effective_duration for it in active_items if it.media_type == "video")
+                    photo_added_sec = sum(it.effective_duration for it in active_items if it.media_type == "image")
+                    media_added_sec = video_added_sec + photo_added_sec
+
+                    self._cached_media_path = self.lineEdit_media.text().strip()
+                    self._cached_media_summary = (
+                        media_item_count,
+                        media_video_count,
+                        media_photo_count,
+                        media_added_sec,
+                        video_added_sec,
+                        photo_added_sec,
+                    )
+
                 # 若在對話框內切換了模擬解析度，同步更新主畫面解析度
                 if hasattr(dlg, "result_frame_size") and dlg.result_frame_size:
                     new_w, new_h = dlg.result_frame_size
@@ -732,13 +920,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         self.spin_height.setValue(new_h)
                         config.FRAME_WIDTH = new_w
                         config.FRAME_HEIGHT = new_h
-
-                # 若在對話框內新增或變更了媒體項目，同步回傳更新主介面路徑
-                if getattr(dlg, "media_items", None):
-                    all_paths = [it.file_path for it in dlg.media_items]
-                    if len(all_paths) > 0 and (not media_p or len(all_paths) > len(scanned)):
-                        self.lineEdit_media.setText("; ".join(all_paths))
-                        self.chk_enable_media_2.setChecked(True)
 
                 self._update_dashboard_summary()
                 QMessageBox.information(self, "成功", f"已儲存媒體自訂標籤與微調設定！")
@@ -835,9 +1016,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.lineEdit_duration.setEnabled(not is_auto)
         if is_auto:
             self.refresh_gpx_distance()
-        elif self.state.get("gpx_distance_km") is not None:
-            dist = self.state["gpx_distance_km"]
-            self.label_distance_info.setText(f"GPX 距離：{dist:.2f} km (手動秒數)")
+        else:
+            if not self.lineEdit_duration.text().strip():
+                self.lineEdit_duration.setText("30.0")
+            if self.state.get("gpx_distance_km") is not None:
+                dist = self.state["gpx_distance_km"]
+                self.label_distance_info.setText(f"GPX 距離：{dist:.2f} km (手動秒數)")
+        self._update_dashboard_summary()
 
     def on_duration_rate_change(self):
         self._apply_cached_auto_duration()
@@ -861,7 +1046,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not raw or not Path(raw).is_file():
             self.state["gpx_distance_km"] = None
             self.state["gpx_distance_path"] = None
-            self.label_distance_info.setText("GPX 距離：找不到檔案")
+            if hasattr(self, "label_distance_info"):
+                if not raw:
+                    self.label_distance_info.setText(
+                        "<span style='color: #94a3b8;'>GPX 距離：</span><span style='color: #f59e0b;'>請先匯入 GPX 路線檔案</span>"
+                    )
+                else:
+                    self.label_distance_info.setText(
+                        "<span style='color: #94a3b8;'>GPX 距離：</span><span style='color: #ef4444;'>找不到檔案</span>"
+                    )
+            if self.chk_auto_duration.isChecked():
+                self.lineEdit_duration.setText("")
+                self.lineEdit_duration.setPlaceholderText("自動計算 (待載入 GPX)")
+            self._update_dashboard_summary()
             return
 
         if self.state.get("gpx_distance_path") == raw and self.state.get("gpx_distance_km") is not None:

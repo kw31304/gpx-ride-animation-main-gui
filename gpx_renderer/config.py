@@ -4,7 +4,13 @@
 """
 
 from __future__ import annotations
-import contextily as cx
+try:
+    import contextily as cx
+    DEFAULT_MAP_STYLE = cx.providers.CartoDB.DarkMatter
+except Exception:
+    cx = None
+    DEFAULT_MAP_STYLE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+
 from PIL import Image
 
 # ===========================================================
@@ -46,7 +52,7 @@ END_ROUTE_EXTRA_PADDING = 1.04
 # 地圖 / 路線
 ENABLE_BASEMAP = True
 TRACK_CMAP = "plasma"
-MAP_STYLE = cx.providers.CartoDB.DarkMatter
+MAP_STYLE = DEFAULT_MAP_STYLE
 OVERVIEW_MAP_ZOOM = "auto"
 LOCAL_MAP_ZOOM = 17
 LOCAL_CHUNK_STEP_M = 2200.0
@@ -104,14 +110,24 @@ AUTO_DURATION_DEFAULT = True
 AUTO_SECONDS_PER_100KM = 60.0
 AUTO_DURATION_MIN_SECONDS = 20.0
 
-MAP_STYLE_OPTIONS = {
-    "1": ("深色夜間（高對比）", cx.providers.CartoDB.DarkMatter),
-    "2": ("全彩導航（標準彩色）", cx.providers.CartoDB.Voyager),
-    "3": ("簡約淺灰（極簡淺色）", cx.providers.CartoDB.Positron),
-    "4": ("衛星影像（實景空拍）", cx.providers.Esri.WorldImagery),
-    "5": ("戶外等高線（Strava 風格）", cx.providers.OpenTopoMap),
-    "6": ("山岳地形（Google Terrain）", "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"),
-}
+if cx is not None:
+    MAP_STYLE_OPTIONS = {
+        "1": ("深色夜間（高對比）", cx.providers.CartoDB.DarkMatter),
+        "2": ("全彩導航（標準彩色）", cx.providers.CartoDB.Voyager),
+        "3": ("簡約淺灰（極簡淺色）", cx.providers.CartoDB.Positron),
+        "4": ("衛星影像（實景空拍）", cx.providers.Esri.WorldImagery),
+        "5": ("戶外等高線（Strava 風格）", cx.providers.OpenTopoMap),
+        "6": ("山岳地形（Google Terrain）", "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"),
+    }
+else:
+    MAP_STYLE_OPTIONS = {
+        "1": ("深色夜間（高對比）", "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
+        "2": ("全彩導航（標準彩色）", "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"),
+        "3": ("簡約淺灰（極簡淺色）", "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"),
+        "4": ("衛星影像（實景空拍）", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"),
+        "5": ("戶外等高線（Strava 風格）", "https://a.tile.opentopomap.org/{z}/{x}/{y}.png"),
+        "6": ("山岳地形（Google Terrain）", "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"),
+    }
 
 # 路線媒體照片/影片
 ENABLE_MEDIA = False
@@ -119,7 +135,7 @@ MEDIA_PATH = ""
 MEDIA_POPUP_DURATION = 3.0
 MEDIA_TIME_OFFSET_SEC = 0.0
 MEDIA_THUMB_SIZE = 480
-MEDIA_CAPTION_FONT_SIZE = 22
+MEDIA_CAPTION_FONT_SIZE = 60
 MEDIA_OVERRIDES_JSON = "{}"
 USE_REAL_SPEED = False
 

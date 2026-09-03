@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_window.ui'
+## Form generated from reading UI file 'main_windowtLkPVH.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.1
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -29,7 +29,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(880, 600)
+        MainWindow.resize(880, 614)
         MainWindow.setMinimumSize(QSize(880, 0))
         MainWindow.setMaximumSize(QSize(16777215, 16777215))
         self.action_open_gpx = QAction(MainWindow)
@@ -202,10 +202,8 @@ class Ui_MainWindow(object):
         self.tabWidget.setMinimumSize(QSize(0, 0))
         self.tab_general = QWidget()
         self.tab_general.setObjectName(u"tab_general")
-        self.verticalLayout_tab_general = QVBoxLayout(self.tab_general)
-        self.verticalLayout_tab_general.setSpacing(4)
-        self.verticalLayout_tab_general.setObjectName(u"verticalLayout_tab_general")
-        self.verticalLayout_tab_general.setContentsMargins(4, 4, 4, 4)
+        self.horizontalLayout_2 = QHBoxLayout(self.tab_general)
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.groupBox_settings_2 = QGroupBox(self.tab_general)
         self.groupBox_settings_2.setObjectName(u"groupBox_settings_2")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
@@ -214,37 +212,40 @@ class Ui_MainWindow(object):
         sizePolicy1.setHeightForWidth(self.groupBox_settings_2.sizePolicy().hasHeightForWidth())
         self.groupBox_settings_2.setSizePolicy(sizePolicy1)
         self.groupBox_settings_2.setMinimumSize(QSize(0, 0))
+        self.groupBox_settings_2.setMaximumSize(QSize(400, 16777215))
         self.gridLayout = QGridLayout(self.groupBox_settings_2)
         self.gridLayout.setObjectName(u"gridLayout")
-        self.chk_parallel_2 = QCheckBox(self.groupBox_settings_2)
-        self.chk_parallel_2.setObjectName(u"chk_parallel_2")
+        self.chk_basemap_2 = QCheckBox(self.groupBox_settings_2)
+        self.chk_basemap_2.setObjectName(u"chk_basemap_2")
 
-        self.gridLayout.addWidget(self.chk_parallel_2, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.chk_basemap_2, 9, 0, 1, 1)
 
-        self.chk_real_speed_2 = QCheckBox(self.groupBox_settings_2)
-        self.chk_real_speed_2.setObjectName(u"chk_real_speed_2")
+        self.horizontalLayout_7 = QHBoxLayout()
+        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.lbl_resolution_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_resolution_2.setObjectName(u"lbl_resolution_2")
 
-        self.gridLayout.addWidget(self.chk_real_speed_2, 4, 1, 1, 1)
+        self.horizontalLayout_7.addWidget(self.lbl_resolution_2)
 
-        self.chk_enable_media_2 = QCheckBox(self.groupBox_settings_2)
-        self.chk_enable_media_2.setObjectName(u"chk_enable_media_2")
+        self.combo_resolution_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_resolution_2.setObjectName(u"combo_resolution_2")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.combo_resolution_2.sizePolicy().hasHeightForWidth())
+        self.combo_resolution_2.setSizePolicy(sizePolicy2)
 
-        self.gridLayout.addWidget(self.chk_enable_media_2, 3, 1, 1, 1)
-
-        self.horizontalLayout_11 = QHBoxLayout()
-        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
-        self.lbl_map_style_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_map_style_2.setObjectName(u"lbl_map_style_2")
-
-        self.horizontalLayout_11.addWidget(self.lbl_map_style_2)
-
-        self.combo_map_style_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_map_style_2.setObjectName(u"combo_map_style_2")
-
-        self.horizontalLayout_11.addWidget(self.combo_map_style_2)
+        self.horizontalLayout_7.addWidget(self.combo_resolution_2)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout_11, 2, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout_7, 3, 0, 1, 4)
+
+        self.line_11 = QFrame(self.groupBox_settings_2)
+        self.line_11.setObjectName(u"line_11")
+        self.line_11.setFrameShape(QFrame.Shape.HLine)
+        self.line_11.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.gridLayout.addWidget(self.line_11, 6, 0, 2, 4)
 
         self.horizontalLayout_panels = QHBoxLayout()
         self.horizontalLayout_panels.setObjectName(u"horizontalLayout_panels")
@@ -271,8 +272,12 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_panels.addWidget(self.chk_show_elevation)
 
+        self.horizontalSpacer_7 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.gridLayout.addLayout(self.horizontalLayout_panels, 6, 0, 1, 1)
+        self.horizontalLayout_panels.addItem(self.horizontalSpacer_7)
+
+
+        self.gridLayout.addLayout(self.horizontalLayout_panels, 5, 0, 1, 4)
 
         self.horizontalLayout_10 = QHBoxLayout()
         self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
@@ -283,52 +288,30 @@ class Ui_MainWindow(object):
 
         self.combo_camera_mode_2 = QComboBox(self.groupBox_settings_2)
         self.combo_camera_mode_2.setObjectName(u"combo_camera_mode_2")
+        sizePolicy2.setHeightForWidth(self.combo_camera_mode_2.sizePolicy().hasHeightForWidth())
+        self.combo_camera_mode_2.setSizePolicy(sizePolicy2)
 
         self.horizontalLayout_10.addWidget(self.combo_camera_mode_2)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout_10, 3, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout_10, 2, 0, 1, 4)
 
-        self.chk_dynamic_speed_zoom = QCheckBox(self.groupBox_settings_2)
-        self.chk_dynamic_speed_zoom.setObjectName(u"chk_dynamic_speed_zoom")
-        self.chk_dynamic_speed_zoom.setChecked(True)
+        self.horizontalLayout_11 = QHBoxLayout()
+        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
+        self.lbl_map_style_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_map_style_2.setObjectName(u"lbl_map_style_2")
 
-        self.gridLayout.addWidget(self.chk_dynamic_speed_zoom, 5, 1, 1, 1)
+        self.horizontalLayout_11.addWidget(self.lbl_map_style_2)
 
-        self.horizontalLayout_7 = QHBoxLayout()
-        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
-        self.lbl_resolution_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_resolution_2.setObjectName(u"lbl_resolution_2")
+        self.combo_map_style_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_map_style_2.setObjectName(u"combo_map_style_2")
+        sizePolicy2.setHeightForWidth(self.combo_map_style_2.sizePolicy().hasHeightForWidth())
+        self.combo_map_style_2.setSizePolicy(sizePolicy2)
 
-        self.horizontalLayout_7.addWidget(self.lbl_resolution_2)
-
-        self.combo_resolution_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_resolution_2.setObjectName(u"combo_resolution_2")
-
-        self.horizontalLayout_7.addWidget(self.combo_resolution_2)
+        self.horizontalLayout_11.addWidget(self.combo_map_style_2)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout_7, 4, 0, 1, 1)
-
-        self.chk_basemap_2 = QCheckBox(self.groupBox_settings_2)
-        self.chk_basemap_2.setObjectName(u"chk_basemap_2")
-
-        self.gridLayout.addWidget(self.chk_basemap_2, 2, 1, 1, 1)
-
-        self.horizontalLayout_9 = QHBoxLayout()
-        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
-        self.lbl_profile_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_profile_2.setObjectName(u"lbl_profile_2")
-
-        self.horizontalLayout_9.addWidget(self.lbl_profile_2)
-
-        self.combo_profile_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_profile_2.setObjectName(u"combo_profile_2")
-
-        self.horizontalLayout_9.addWidget(self.combo_profile_2)
-
-
-        self.gridLayout.addLayout(self.horizontalLayout_9, 1, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout_11, 1, 0, 1, 4)
 
         self.horizontalLayout_8 = QHBoxLayout()
         self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
@@ -339,41 +322,94 @@ class Ui_MainWindow(object):
 
         self.combo_track_color_2 = QComboBox(self.groupBox_settings_2)
         self.combo_track_color_2.setObjectName(u"combo_track_color_2")
+        sizePolicy2.setHeightForWidth(self.combo_track_color_2.sizePolicy().hasHeightForWidth())
+        self.combo_track_color_2.setSizePolicy(sizePolicy2)
 
         self.horizontalLayout_8.addWidget(self.combo_track_color_2)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout_8, 5, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout_8, 4, 0, 1, 4)
 
-        self.groupBox_summary = QGroupBox(self.groupBox_settings_2)
+        self.horizontalLayout_9 = QHBoxLayout()
+        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
+        self.lbl_profile_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_profile_2.setObjectName(u"lbl_profile_2")
+
+        self.horizontalLayout_9.addWidget(self.lbl_profile_2)
+
+        self.combo_profile_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_profile_2.setObjectName(u"combo_profile_2")
+        sizePolicy2.setHeightForWidth(self.combo_profile_2.sizePolicy().hasHeightForWidth())
+        self.combo_profile_2.setSizePolicy(sizePolicy2)
+
+        self.horizontalLayout_9.addWidget(self.combo_profile_2)
+
+
+        self.gridLayout.addLayout(self.horizontalLayout_9, 0, 0, 1, 4)
+
+        self.chk_enable_media_2 = QCheckBox(self.groupBox_settings_2)
+        self.chk_enable_media_2.setObjectName(u"chk_enable_media_2")
+
+        self.gridLayout.addWidget(self.chk_enable_media_2, 9, 1, 1, 1)
+
+        self.chk_dynamic_speed_zoom = QCheckBox(self.groupBox_settings_2)
+        self.chk_dynamic_speed_zoom.setObjectName(u"chk_dynamic_speed_zoom")
+        self.chk_dynamic_speed_zoom.setChecked(True)
+
+        self.gridLayout.addWidget(self.chk_dynamic_speed_zoom, 8, 1, 1, 1)
+
+        self.chk_parallel_2 = QCheckBox(self.groupBox_settings_2)
+        self.chk_parallel_2.setObjectName(u"chk_parallel_2")
+
+        self.gridLayout.addWidget(self.chk_parallel_2, 8, 0, 1, 1)
+
+        self.chk_real_speed_2 = QCheckBox(self.groupBox_settings_2)
+        self.chk_real_speed_2.setObjectName(u"chk_real_speed_2")
+
+        self.gridLayout.addWidget(self.chk_real_speed_2, 8, 2, 1, 1)
+
+        self.horizontalSpacer_8 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout.addItem(self.horizontalSpacer_8, 8, 3, 1, 1)
+
+        self.horizontalSpacer_9 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout.addItem(self.horizontalSpacer_9, 9, 2, 1, 2)
+
+
+        self.horizontalLayout_2.addWidget(self.groupBox_settings_2)
+
+        self.groupBox_summary = QGroupBox(self.tab_general)
         self.groupBox_summary.setObjectName(u"groupBox_summary")
-        self.gridLayout_summary = QGridLayout(self.groupBox_summary)
-        self.gridLayout_summary.setObjectName(u"gridLayout_summary")
+        self.verticalLayout_18 = QVBoxLayout(self.groupBox_summary)
+        self.verticalLayout_18.setObjectName(u"verticalLayout_18")
+        self.verticalLayout_17 = QVBoxLayout()
+        self.verticalLayout_17.setObjectName(u"verticalLayout_17")
+        self.label_cfg_res = QLabel(self.groupBox_summary)
+        self.label_cfg_res.setObjectName(u"label_cfg_res")
+
+        self.verticalLayout_17.addWidget(self.label_cfg_res)
+
         self.label_cfg_map = QLabel(self.groupBox_summary)
         self.label_cfg_map.setObjectName(u"label_cfg_map")
 
-        self.gridLayout_summary.addWidget(self.label_cfg_map, 1, 0, 1, 1)
+        self.verticalLayout_17.addWidget(self.label_cfg_map)
 
         self.label_cfg_enc = QLabel(self.groupBox_summary)
         self.label_cfg_enc.setObjectName(u"label_cfg_enc")
 
-        self.gridLayout_summary.addWidget(self.label_cfg_enc, 1, 1, 1, 1)
-
-        self.label_cfg_res = QLabel(self.groupBox_summary)
-        self.label_cfg_res.setObjectName(u"label_cfg_res")
-
-        self.gridLayout_summary.addWidget(self.label_cfg_res, 0, 0, 1, 1)
+        self.verticalLayout_17.addWidget(self.label_cfg_enc)
 
         self.label_cfg_perf = QLabel(self.groupBox_summary)
         self.label_cfg_perf.setObjectName(u"label_cfg_perf")
 
-        self.gridLayout_summary.addWidget(self.label_cfg_perf, 0, 1, 1, 1)
+        self.verticalLayout_17.addWidget(self.label_cfg_perf)
 
 
-        self.gridLayout.addWidget(self.groupBox_summary, 0, 0, 1, 2)
+        self.verticalLayout_18.addLayout(self.verticalLayout_17)
 
 
-        self.verticalLayout_tab_general.addWidget(self.groupBox_settings_2)
+        self.horizontalLayout_2.addWidget(self.groupBox_summary)
 
         self.tabWidget.addTab(self.tab_general, "")
         self.tab_advanced = QWidget()
@@ -402,9 +438,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_custom_res.setObjectName(u"horizontalLayout_custom_res")
         self.spin_width = QSpinBox(self.groupBox)
         self.spin_width.setObjectName(u"spin_width")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.spin_width.sizePolicy().hasHeightForWidth())
         self.spin_width.setSizePolicy(sizePolicy2)
         self.spin_width.setValue(99)
@@ -564,13 +597,6 @@ class Ui_MainWindow(object):
 
         self.gridLayout_3.addLayout(self.verticalLayout_2, 0, 2, 1, 1)
 
-        self.line_3 = QFrame(self.groupBox)
-        self.line_3.setObjectName(u"line_3")
-        self.line_3.setFrameShape(QFrame.Shape.VLine)
-        self.line_3.setFrameShadow(QFrame.Shadow.Sunken)
-
-        self.gridLayout_3.addWidget(self.line_3, 0, 3, 6, 1)
-
         self.verticalLayout_4 = QVBoxLayout()
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.gridLayout_2 = QGridLayout()
@@ -580,9 +606,29 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.chk_auto_duration, 0, 0, 1, 1)
 
-        self.horizontalSpacer = QSpacerItem(73, 13, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalLayout = QHBoxLayout()
+        self.horizontalLayout.setObjectName(u"horizontalLayout")
+        self.lbl_duration = QLabel(self.groupBox)
+        self.lbl_duration.setObjectName(u"lbl_duration")
 
-        self.gridLayout_2.addItem(self.horizontalSpacer, 0, 1, 1, 2)
+        self.horizontalLayout.addWidget(self.lbl_duration)
+
+        self.lineEdit_duration = QLineEdit(self.groupBox)
+        self.lineEdit_duration.setObjectName(u"lineEdit_duration")
+
+        self.horizontalLayout.addWidget(self.lineEdit_duration)
+
+
+        self.gridLayout_2.addLayout(self.horizontalLayout, 2, 0, 1, 2)
+
+        self.horizontalSpacer_3 = QSpacerItem(110, 13, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_2.addItem(self.horizontalSpacer_3, 2, 2, 1, 2)
+
+        self.label_distance_info = QLabel(self.groupBox)
+        self.label_distance_info.setObjectName(u"label_distance_info")
+
+        self.gridLayout_2.addWidget(self.label_distance_info, 3, 0, 1, 4)
 
         self.horizontalLayout_21 = QHBoxLayout()
         self.horizontalLayout_21.setObjectName(u"horizontalLayout_21")
@@ -612,39 +658,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_21.addLayout(self.horizontalLayout_rate)
 
 
-        self.gridLayout_2.addLayout(self.horizontalLayout_21, 1, 0, 1, 3)
+        self.gridLayout_2.addLayout(self.horizontalLayout_21, 1, 0, 1, 4)
 
-        self.horizontalSpacer_2 = QSpacerItem(37, 13, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer = QSpacerItem(73, 13, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.gridLayout_2.addItem(self.horizontalSpacer_2, 1, 3, 1, 1)
-
-        self.horizontalLayout = QHBoxLayout()
-        self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.lbl_duration = QLabel(self.groupBox)
-        self.lbl_duration.setObjectName(u"lbl_duration")
-
-        self.horizontalLayout.addWidget(self.lbl_duration)
-
-        self.lineEdit_duration = QLineEdit(self.groupBox)
-        self.lineEdit_duration.setObjectName(u"lineEdit_duration")
-
-        self.horizontalLayout.addWidget(self.lineEdit_duration)
-
-
-        self.gridLayout_2.addLayout(self.horizontalLayout, 2, 0, 1, 2)
-
-        self.horizontalSpacer_3 = QSpacerItem(110, 13, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gridLayout_2.addItem(self.horizontalSpacer_3, 2, 2, 1, 2)
-
-        self.label_distance_info = QLabel(self.groupBox)
-        self.label_distance_info.setObjectName(u"label_distance_info")
-
-        self.gridLayout_2.addWidget(self.label_distance_info, 3, 0, 1, 2)
-
-        self.horizontalSpacer_4 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gridLayout_2.addItem(self.horizontalSpacer_4, 3, 2, 1, 1)
+        self.gridLayout_2.addItem(self.horizontalSpacer, 0, 1, 1, 3)
 
 
         self.verticalLayout_4.addLayout(self.gridLayout_2)
@@ -656,18 +674,13 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_4.addWidget(self.line_4)
 
-        self.chk_preview = QCheckBox(self.groupBox)
-        self.chk_preview.setObjectName(u"chk_preview")
-
-        self.verticalLayout_4.addWidget(self.chk_preview)
-
+        self.horizontalLayout_cache_actions = QHBoxLayout()
+        self.horizontalLayout_cache_actions.setObjectName(u"horizontalLayout_cache_actions")
         self.combo_cache_mode = QComboBox(self.groupBox)
         self.combo_cache_mode.setObjectName(u"combo_cache_mode")
 
-        self.verticalLayout_4.addWidget(self.combo_cache_mode)
+        self.horizontalLayout_cache_actions.addWidget(self.combo_cache_mode)
 
-        self.horizontalLayout_cache_actions = QHBoxLayout()
-        self.horizontalLayout_cache_actions.setObjectName(u"horizontalLayout_cache_actions")
         self.lbl_cache_size = QLabel(self.groupBox)
         self.lbl_cache_size.setObjectName(u"lbl_cache_size")
 
@@ -682,7 +695,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.addLayout(self.horizontalLayout_cache_actions)
 
 
-        self.gridLayout_3.addLayout(self.verticalLayout_4, 0, 4, 6, 1)
+        self.gridLayout_3.addLayout(self.verticalLayout_4, 0, 4, 7, 1)
 
         self.line = QFrame(self.groupBox)
         self.line.setObjectName(u"line")
@@ -732,10 +745,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_hide.addWidget(self.lbl_hide_unit)
 
-        self.horizontalSpacer_5 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_hide.addItem(self.horizontalSpacer_5)
-
 
         self.horizontalLayout_22.addLayout(self.horizontalLayout_hide)
 
@@ -781,36 +790,14 @@ class Ui_MainWindow(object):
         self.horizontalLayout_23.addLayout(self.horizontalLayout_wc)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_23, 3, 0, 1, 1)
-
-        self.horizontalLayout_24 = QHBoxLayout()
-        self.horizontalLayout_24.setObjectName(u"horizontalLayout_24")
-        self.horizontalSpacer_6 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_24.addItem(self.horizontalSpacer_6)
-
-        self.lbl_tile_connections = QLabel(self.groupBox)
-        self.lbl_tile_connections.setObjectName(u"lbl_tile_connections")
-
-        self.horizontalLayout_24.addWidget(self.lbl_tile_connections)
-
-        self.spin_tile_connections = QSpinBox(self.groupBox)
-        self.spin_tile_connections.setObjectName(u"spin_tile_connections")
-        sizePolicy3.setHeightForWidth(self.spin_tile_connections.sizePolicy().hasHeightForWidth())
-        self.spin_tile_connections.setSizePolicy(sizePolicy3)
-        self.spin_tile_connections.setValue(4)
-
-        self.horizontalLayout_24.addWidget(self.spin_tile_connections)
-
-
-        self.gridLayout_3.addLayout(self.horizontalLayout_24, 3, 2, 1, 1)
+        self.gridLayout_3.addLayout(self.horizontalLayout_23, 3, 0, 2, 1)
 
         self.line_5 = QFrame(self.groupBox)
         self.line_5.setObjectName(u"line_5")
         self.line_5.setFrameShape(QFrame.Shape.HLine)
         self.line_5.setFrameShadow(QFrame.Shadow.Sunken)
 
-        self.gridLayout_3.addWidget(self.line_5, 4, 0, 1, 3)
+        self.gridLayout_3.addWidget(self.line_5, 5, 0, 1, 3)
 
         self.horizontalLayout_autotune = QHBoxLayout()
         self.horizontalLayout_autotune.setObjectName(u"horizontalLayout_autotune")
@@ -833,7 +820,42 @@ class Ui_MainWindow(object):
         self.horizontalLayout_autotune.addWidget(self.btn_apply_benchmark)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_autotune, 5, 0, 1, 3)
+        self.gridLayout_3.addLayout(self.horizontalLayout_autotune, 6, 0, 1, 3)
+
+        self.verticalLayout_19 = QVBoxLayout()
+        self.verticalLayout_19.setObjectName(u"verticalLayout_19")
+        self.horizontalLayout_24 = QHBoxLayout()
+        self.horizontalLayout_24.setObjectName(u"horizontalLayout_24")
+        self.lbl_tile_connections = QLabel(self.groupBox)
+        self.lbl_tile_connections.setObjectName(u"lbl_tile_connections")
+
+        self.horizontalLayout_24.addWidget(self.lbl_tile_connections)
+
+        self.spin_tile_connections = QSpinBox(self.groupBox)
+        self.spin_tile_connections.setObjectName(u"spin_tile_connections")
+        sizePolicy2.setHeightForWidth(self.spin_tile_connections.sizePolicy().hasHeightForWidth())
+        self.spin_tile_connections.setSizePolicy(sizePolicy2)
+        self.spin_tile_connections.setValue(4)
+
+        self.horizontalLayout_24.addWidget(self.spin_tile_connections)
+
+
+        self.verticalLayout_19.addLayout(self.horizontalLayout_24)
+
+        self.chk_preview = QCheckBox(self.groupBox)
+        self.chk_preview.setObjectName(u"chk_preview")
+
+        self.verticalLayout_19.addWidget(self.chk_preview)
+
+
+        self.gridLayout_3.addLayout(self.verticalLayout_19, 2, 2, 3, 1)
+
+        self.line_3 = QFrame(self.groupBox)
+        self.line_3.setObjectName(u"line_3")
+        self.line_3.setFrameShape(QFrame.Shape.VLine)
+        self.line_3.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.gridLayout_3.addWidget(self.line_3, 0, 3, 7, 1)
 
 
         self.verticalLayout_tab_advanced.addWidget(self.groupBox)
@@ -854,7 +876,7 @@ class Ui_MainWindow(object):
         self.progressBar_main = PyCircularProgress(self.groupBox_workers)
         self.progressBar_main.setObjectName(u"progressBar_main")
         self.progressBar_main.setMinimumSize(QSize(110, 110))
-        self.progressBar_main.setValue(0)
+        self.progressBar_main.setProperty(u"value", 0)
 
         self.verticalLayout_16.addWidget(self.progressBar_main)
 
@@ -958,7 +980,7 @@ class Ui_MainWindow(object):
         self.progressBar_worker_1 = PyCircularProgress(self.groupBox_workers)
         self.progressBar_worker_1.setObjectName(u"progressBar_worker_1")
         self.progressBar_worker_1.setMinimumSize(QSize(65, 65))
-        self.progressBar_worker_1.setValue(0)
+        self.progressBar_worker_1.setProperty(u"value", 0)
 
         self.verticalLayout_10.addWidget(self.progressBar_worker_1)
 
@@ -966,6 +988,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_worker_1.setObjectName(u"horizontalLayout_worker_1")
         self.lbl_worker_1 = QLabel(self.groupBox_workers)
         self.lbl_worker_1.setObjectName(u"lbl_worker_1")
+        self.lbl_worker_1.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_worker_1.addWidget(self.lbl_worker_1)
 
@@ -985,7 +1008,7 @@ class Ui_MainWindow(object):
         self.progressBar_worker_4 = PyCircularProgress(self.groupBox_workers)
         self.progressBar_worker_4.setObjectName(u"progressBar_worker_4")
         self.progressBar_worker_4.setMinimumSize(QSize(65, 65))
-        self.progressBar_worker_4.setValue(0)
+        self.progressBar_worker_4.setProperty(u"value", 0)
 
         self.verticalLayout_13.addWidget(self.progressBar_worker_4)
 
@@ -993,6 +1016,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_worker_4.setObjectName(u"horizontalLayout_worker_4")
         self.lbl_worker_4 = QLabel(self.groupBox_workers)
         self.lbl_worker_4.setObjectName(u"lbl_worker_4")
+        self.lbl_worker_4.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_worker_4.addWidget(self.lbl_worker_4)
 
@@ -1012,7 +1036,7 @@ class Ui_MainWindow(object):
         self.progressBar_worker_2 = PyCircularProgress(self.groupBox_workers)
         self.progressBar_worker_2.setObjectName(u"progressBar_worker_2")
         self.progressBar_worker_2.setMinimumSize(QSize(65, 65))
-        self.progressBar_worker_2.setValue(0)
+        self.progressBar_worker_2.setProperty(u"value", 0)
 
         self.verticalLayout_11.addWidget(self.progressBar_worker_2)
 
@@ -1020,6 +1044,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_worker_2.setObjectName(u"horizontalLayout_worker_2")
         self.lbl_worker_2 = QLabel(self.groupBox_workers)
         self.lbl_worker_2.setObjectName(u"lbl_worker_2")
+        self.lbl_worker_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_worker_2.addWidget(self.lbl_worker_2)
 
@@ -1039,7 +1064,7 @@ class Ui_MainWindow(object):
         self.progressBar_worker_5 = PyCircularProgress(self.groupBox_workers)
         self.progressBar_worker_5.setObjectName(u"progressBar_worker_5")
         self.progressBar_worker_5.setMinimumSize(QSize(65, 65))
-        self.progressBar_worker_5.setValue(0)
+        self.progressBar_worker_5.setProperty(u"value", 0)
 
         self.verticalLayout_14.addWidget(self.progressBar_worker_5)
 
@@ -1047,6 +1072,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_worker_5.setObjectName(u"horizontalLayout_worker_5")
         self.lbl_worker_5 = QLabel(self.groupBox_workers)
         self.lbl_worker_5.setObjectName(u"lbl_worker_5")
+        self.lbl_worker_5.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_worker_5.addWidget(self.lbl_worker_5)
 
@@ -1066,7 +1092,7 @@ class Ui_MainWindow(object):
         self.progressBar_worker_3 = PyCircularProgress(self.groupBox_workers)
         self.progressBar_worker_3.setObjectName(u"progressBar_worker_3")
         self.progressBar_worker_3.setMinimumSize(QSize(65, 65))
-        self.progressBar_worker_3.setValue(0)
+        self.progressBar_worker_3.setProperty(u"value", 0)
 
         self.verticalLayout_12.addWidget(self.progressBar_worker_3)
 
@@ -1074,6 +1100,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_worker_3.setObjectName(u"horizontalLayout_worker_3")
         self.lbl_worker_3 = QLabel(self.groupBox_workers)
         self.lbl_worker_3.setObjectName(u"lbl_worker_3")
+        self.lbl_worker_3.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_worker_3.addWidget(self.lbl_worker_3)
 
@@ -1093,7 +1120,7 @@ class Ui_MainWindow(object):
         self.progressBar_worker_6 = PyCircularProgress(self.groupBox_workers)
         self.progressBar_worker_6.setObjectName(u"progressBar_worker_6")
         self.progressBar_worker_6.setMinimumSize(QSize(65, 65))
-        self.progressBar_worker_6.setValue(0)
+        self.progressBar_worker_6.setProperty(u"value", 0)
 
         self.verticalLayout_15.addWidget(self.progressBar_worker_6)
 
@@ -1101,6 +1128,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_worker_6.setObjectName(u"horizontalLayout_worker_6")
         self.lbl_worker_6 = QLabel(self.groupBox_workers)
         self.lbl_worker_6.setObjectName(u"lbl_worker_6")
+        self.lbl_worker_6.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_worker_6.addWidget(self.lbl_worker_6)
 
@@ -1239,7 +1267,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1376,25 +1404,15 @@ class Ui_MainWindow(object):
         self.btn_media_dialog.setText(QCoreApplication.translate("MainWindow", u"\u5a92\u9ad4\u7ba1\u7406", None))
         self.groupBox_settings_2.setTitle(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u8a2d\u5b9a", None))
 #if QT_CONFIG(tooltip)
-        self.chk_parallel_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5141\u8a31\u540c\u6642\u555f\u52d5\u591a\u500b worker \u5e73\u884c\u6e32\u67d3\u4e3b\u52d5\u756b\u3002", None))
+        self.chk_basemap_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u662f\u5426\u4e0b\u8f09\u4e26\u986f\u793a\u9053\u8def\u6216\u885b\u661f\u7b49\u5730\u5716\u5e95\u5716\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.chk_parallel_2.setText(QCoreApplication.translate("MainWindow", u"\u591a\u7a0b\u5e8f", None))
+        self.chk_basemap_2.setText(QCoreApplication.translate("MainWindow", u"\u5e95\u5716", None))
 #if QT_CONFIG(tooltip)
-        self.chk_real_speed_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u9a0e\u4e58\u52d5\u756b\u5728\u8def\u7dda\u4e0a\u7684\u79fb\u52d5\u901f\u5ea6\u6a21\u5f0f\uff08\u7b49\u901f vs \u5be6\u969b GPS \u901f\u5ea6\uff09\u3002", None))
+        self.lbl_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.chk_real_speed_2.setText(QCoreApplication.translate("MainWindow", u"\u8ddf\u96a8 GPX \u5be6\u969b\u901f\u5ea6", None))
+        self.lbl_resolution_2.setText(QCoreApplication.translate("MainWindow", u"\u89e3\u6790\u5ea6\u9810\u8a2d", None))
 #if QT_CONFIG(tooltip)
-        self.chk_enable_media_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u662f\u5426\u5728\u8def\u7dda\u52d5\u756b\u4e2d\u986f\u793a\u76f8\u7247/\u5f71\u7247\u61f8\u6d6e\u5361\u7247\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.chk_enable_media_2.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u5a92\u9ad4\u5361\u7247", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_map_style_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
-"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_map_style_2.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u98a8\u683c", None))
-#if QT_CONFIG(tooltip)
-        self.combo_map_style_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
-"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
+        self.combo_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.lbl_panels.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u662f\u5426\u5728\u52d5\u756b\u4e3b\u756b\u9762\u4e2d\u986f\u793a\u901f\u5ea6\u5100\u8868\u3001\u8def\u7dda\u7e2e\u5716\u6216\u6d77\u62d4\u9ad8\u5ea6\u5256\u9762\u5716\u3002", None))
@@ -1426,26 +1444,13 @@ class Ui_MainWindow(object):
 "\u2022 3D \u771f\u5730\u5f62 (3D-Terrain)", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
-        self.chk_dynamic_speed_zoom.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6839\u64da\u7576\u524d GPX \u9a0e\u4e58\u901f\u5ea6\u52d5\u614b\u7e2e\u653e\u93e1\u982d\uff08\u9ad8\u901f\u62c9\u9060\u3001\u4f4e\u901f\u62c9\u8fd1\uff09\uff0c\u5982\u540c\u8eca\u7528\u5c0e\u822a\u8996\u89ba\u6548\u679c\u3002", None))
+        self.lbl_map_style_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
+"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.chk_dynamic_speed_zoom.setText(QCoreApplication.translate("MainWindow", u"\u901f\u5ea6\u52d5\u614b\u93e1\u982d", None))
+        self.lbl_map_style_2.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u98a8\u683c", None))
 #if QT_CONFIG(tooltip)
-        self.lbl_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_resolution_2.setText(QCoreApplication.translate("MainWindow", u"\u89e3\u6790\u5ea6\u9810\u8a2d", None))
-#if QT_CONFIG(tooltip)
-        self.combo_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.chk_basemap_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u662f\u5426\u4e0b\u8f09\u4e26\u986f\u793a\u9053\u8def\u6216\u885b\u661f\u7b49\u5730\u5716\u5e95\u5716\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.chk_basemap_2.setText(QCoreApplication.translate("MainWindow", u"\u5e95\u5716", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_profile_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e00\u6b21\u5957\u7528\u4e00\u7d44\u89e3\u6790\u5ea6\u3001Local Zoom\u3001bitrate\u3001NVENC preset\u3001Workers \u8207 Chunks/Worker\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_profile_2.setText(QCoreApplication.translate("MainWindow", u"\u9810\u8a2d\u6a21\u5f0f", None))
-#if QT_CONFIG(tooltip)
-        self.combo_profile_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e00\u6b21\u5957\u7528\u4e00\u7d44\u89e3\u6790\u5ea6\u3001Local Zoom\u3001bitrate\u3001NVENC preset\u3001Workers \u8207 Chunks/Worker\u3002", None))
+        self.combo_map_style_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
+"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.lbl_track_color_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u756b\u9762\u8ecc\u8de1\u7dda\u689d\u8207\u5347\u964d\u5f69\u5e36\u7684\u914d\u8272\u98a8\u683c\u3002\n"
@@ -1460,10 +1465,33 @@ class Ui_MainWindow(object):
 "\u2022 \u4eae\u7da0\u3001\u9ec3\u3001\u7d05\u55ae\u8272\n"
 "\u2022 \u9a0e\u4e58\u901f\u5ea6\u6f38\u5c64", None))
 #endif // QT_CONFIG(tooltip)
-        self.groupBox_summary.setTitle(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u8a2d\u5b9a\u6458\u8981", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_profile_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e00\u6b21\u5957\u7528\u4e00\u7d44\u89e3\u6790\u5ea6\u3001Local Zoom\u3001bitrate\u3001NVENC preset\u3001Workers \u8207 Chunks/Worker\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_profile_2.setText(QCoreApplication.translate("MainWindow", u"\u9810\u8a2d\u6a21\u5f0f", None))
+#if QT_CONFIG(tooltip)
+        self.combo_profile_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e00\u6b21\u5957\u7528\u4e00\u7d44\u89e3\u6790\u5ea6\u3001Local Zoom\u3001bitrate\u3001NVENC preset\u3001Workers \u8207 Chunks/Worker\u3002", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.chk_enable_media_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u662f\u5426\u5728\u8def\u7dda\u52d5\u756b\u4e2d\u986f\u793a\u76f8\u7247/\u5f71\u7247\u61f8\u6d6e\u5361\u7247\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_enable_media_2.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u5a92\u9ad4\u5361\u7247", None))
+#if QT_CONFIG(tooltip)
+        self.chk_dynamic_speed_zoom.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6839\u64da\u7576\u524d GPX \u9a0e\u4e58\u901f\u5ea6\u52d5\u614b\u7e2e\u653e\u93e1\u982d\uff08\u9ad8\u901f\u62c9\u9060\u3001\u4f4e\u901f\u62c9\u8fd1\uff09\uff0c\u5982\u540c\u8eca\u7528\u5c0e\u822a\u8996\u89ba\u6548\u679c\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_dynamic_speed_zoom.setText(QCoreApplication.translate("MainWindow", u"\u901f\u5ea6\u52d5\u614b\u93e1\u982d", None))
+#if QT_CONFIG(tooltip)
+        self.chk_parallel_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5141\u8a31\u540c\u6642\u555f\u52d5\u591a\u500b worker \u5e73\u884c\u6e32\u67d3\u4e3b\u52d5\u756b\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_parallel_2.setText(QCoreApplication.translate("MainWindow", u"\u591a\u7a0b\u5e8f", None))
+#if QT_CONFIG(tooltip)
+        self.chk_real_speed_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u9a0e\u4e58\u52d5\u756b\u5728\u8def\u7dda\u4e0a\u7684\u79fb\u52d5\u901f\u5ea6\u6a21\u5f0f\uff08\u7b49\u901f vs \u5be6\u969b GPS \u901f\u5ea6\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_real_speed_2.setText(QCoreApplication.translate("MainWindow", u"\u8ddf\u96a8 GPX \u5be6\u969b\u901f\u5ea6", None))
+        self.groupBox_summary.setTitle(QCoreApplication.translate("MainWindow", u"\u8a2d\u5b9a\u6458\u8981", None))
+        self.label_cfg_res.setText(QCoreApplication.translate("MainWindow", u"\u756b\u9762\u898f\u683c: 1440x1440 @ 60 FPS (\u81ea\u52d5\u6642\u9577 20.0s)", None))
         self.label_cfg_map.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u8996\u89d2: \u98a8\u683c [1] | North-Up | Zoom: 17", None))
         self.label_cfg_enc.setText(QCoreApplication.translate("MainWindow", u"\u7de8\u78bc\u8a2d\u5b9a: NVENC 30M (preset: p5) | \u7121\u5a92\u9ad4 Overlay", None))
-        self.label_cfg_res.setText(QCoreApplication.translate("MainWindow", u"\u756b\u9762\u898f\u683c: 1440x1440 @ 60 FPS (\u81ea\u52d5\u6642\u9577 20.0s)", None))
         self.label_cfg_perf.setText(QCoreApplication.translate("MainWindow", u"\u6548\u80fd\u6a21\u5f0f: \u591a\u7a0b\u5e8f (6 Workers \u00d7 4 chunks) | \u505c\u7528 Cache", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_general), QCoreApplication.translate("MainWindow", u"\u4e00\u822c\u8a2d\u5b9a", None))
         self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"\u9032\u968e\u8a2d\u5b9a", None))
@@ -1529,11 +1557,6 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.chk_auto_duration.setText(QCoreApplication.translate("MainWindow", u"\u4f9d GPX \u8ddd\u96e2\u81ea\u52d5\u6642\u9577", None))
 #if QT_CONFIG(tooltip)
-        self.lbl_rate.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u81ea\u52d5\u6642\u9577\u7684\u7bc0\u594f\u500d\u7387\u3002\u516c\u5f0f\u7d04\u70ba\uff1a\u8ddd\u96e2 km \u00f7 100 \u00d7 \u6b64\u6578\u503c\uff08\u9810\u8a2d 60 \u79d2/100km\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_rate.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u52d5\u6642\u9577\u500d\u7387", None))
-        self.lbl_rate_unit.setText(QCoreApplication.translate("MainWindow", u"\u79d2 / 100km", None))
-#if QT_CONFIG(tooltip)
         self.lbl_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u6469\u6258\u8eca\u6cbf GPX \u8def\u5f91\u64ad\u653e\u7684\u4e3b\u52d5\u756b\u9577\u5ea6\uff08\u79d2\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.lbl_duration.setText(QCoreApplication.translate("MainWindow", u"\u4e3b\u52d5\u756b\u79d2\u6578", None))
@@ -1545,9 +1568,10 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.label_distance_info.setText(QCoreApplication.translate("MainWindow", u"GPX \u8ddd\u96e2\uff1a-- km (\u81ea\u52d5\u6642\u9577 --s)", None))
 #if QT_CONFIG(tooltip)
-        self.chk_preview.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u53ea\u6e32\u67d3\u4e00\u5c0f\u6bb5\u4e3b\u52d5\u756b\uff0c\u5feb\u901f\u6aa2\u67e5 HUD\u3001\u8def\u5f91\u3001\u5730\u5716\u8207\u756b\u8cea\u8a2d\u5b9a\u3002", None))
+        self.lbl_rate.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u81ea\u52d5\u6642\u9577\u7684\u7bc0\u594f\u500d\u7387\u3002\u516c\u5f0f\u7d04\u70ba\uff1a\u8ddd\u96e2 km \u00f7 100 \u00d7 \u6b64\u6578\u503c\uff08\u9810\u8a2d 60 \u79d2/100km\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.chk_preview.setText(QCoreApplication.translate("MainWindow", u"Preview \u9810\u89bd\u6a21\u5f0f", None))
+        self.lbl_rate.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u52d5\u6642\u9577\u500d\u7387", None))
+        self.lbl_rate_unit.setText(QCoreApplication.translate("MainWindow", u"\u79d2 / 100km", None))
 #if QT_CONFIG(tooltip)
         self.combo_cache_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5207\u63db\u5e95\u5716\u78c1\u789f\u5feb\u53d6\u6a21\u5f0f\u3002\u81ea\u52d5\u66ab\u5b58\u6a21\u5f0f\u65bc\u95dc\u9589\u7a0b\u5f0f\u6642\u6e05\u9664\uff1b\u6c38\u4e45\u4fdd\u7559\u6a21\u5f0f\u5247\u4fdd\u7559\u4ee5\u52a0\u901f\u65e5\u5f8c\u6e32\u67d3\u3002", None))
 #endif // QT_CONFIG(tooltip)
@@ -1567,13 +1591,6 @@ class Ui_MainWindow(object):
         self.lbl_wc_x.setText(QCoreApplication.translate("MainWindow", u" W \u00d7 ", None))
         self.lbl_wc_unit.setText(QCoreApplication.translate("MainWindow", u" C", None))
 #if QT_CONFIG(tooltip)
-        self.lbl_tile_connections.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1acontextily \u4e0b\u8f09\u5730\u5716 tile \u6642\u53ef\u540c\u6642\u4f7f\u7528\u7684\u9023\u7dda\u6578\uff08\u9810\u8a2d 4\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_tile_connections.setText(QCoreApplication.translate("MainWindow", u"Tile \u9023\u7dda\u6578", None))
-#if QT_CONFIG(tooltip)
-        self.spin_tile_connections.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1acontextily \u4e0b\u8f09\u5730\u5716 tile \u6642\u53ef\u540c\u6642\u4f7f\u7528\u7684\u9023\u7dda\u6578\uff08\u9810\u8a2d 4\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
         self.btn_autotune.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u7528\u77ed benchmark \u5be6\u6e2c\u4e0d\u540c Workers \u6578\u91cf\u7684\u7b49\u6548 FPS\uff0c\u518d\u63a8\u85a6\u63a5\u8fd1\u5cf0\u503c\u6548\u80fd\u7684\u6700\u4f4e worker \u6578\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_autotune.setText(QCoreApplication.translate("MainWindow", u"\u6548\u80fd\u6e2c\u8a66 / Auto Tune", None))
@@ -1582,6 +1599,17 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.label_autotune_result.setText(QCoreApplication.translate("MainWindow", u"\u5c1a\u672a\u6e2c\u8a66", None))
         self.btn_apply_benchmark.setText(QCoreApplication.translate("MainWindow", u"\u5957\u7528\u5efa\u8b70", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_tile_connections.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1acontextily \u4e0b\u8f09\u5730\u5716 tile \u6642\u53ef\u540c\u6642\u4f7f\u7528\u7684\u9023\u7dda\u6578\uff08\u9810\u8a2d 4\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_tile_connections.setText(QCoreApplication.translate("MainWindow", u"Tile \u9023\u7dda\u6578", None))
+#if QT_CONFIG(tooltip)
+        self.spin_tile_connections.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1acontextily \u4e0b\u8f09\u5730\u5716 tile \u6642\u53ef\u540c\u6642\u4f7f\u7528\u7684\u9023\u7dda\u6578\uff08\u9810\u8a2d 4\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.chk_preview.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u53ea\u6e32\u67d3\u4e00\u5c0f\u6bb5\u4e3b\u52d5\u756b\uff0c\u5feb\u901f\u6aa2\u67e5 HUD\u3001\u8def\u5f91\u3001\u5730\u5716\u8207\u756b\u8cea\u8a2d\u5b9a\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_preview.setText(QCoreApplication.translate("MainWindow", u"Preview \u9810\u89bd\u6a21\u5f0f", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_advanced), QCoreApplication.translate("MainWindow", u"\u9032\u968e\u8a2d\u5b9a", None))
         self.groupBox_workers.setTitle(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u9032\u5ea6", None))
         self.label_eta_elapsed.setText(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u8a08\u6642: 00:00:00", None))

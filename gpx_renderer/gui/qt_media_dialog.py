@@ -5,11 +5,13 @@
 """
 
 from gpx_renderer.gui.media_dialog.media_dialog_controller import QtMediaManagerDialog
+from gpx_renderer.gui.media_dialog.ui_media_dialog import Ui_MediaManagerDialog
 from gpx_renderer.gui.media_dialog.map_worker import MapTileWorker, GOOGLE_STREETS_URL
 from gpx_renderer.gui.media_dialog.widgets import ClickablePreviewLabel, QtRoutePreviewWidget
 
 __all__ = [
     "QtMediaManagerDialog",
+    "Ui_MediaManagerDialog",
     "MapTileWorker",
     "GOOGLE_STREETS_URL",
     "ClickablePreviewLabel",

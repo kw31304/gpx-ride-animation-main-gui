@@ -20,7 +20,7 @@ class MapTileWorker(QObject):
     tile_ready = Signal(object, float, float, float, float)  # (QImage, left, right, bottom, top)
     fetch_failed = Signal(str)
 
-    def fetch_async(self, west: float, south: float, east: float, north: float, source: str = GOOGLE_STREETS_URL, zoom="auto"):
+    def fetch_async(self, west: float, south: float, east: float, north: float, source=GOOGLE_STREETS_URL, zoom="auto"):
         def _task():
             try:
                 target_zoom = zoom
@@ -66,7 +66,57 @@ class MapTileWorker(QObject):
         t.start()
 
 
+class MediaBgTileWorker(QObject):
+    """背景非同步下載媒體預覽視框底圖的工作元件 (daemon thread)。"""
+    tile_ready = Signal(str, object)  # (item_key, QImage)
+    fetch_failed = Signal(str, str)   # (item_key, err_msg)
+
+    def fetch_async(self, item_key: str, west: float, south: float, east: float, north: float, source=GOOGLE_STREETS_URL, zoom="auto"):
+        def _task():
+            try:
+                target_zoom = zoom
+                try:
+                    img_np, extent = cx.bounds2img(
+                        west, south, east, north,
+                        zoom=target_zoom,
+                        source=source,
+                        ll=False,
+                        use_cache=True,
+                        max_retries=2,
+                    )
+                except Exception:
+                    if target_zoom != "auto":
+                        img_np, extent = cx.bounds2img(
+                            west, south, east, north,
+                            zoom="auto",
+                            source=source,
+                            ll=False,
+                            use_cache=True,
+                            max_retries=2,
+                        )
+                    else:
+                        raise
+
+                if img_np is None:
+                    return
+
+                if img_np.ndim == 3 and img_np.shape[2] == 4:
+                    rgb = np.ascontiguousarray(img_np[:, :, :3])
+                else:
+                    rgb = np.ascontiguousarray(img_np)
+
+                h, w, ch = rgb.shape
+                qimg = QImage(rgb.data, w, h, w * ch, QImage.Format_RGB888).copy()
+                self.tile_ready.emit(item_key, qimg)
+            except Exception as exc:
+                self.fetch_failed.emit(item_key, str(exc))
+
+        t = threading.Thread(target=_task, daemon=True)
+        t.start()
+
+
 __all__ = [
     "MapTileWorker",
+    "MediaBgTileWorker",
     "GOOGLE_STREETS_URL",
 ]

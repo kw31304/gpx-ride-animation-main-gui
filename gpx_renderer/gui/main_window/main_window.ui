@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>880</width>
-    <height>600</height>
+    <height>614</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -149,28 +149,13 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_general">
        <attribute name="title">
         <string>一般設定</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_tab_general">
-        <property name="spacing">
-         <number>4</number>
-        </property>
-        <property name="leftMargin">
-         <number>4</number>
-        </property>
-        <property name="topMargin">
-         <number>4</number>
-        </property>
-        <property name="rightMargin">
-         <number>4</number>
-        </property>
-        <property name="bottomMargin">
-         <number>4</number>
-        </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
         <item>
          <widget class="QGroupBox" name="groupBox_settings_2">
           <property name="sizePolicy">
@@ -185,64 +170,61 @@
             <height>0</height>
            </size>
           </property>
+          <property name="maximumSize">
+           <size>
+            <width>400</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="title">
            <string>渲染設定</string>
           </property>
           <layout class="QGridLayout" name="gridLayout">
-           <item row="1" column="1">
-            <widget class="QCheckBox" name="chk_parallel_2">
+           <item row="9" column="0">
+            <widget class="QCheckBox" name="chk_basemap_2">
              <property name="toolTip">
-              <string>用途：允許同時啟動多個 worker 平行渲染主動畫。</string>
+              <string>用途：是否下載並顯示道路或衛星等地圖底圖。</string>
              </property>
              <property name="text">
-              <string>多程序</string>
+              <string>底圖</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
-            <widget class="QCheckBox" name="chk_real_speed_2">
-             <property name="toolTip">
-              <string>用途：控制騎乘動畫在路線上的移動速度模式（等速 vs 實際 GPS 速度）。</string>
-             </property>
-             <property name="text">
-              <string>跟隨 GPX 實際速度</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="1">
-            <widget class="QCheckBox" name="chk_enable_media_2">
-             <property name="toolTip">
-              <string>用途：是否在路線動畫中顯示相片/影片懸浮卡片。</string>
-             </property>
-             <property name="text">
-              <string>路線媒體卡片</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_11">
+           <item row="3" column="0" colspan="4">
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
              <item>
-              <widget class="QLabel" name="lbl_map_style_2">
+              <widget class="QLabel" name="lbl_resolution_2">
                <property name="toolTip">
-                <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
-建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
+                <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
                </property>
                <property name="text">
-                <string>地圖風格</string>
+                <string>解析度預設</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QComboBox" name="combo_map_style_2">
+              <widget class="QComboBox" name="combo_resolution_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="toolTip">
-                <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
-建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
+                <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
                </property>
               </widget>
              </item>
             </layout>
            </item>
-           <item row="6" column="0">
+           <item row="6" column="0" rowspan="2" colspan="4">
+            <widget class="Line" name="line_11">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0" colspan="4">
             <layout class="QHBoxLayout" name="horizontalLayout_panels">
              <item>
               <widget class="QLabel" name="lbl_panels">
@@ -293,9 +275,22 @@
                </property>
               </widget>
              </item>
+             <item>
+              <spacer name="horizontalSpacer_7">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
             </layout>
            </item>
-           <item row="3" column="0">
+           <item row="2" column="0" colspan="4">
             <layout class="QHBoxLayout" name="horizontalLayout_10">
              <item>
               <widget class="QLabel" name="lbl_camera_mode_2">
@@ -312,6 +307,12 @@
              </item>
              <item>
               <widget class="QComboBox" name="combo_camera_mode_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="toolTip">
                 <string>用途：決定路線動畫的鏡頭視角朝向與 3D 地形透視。
 • 正北朝上 (North-Up)
@@ -322,72 +323,36 @@
              </item>
             </layout>
            </item>
-           <item row="5" column="1">
-            <widget class="QCheckBox" name="chk_dynamic_speed_zoom">
-             <property name="toolTip">
-              <string>用途：根據當前 GPX 騎乘速度動態縮放鏡頭（高速拉遠、低速拉近），如同車用導航視覺效果。</string>
-             </property>
-             <property name="text">
-              <string>速度動態鏡頭</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <item row="1" column="0" colspan="4">
+            <layout class="QHBoxLayout" name="horizontalLayout_11">
              <item>
-              <widget class="QLabel" name="lbl_resolution_2">
+              <widget class="QLabel" name="lbl_map_style_2">
                <property name="toolTip">
-                <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
+                <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
+建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
                </property>
                <property name="text">
-                <string>解析度預設</string>
+                <string>地圖風格</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QComboBox" name="combo_resolution_2">
+              <widget class="QComboBox" name="combo_map_style_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="toolTip">
-                <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
+                <string>用途：決定影片主畫面與結尾 overview 使用的底圖樣式。
+建議：深色路線可用 DarkMatter，道路細節可用 Voyager，衛星圖資訊量最高。</string>
                </property>
               </widget>
              </item>
             </layout>
            </item>
-           <item row="2" column="1">
-            <widget class="QCheckBox" name="chk_basemap_2">
-             <property name="toolTip">
-              <string>用途：是否下載並顯示道路或衛星等地圖底圖。</string>
-             </property>
-             <property name="text">
-              <string>底圖</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_9">
-             <item>
-              <widget class="QLabel" name="lbl_profile_2">
-               <property name="toolTip">
-                <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
-               </property>
-               <property name="text">
-                <string>預設模式</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="combo_profile_2">
-               <property name="toolTip">
-                <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="5" column="0">
+           <item row="4" column="0" colspan="4">
             <layout class="QHBoxLayout" name="horizontalLayout_8">
              <item>
               <widget class="QLabel" name="lbl_track_color_2">
@@ -404,6 +369,12 @@
              </item>
              <item>
               <widget class="QComboBox" name="combo_track_color_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="toolTip">
                 <string>用途：控制主畫面軌跡線條與升降彩帶的配色風格。
 • 海拔動態漸層
@@ -414,42 +385,142 @@
              </item>
             </layout>
            </item>
-           <item row="0" column="0" colspan="2">
-            <widget class="QGroupBox" name="groupBox_summary">
-             <property name="title">
-              <string>渲染設定摘要</string>
+           <item row="0" column="0" colspan="4">
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <item>
+              <widget class="QLabel" name="lbl_profile_2">
+               <property name="toolTip">
+                <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
+               </property>
+               <property name="text">
+                <string>預設模式</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="combo_profile_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>用途：一次套用一組解析度、Local Zoom、bitrate、NVENC preset、Workers 與 Chunks/Worker。</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="9" column="1">
+            <widget class="QCheckBox" name="chk_enable_media_2">
+             <property name="toolTip">
+              <string>用途：是否在路線動畫中顯示相片/影片懸浮卡片。</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_summary">
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_cfg_map">
-                <property name="text">
-                 <string>地圖視角: 風格 [1] | North-Up | Zoom: 17</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_cfg_enc">
-                <property name="text">
-                 <string>編碼設定: NVENC 30M (preset: p5) | 無媒體 Overlay</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_cfg_res">
-                <property name="text">
-                 <string>畫面規格: 1440x1440 @ 60 FPS (自動時長 20.0s)</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_cfg_perf">
-                <property name="text">
-                 <string>效能模式: 多程序 (6 Workers × 4 chunks) | 停用 Cache</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
+             <property name="text">
+              <string>路線媒體卡片</string>
+             </property>
             </widget>
+           </item>
+           <item row="8" column="1">
+            <widget class="QCheckBox" name="chk_dynamic_speed_zoom">
+             <property name="toolTip">
+              <string>用途：根據當前 GPX 騎乘速度動態縮放鏡頭（高速拉遠、低速拉近），如同車用導航視覺效果。</string>
+             </property>
+             <property name="text">
+              <string>速度動態鏡頭</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <widget class="QCheckBox" name="chk_parallel_2">
+             <property name="toolTip">
+              <string>用途：允許同時啟動多個 worker 平行渲染主動畫。</string>
+             </property>
+             <property name="text">
+              <string>多程序</string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="2">
+            <widget class="QCheckBox" name="chk_real_speed_2">
+             <property name="toolTip">
+              <string>用途：控制騎乘動畫在路線上的移動速度模式（等速 vs 實際 GPS 速度）。</string>
+             </property>
+             <property name="text">
+              <string>跟隨 GPX 實際速度</string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="3">
+            <spacer name="horizontalSpacer_8">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="9" column="2" colspan="2">
+            <spacer name="horizontalSpacer_9">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_summary">
+          <property name="title">
+           <string>設定摘要</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_18">
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout_17">
+             <item>
+              <widget class="QLabel" name="label_cfg_res">
+               <property name="text">
+                <string>畫面規格: 1440x1440 @ 60 FPS (自動時長 20.0s)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_cfg_map">
+               <property name="text">
+                <string>地圖視角: 風格 [1] | North-Up | Zoom: 17</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_cfg_enc">
+               <property name="text">
+                <string>編碼設定: NVENC 30M (preset: p5) | 無媒體 Overlay</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_cfg_perf">
+               <property name="text">
+                <string>效能模式: 多程序 (6 Workers × 4 chunks) | 停用 Cache</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>
@@ -500,6 +571,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_12">
                <item>
                 <widget class="QLabel" name="lbl_custom_res">
+                 <property name="minimumSize">
+                  <size>
+                   <width>112</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：選擇輸出影片的解析度尺寸與畫面比例（9:16, 16:9, 1:1 等）。</string>
                  </property>
@@ -513,10 +590,22 @@
                  <item>
                   <widget class="QSpinBox" name="spin_width">
                    <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                      <horstretch>0</horstretch>
                      <verstretch>0</verstretch>
                     </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>90</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>16777215</height>
+                    </size>
                    </property>
                    <property name="value">
                     <number>99</number>
@@ -533,10 +622,22 @@
                  <item>
                   <widget class="QSpinBox" name="spin_height">
                    <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                      <horstretch>0</horstretch>
                      <verstretch>0</verstretch>
                     </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>90</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>16777215</height>
+                    </size>
                    </property>
                    <property name="value">
                     <number>99</number>
@@ -551,6 +652,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_13">
                <item>
                 <widget class="QLabel" name="lbl_view_margin">
+                 <property name="minimumSize">
+                  <size>
+                   <width>112</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：控制主動畫鏡頭在摩托車位置周圍一次看多大的實際地理範圍（公尺，預設 1600）。</string>
                  </property>
@@ -561,6 +668,24 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="lineEdit_view_margin">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>220</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：控制主動畫鏡頭在摩托車位置周圍一次看多大的實際地理範圍（公尺，預設 1600）。</string>
                  </property>
@@ -575,6 +700,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_14">
                <item>
                 <widget class="QLabel" name="lbl_local_zoom">
+                 <property name="minimumSize">
+                  <size>
+                   <width>112</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：決定主動畫局部底圖下載的地圖縮放層級（預設 17 或 auto）。</string>
                  </property>
@@ -586,10 +717,22 @@
                <item>
                 <widget class="QComboBox" name="combo_local_zoom">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>220</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
                  </property>
                  <property name="toolTip">
                   <string>用途：決定主動畫局部底圖下載的地圖縮放層級（預設 17 或 auto）。</string>
@@ -602,6 +745,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_15">
                <item>
                 <widget class="QLabel" name="lbl_preset">
+                 <property name="minimumSize">
+                  <size>
+                   <width>112</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：控制 NVIDIA NVENC 速度與品質取捨（預設 p5）。</string>
                  </property>
@@ -613,10 +762,22 @@
                <item>
                 <widget class="QComboBox" name="combo_preset">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>220</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
                  </property>
                  <property name="toolTip">
                   <string>用途：控制 NVIDIA NVENC 速度與品質取捨（預設 p5）。</string>
@@ -640,6 +801,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_16">
                <item>
                 <widget class="QLabel" name="lbl_fps">
+                 <property name="minimumSize">
+                  <size>
+                   <width>85</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：設定輸出影片每秒包含多少幀（預設 60 FPS）。</string>
                  </property>
@@ -656,6 +823,12 @@
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>90</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：設定輸出影片每秒包含多少幀（預設 60 FPS）。</string>
                  </property>
@@ -670,6 +843,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_17">
                <item>
                 <widget class="QLabel" name="lbl_zoomout">
+                 <property name="minimumSize">
+                  <size>
+                   <width>85</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：主動畫跑完後，鏡頭從局部視角拉遠到完整路線 overview 所花的時間（秒）。</string>
                  </property>
@@ -680,6 +859,18 @@
                </item>
                <item>
                 <widget class="QLineEdit" name="lineEdit_zoomout">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>90</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：主動畫跑完後，鏡頭從局部視角拉遠到完整路線 overview 所花的時間（秒）。</string>
                  </property>
@@ -694,6 +885,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_18">
                <item>
                 <widget class="QLabel" name="lbl_end_hold">
+                 <property name="minimumSize">
+                  <size>
+                   <width>85</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：完整路徑與 RIDE STATS 出現後，畫面維持多久再結束影片（秒）。</string>
                  </property>
@@ -703,18 +900,26 @@
                 </widget>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_19">
-                 <item>
-                  <widget class="QLineEdit" name="lineEdit_end_hold">
-                   <property name="toolTip">
-                    <string>用途：完整路徑與 RIDE STATS 出現後，畫面維持多久再結束影片（秒）。</string>
-                   </property>
-                   <property name="text">
-                    <string>4.0</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                <widget class="QLineEdit" name="lineEdit_end_hold">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>90</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>用途：完整路徑與 RIDE STATS 出現後，畫面維持多久再結束影片（秒）。</string>
+                 </property>
+                 <property name="text">
+                  <string>4.0</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
@@ -722,6 +927,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_20">
                <item>
                 <widget class="QLabel" name="lbl_bitrate">
+                 <property name="minimumSize">
+                  <size>
+                   <width>85</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：設定 H.264 NVENC 輸出碼率（預設 30M）。</string>
                  </property>
@@ -738,6 +949,12 @@
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>89</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
                  <property name="toolTip">
                   <string>用途：設定 H.264 NVENC 輸出碼率（預設 30M）。</string>
                  </property>
@@ -747,41 +964,18 @@
              </item>
             </layout>
            </item>
-           <item row="0" column="3" rowspan="6">
+           <item row="0" column="3" rowspan="5">
             <widget class="Line" name="line_3">
              <property name="orientation">
               <enum>Qt::Orientation::Vertical</enum>
              </property>
             </widget>
            </item>
-           <item row="0" column="4" rowspan="6">
+           <item row="0" column="4" rowspan="5">
             <layout class="QVBoxLayout" name="verticalLayout_4">
              <item>
               <layout class="QGridLayout" name="gridLayout_2">
-               <item row="0" column="0">
-                <widget class="QCheckBox" name="chk_auto_duration">
-                 <property name="toolTip">
-                  <string>用途：依 GPX 總距離自動計算主動畫長度，讓不同長度的騎乘路線保持相近節奏。</string>
-                 </property>
-                 <property name="text">
-                  <string>依 GPX 距離自動時長</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1" colspan="2">
-                <spacer name="horizontalSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>73</width>
-                   <height>13</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="1" column="0" colspan="3">
+               <item row="1" column="0" colspan="4">
                 <layout class="QHBoxLayout" name="horizontalLayout_21">
                  <item>
                   <widget class="QLabel" name="lbl_rate">
@@ -803,6 +997,12 @@
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
+                     <property name="minimumSize">
+                      <size>
+                       <width>90</width>
+                       <height>0</height>
+                      </size>
+                     </property>
                      <property name="minimum">
                       <number>1</number>
                      </property>
@@ -821,27 +1021,49 @@
                      </property>
                     </widget>
                    </item>
+                   <item>
+                    <spacer name="horizontalSpacer_2">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
                   </layout>
                  </item>
                 </layout>
                </item>
-               <item row="1" column="3">
-                <spacer name="horizontalSpacer_2">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
+               <item row="0" column="0" colspan="4">
+                <widget class="QCheckBox" name="chk_auto_duration">
+                 <property name="toolTip">
+                  <string>用途：依 GPX 總距離自動計算主動畫長度，讓不同長度的騎乘路線保持相近節奏。</string>
                  </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>37</width>
-                   <height>13</height>
-                  </size>
+                 <property name="text">
+                  <string>依 GPX 距離自動時長</string>
                  </property>
-                </spacer>
+                </widget>
                </item>
                <item row="2" column="0" colspan="2">
                 <layout class="QHBoxLayout" name="horizontalLayout">
                  <item>
                   <widget class="QLabel" name="lbl_duration">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>72</width>
+                     <height>0</height>
+                    </size>
+                   </property>
                    <property name="toolTip">
                     <string>用途：控制摩托車沿 GPX 路徑播放的主動畫長度（秒）。</string>
                    </property>
@@ -852,12 +1074,28 @@
                  </item>
                  <item>
                   <widget class="QLineEdit" name="lineEdit_duration">
+                   <property name="minimumSize">
+                    <size>
+                     <width>90</width>
+                     <height>0</height>
+                    </size>
+                   </property>
                    <property name="toolTip">
                     <string>用途：控制摩托車沿 GPX 路徑播放的主動畫長度（秒）。</string>
                    </property>
                   </widget>
                  </item>
                 </layout>
+               </item>
+               <item row="3" column="0" colspan="4">
+                <widget class="QLabel" name="label_distance_info">
+                 <property name="toolTip">
+                  <string>用途：依 GPX 總距離自動計算主動畫長度，讓不同長度的騎乘路線保持相近節奏。</string>
+                 </property>
+                 <property name="text">
+                  <string>GPX 距離：-- km (自動時長 --s)</string>
+                 </property>
+                </widget>
                </item>
                <item row="2" column="2" colspan="2">
                 <spacer name="horizontalSpacer_3">
@@ -872,29 +1110,6 @@
                  </property>
                 </spacer>
                </item>
-               <item row="3" column="0" colspan="2">
-                <widget class="QLabel" name="label_distance_info">
-                 <property name="toolTip">
-                  <string>用途：依 GPX 總距離自動計算主動畫長度，讓不同長度的騎乘路線保持相近節奏。</string>
-                 </property>
-                 <property name="text">
-                  <string>GPX 距離：-- km (自動時長 --s)</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2">
-                <spacer name="horizontalSpacer_4">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
               </layout>
              </item>
              <item>
@@ -905,24 +1120,27 @@
               </widget>
              </item>
              <item>
-              <widget class="QCheckBox" name="chk_preview">
-               <property name="toolTip">
-                <string>用途：只渲染一小段主動畫，快速檢查 HUD、路徑、地圖與畫質設定。</string>
+              <spacer name="verticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
                </property>
-               <property name="text">
-                <string>Preview 預覽模式</string>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
                </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="combo_cache_mode">
-               <property name="toolTip">
-                <string>用途：切換底圖磁碟快取模式。自動暫存模式於關閉程式時清除；永久保留模式則保留以加速日後渲染。</string>
-               </property>
-              </widget>
+              </spacer>
              </item>
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_cache_actions">
+               <item>
+                <widget class="QComboBox" name="combo_cache_mode">
+                 <property name="toolTip">
+                  <string>用途：切換底圖磁碟快取模式。自動暫存模式於關閉程式時清除；永久保留模式則保留以加速日後渲染。</string>
+                 </property>
+                </widget>
+               </item>
                <item>
                 <widget class="QLabel" name="lbl_cache_size">
                  <property name="text">
@@ -949,186 +1167,214 @@
             </widget>
            </item>
            <item row="2" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_22">
+            <layout class="QVBoxLayout" name="verticalLayout_20">
              <item>
-              <widget class="QLabel" name="lbl_hide_privacy">
-               <property name="toolTip">
-                <string>用途：控制主動畫前段隱藏的 GPX 軌跡距離 (0~50 km)，保護起點隱私。</string>
-               </property>
-               <property name="text">
-                <string>隱藏</string>
-               </property>
-              </widget>
+              <layout class="QHBoxLayout" name="horizontalLayout_23">
+               <item>
+                <widget class="QLabel" name="lbl_workers_chunks">
+                 <property name="toolTip">
+                  <string>用途：同時使用多少個獨立渲染程序處理不同 chunks。</string>
+                 </property>
+                 <property name="text">
+                  <string>Workers / Chunks</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_wc">
+                 <item>
+                  <widget class="QSpinBox" name="spin_workers">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>110</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="value">
+                    <number>6</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_wc_x">
+                   <property name="text">
+                    <string> W × </string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="spin_chunks">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>110</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="value">
+                    <number>4</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_wc_unit">
+                   <property name="text">
+                    <string> C</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_hide">
+              <layout class="QHBoxLayout" name="horizontalLayout_22">
                <item>
-                <widget class="QLabel" name="lbl_hide_start">
+                <widget class="QLabel" name="lbl_hide_privacy">
+                 <property name="toolTip">
+                  <string>用途：控制主動畫前段隱藏的 GPX 軌跡距離 (0~50 km)，保護起點隱私。</string>
+                 </property>
                  <property name="text">
-                  <string>起點</string>
+                  <string>隱藏</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QDoubleSpinBox" name="spin_hide_start">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="lbl_hide_end">
-                 <property name="text">
-                  <string>k | 終 </string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QDoubleSpinBox" name="spin_hide_end">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="lbl_hide_unit">
-                 <property name="text">
-                  <string>k</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer_5">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
+                <layout class="QHBoxLayout" name="horizontalLayout_hide">
+                 <item>
+                  <widget class="QLabel" name="lbl_hide_start">
+                   <property name="text">
+                    <string>起點</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QDoubleSpinBox" name="spin_hide_start">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>110</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_hide_end">
+                   <property name="text">
+                    <string>k | 終 </string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QDoubleSpinBox" name="spin_hide_end">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>110</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="lbl_hide_unit">
+                   <property name="text">
+                    <string>k</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
                </item>
               </layout>
              </item>
             </layout>
            </item>
-           <item row="3" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_23">
+           <item row="2" column="2">
+            <layout class="QVBoxLayout" name="verticalLayout_19">
              <item>
-              <widget class="QLabel" name="lbl_workers_chunks">
-               <property name="toolTip">
-                <string>用途：同時使用多少個獨立渲染程序處理不同 chunks。</string>
-               </property>
-               <property name="text">
-                <string>Workers / Chunks</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_wc">
+              <layout class="QHBoxLayout" name="horizontalLayout_24">
                <item>
-                <widget class="QSpinBox" name="spin_workers">
+                <widget class="QLabel" name="lbl_tile_connections">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
-                 <property name="value">
-                  <number>6</number>
+                 <property name="toolTip">
+                  <string>用途：contextily 下載地圖 tile 時可同時使用的連線數（預設 4）。</string>
                  </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLabel" name="lbl_wc_x">
                  <property name="text">
-                  <string> W × </string>
+                  <string>Tile 連線數</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QSpinBox" name="spin_chunks">
+                <widget class="QSpinBox" name="spin_tile_connections">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
+                 </property>
+                 <property name="toolTip">
+                  <string>用途：contextily 下載地圖 tile 時可同時使用的連線數（預設 4）。</string>
                  </property>
                  <property name="value">
                   <number>4</number>
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QLabel" name="lbl_wc_unit">
-                 <property name="text">
-                  <string> C</string>
-                 </property>
-                </widget>
-               </item>
               </layout>
              </item>
-            </layout>
-           </item>
-           <item row="3" column="2">
-            <layout class="QHBoxLayout" name="horizontalLayout_24">
              <item>
-              <spacer name="horizontalSpacer_6">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QLabel" name="lbl_tile_connections">
-               <property name="toolTip">
-                <string>用途：contextily 下載地圖 tile 時可同時使用的連線數（預設 4）。</string>
-               </property>
-               <property name="text">
-                <string>Tile 連線數</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSpinBox" name="spin_tile_connections">
+              <widget class="QCheckBox" name="chk_preview">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
                <property name="toolTip">
-                <string>用途：contextily 下載地圖 tile 時可同時使用的連線數（預設 4）。</string>
+                <string>用途：只渲染一小段主動畫，快速檢查 HUD、路徑、地圖與畫質設定。</string>
                </property>
-               <property name="value">
-                <number>4</number>
+               <property name="text">
+                <string>Preview 預覽模式</string>
                </property>
               </widget>
              </item>
             </layout>
            </item>
-           <item row="4" column="0" colspan="3">
+           <item row="3" column="0" colspan="3">
             <widget class="Line" name="line_5">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
              </property>
             </widget>
            </item>
-           <item row="5" column="0" colspan="3">
+           <item row="4" column="0" colspan="3">
             <layout class="QHBoxLayout" name="horizontalLayout_autotune">
              <item>
               <widget class="QPushButton" name="btn_autotune">
@@ -1208,14 +1454,14 @@
            <item row="0" column="0">
             <layout class="QVBoxLayout" name="verticalLayout_16">
              <item>
-              <widget class="PyCircularProgress" name="progressBar_main">
+              <widget class="PyCircularProgress" name="progressBar_main" native="true">
                <property name="minimumSize">
                 <size>
                  <width>110</width>
                  <height>110</height>
                 </size>
                </property>
-               <property name="value">
+               <property name="value" stdset="0">
                 <number>0</number>
                </property>
               </widget>
@@ -1321,14 +1567,14 @@
              <item row="0" column="0">
               <layout class="QVBoxLayout" name="verticalLayout_10">
                <item>
-                <widget class="PyCircularProgress" name="progressBar_worker_1">
+                <widget class="PyCircularProgress" name="progressBar_worker_1" native="true">
                  <property name="minimumSize">
                   <size>
                    <width>65</width>
                    <height>65</height>
                   </size>
                  </property>
-                 <property name="value">
+                 <property name="value" stdset="0">
                   <number>0</number>
                  </property>
                 </widget>
@@ -1339,6 +1585,9 @@
                   <widget class="QLabel" name="lbl_worker_1">
                    <property name="text">
                     <string>Worker 1:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                    </property>
                   </widget>
                  </item>
@@ -1356,14 +1605,14 @@
              <item row="0" column="1">
               <layout class="QVBoxLayout" name="verticalLayout_13">
                <item>
-                <widget class="PyCircularProgress" name="progressBar_worker_4">
+                <widget class="PyCircularProgress" name="progressBar_worker_4" native="true">
                  <property name="minimumSize">
                   <size>
                    <width>65</width>
                    <height>65</height>
                   </size>
                  </property>
-                 <property name="value">
+                 <property name="value" stdset="0">
                   <number>0</number>
                  </property>
                 </widget>
@@ -1374,6 +1623,9 @@
                   <widget class="QLabel" name="lbl_worker_4">
                    <property name="text">
                     <string>Worker 4:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                    </property>
                   </widget>
                  </item>
@@ -1391,14 +1643,14 @@
              <item row="1" column="0">
               <layout class="QVBoxLayout" name="verticalLayout_11">
                <item>
-                <widget class="PyCircularProgress" name="progressBar_worker_2">
+                <widget class="PyCircularProgress" name="progressBar_worker_2" native="true">
                  <property name="minimumSize">
                   <size>
                    <width>65</width>
                    <height>65</height>
                   </size>
                  </property>
-                 <property name="value">
+                 <property name="value" stdset="0">
                   <number>0</number>
                  </property>
                 </widget>
@@ -1409,6 +1661,9 @@
                   <widget class="QLabel" name="lbl_worker_2">
                    <property name="text">
                     <string>Worker 2:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                    </property>
                   </widget>
                  </item>
@@ -1426,14 +1681,14 @@
              <item row="1" column="1">
               <layout class="QVBoxLayout" name="verticalLayout_14">
                <item>
-                <widget class="PyCircularProgress" name="progressBar_worker_5">
+                <widget class="PyCircularProgress" name="progressBar_worker_5" native="true">
                  <property name="minimumSize">
                   <size>
                    <width>65</width>
                    <height>65</height>
                   </size>
                  </property>
-                 <property name="value">
+                 <property name="value" stdset="0">
                   <number>0</number>
                  </property>
                 </widget>
@@ -1444,6 +1699,9 @@
                   <widget class="QLabel" name="lbl_worker_5">
                    <property name="text">
                     <string>Worker 5:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                    </property>
                   </widget>
                  </item>
@@ -1461,14 +1719,14 @@
              <item row="2" column="0">
               <layout class="QVBoxLayout" name="verticalLayout_12">
                <item>
-                <widget class="PyCircularProgress" name="progressBar_worker_3">
+                <widget class="PyCircularProgress" name="progressBar_worker_3" native="true">
                  <property name="minimumSize">
                   <size>
                    <width>65</width>
                    <height>65</height>
                   </size>
                  </property>
-                 <property name="value">
+                 <property name="value" stdset="0">
                   <number>0</number>
                  </property>
                 </widget>
@@ -1479,6 +1737,9 @@
                   <widget class="QLabel" name="lbl_worker_3">
                    <property name="text">
                     <string>Worker 3:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                    </property>
                   </widget>
                  </item>
@@ -1496,14 +1757,14 @@
              <item row="2" column="1">
               <layout class="QVBoxLayout" name="verticalLayout_15">
                <item>
-                <widget class="PyCircularProgress" name="progressBar_worker_6">
+                <widget class="PyCircularProgress" name="progressBar_worker_6" native="true">
                  <property name="minimumSize">
                   <size>
                    <width>65</width>
                    <height>65</height>
                   </size>
                  </property>
-                 <property name="value">
+                 <property name="value" stdset="0">
                   <number>0</number>
                  </property>
                 </widget>
@@ -1514,6 +1775,9 @@
                   <widget class="QLabel" name="lbl_worker_6">
                    <property name="text">
                     <string>Worker 6:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                    </property>
                   </widget>
                  </item>
@@ -2043,7 +2307,6 @@
    <class>PyCircularProgress</class>
    <extends>QWidget</extends>
    <header>gpx_renderer.gui.widgets.py_circular_progress</header>
-   <container>0</container>
   </customwidget>
  </customwidgets>
  <resources/>
