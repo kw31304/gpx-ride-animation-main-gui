@@ -14,10 +14,16 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
+# 確保直接執行本模組時，專案根目錄能正確加入 sys.path
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 from PySide6.QtCore import Qt, QThread, Signal, Slot, QTimer, QSettings, QSize
 from PySide6.QtGui import QIcon, QActionGroup
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar
+    QApplication, QMainWindow, QFileDialog, QMessageBox, QWidget, QProgressBar,
+    QCheckBox
 )
 
 from gpx_renderer import config, __version__
@@ -60,11 +66,86 @@ CAMERA_MODE_LABELS = {
 }
 
 
+class _ValueProxy:
+    """Proxy 物件，用以相容舊版直接存取 spin_workers, combo_bitrate 等已遷移至選單的元件。"""
+    class _Signal:
+        def connect(self, *a, **k): pass
+        def disconnect(self, *a, **k): pass
+
+    def __init__(self, getter, setter=None):
+        self._getter = getter
+        self._setter = setter
+        self.valueChanged = self._Signal()
+        self.currentIndexChanged = self._Signal()
+        self.toggled = self._Signal()
+
+    def value(self):
+        return self._getter()
+
+    def setValue(self, v):
+        if self._setter: self._setter(v)
+
+    def currentText(self):
+        return str(self._getter())
+
+    def setCurrentText(self, v):
+        if self._setter: self._setter(v)
+
+    def isChecked(self):
+        return bool(self._getter())
+
+    def setChecked(self, v):
+        if self._setter: self._setter(v)
+
+    def clear(self): pass
+    def addItems(self, items): pass
+    def setRange(self, *a): pass
+    def setSingleStep(self, *a): pass
+    def setToolTip(self, *a): pass
+    def selectAll(self): pass
+    def setFocus(self): pass
+    def blockSignals(self, b): pass
+
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle(f"GPX Ride Renderer V{__version__}")
+
+        # 核心渲染與編碼屬性 (原進階元件改至選單列管理)
+        self.nvenc_preset = str(config.NVENC_PRESET)
+        self.nvenc_bitrate = str(config.NVENC_BITRATE)
+        self.render_workers = int(config.RENDER_WORKERS)
+        self.chunks_per_worker = int(config.CHUNKS_PER_WORKER)
+        self.map_connections = int(config.MAP_CONNECTIONS)
+        self.custom_width = int(config.FRAME_WIDTH)
+        self.custom_height = int(config.FRAME_HEIGHT)
+        self.enable_basemap = bool(config.ENABLE_BASEMAP)
+        self.parallel_render = bool(config.PARALLEL_RENDER)
+        self.enable_media = bool(config.ENABLE_MEDIA)
+        self.preview_mode = bool(config.PREVIEW_MODE)
+
+        # 建立 HUD 相容勾選物件
+        self.chk_show_speed = QCheckBox()
+        self.chk_show_minimap = QCheckBox()
+        self.chk_show_elevation = QCheckBox()
+        self.chk_show_speed.setChecked(getattr(config, "SHOW_SPEED_HUD", True))
+        self.chk_show_minimap.setChecked(getattr(config, "SHOW_MINIMAP", True))
+        self.chk_show_elevation.setChecked(getattr(config, "SHOW_ELEVATION", True))
+
+        # 建立 Proxy 相容物件，確保既有存取完全無痛
+        self.spin_workers = _ValueProxy(lambda: self.render_workers, self._set_workers)
+        self.spin_chunks = _ValueProxy(lambda: self.chunks_per_worker, lambda v: setattr(self, 'chunks_per_worker', int(v)))
+        self.spin_tile_connections = _ValueProxy(lambda: self.map_connections, self._set_connections)
+        self.combo_preset = _ValueProxy(lambda: self.nvenc_preset, self._set_preset)
+        self.combo_bitrate = _ValueProxy(lambda: self.nvenc_bitrate, self._set_bitrate)
+        self.spin_width = _ValueProxy(lambda: self.custom_width, lambda v: setattr(self, 'custom_width', int(v)))
+        self.spin_height = _ValueProxy(lambda: self.custom_height, lambda v: setattr(self, 'custom_height', int(v)))
+        self.chk_basemap_2 = _ValueProxy(lambda: self.enable_basemap, self._set_basemap)
+        self.chk_parallel_2 = _ValueProxy(lambda: self.parallel_render, self._set_parallel)
+        self.chk_enable_media_2 = _ValueProxy(lambda: self.enable_media, self._set_enable_media)
+        self.chk_preview = _ValueProxy(lambda: self.preview_mode, self._set_preview_mode)
 
         self.state = {
             "proc": None, "proc_mode": None, "config_path": None,
@@ -99,6 +180,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._init_default_values()
         self._init_toolbar_and_menus()
         self._connect_signals()
+
+        # 初始化路線媒體分頁控制器
+        from gpx_renderer.gui.main_window.components.media_tab_controller import MediaTabController
+        self.media_tab = MediaTabController(self)
+        if hasattr(self, "lineEdit_media") and self.lineEdit_media.text().strip():
+            self.media_tab.load_media_from_paths(self.lineEdit_media.text().strip())
+
         self._update_dashboard_summary(force_media_rescan=True)
 
         # 預設選取「一般設定」分頁 (Tab Index 0)
@@ -145,6 +233,167 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             win_geo = self.frameGeometry()
             win_geo.moveCenter(screen_geo.center())
             self.move(win_geo.topLeft())
+
+    # ---------- 渲染與編碼設定即時同步控制 ----------
+    def _set_preset(self, val: str):
+        self.nvenc_preset = str(val).strip()
+        config.NVENC_PRESET = self.nvenc_preset
+        act = getattr(self, f"action_preset_{self.nvenc_preset}", None)
+        if act:
+            act.blockSignals(True)
+            act.setChecked(True)
+            act.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def _set_bitrate(self, val: str):
+        self.nvenc_bitrate = str(val).strip()
+        config.NVENC_BITRATE = self.nvenc_bitrate
+        act = getattr(self, f"action_bitrate_{self.nvenc_bitrate}", None)
+        if act:
+            act.blockSignals(True)
+            act.setChecked(True)
+            act.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def _set_workers(self, val: int):
+        self.render_workers = int(val)
+        config.RENDER_WORKERS = self.render_workers
+        act = getattr(self, f"action_workers_{self.render_workers}", None)
+        if act:
+            act.blockSignals(True)
+            act.setChecked(True)
+            act.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def _set_connections(self, val: int):
+        self.map_connections = int(val)
+        config.MAP_CONNECTIONS = self.map_connections
+        act = getattr(self, f"action_tile_conn_{self.map_connections}", None)
+        if act:
+            act.blockSignals(True)
+            act.setChecked(True)
+            act.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def _set_basemap(self, val: bool):
+        self.enable_basemap = bool(val)
+        config.ENABLE_BASEMAP = self.enable_basemap
+        if hasattr(self, "action_basemap"):
+            self.action_basemap.blockSignals(True)
+            self.action_basemap.setChecked(self.enable_basemap)
+            self.action_basemap.blockSignals(False)
+        self._update_dashboard_summary()
+        if hasattr(self, "media_tab"):
+            self.media_tab.refresh_preview()
+
+    def _set_parallel(self, val: bool):
+        self.parallel_render = bool(val)
+        config.PARALLEL_RENDER = self.parallel_render
+        if hasattr(self, "action_parallel"):
+            self.action_parallel.blockSignals(True)
+            self.action_parallel.setChecked(self.parallel_render)
+            self.action_parallel.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def _set_enable_media(self, val: bool):
+        self.enable_media = bool(val)
+        config.ENABLE_MEDIA = self.enable_media
+        if hasattr(self, "action_enable_media"):
+            self.action_enable_media.blockSignals(True)
+            self.action_enable_media.setChecked(self.enable_media)
+            self.action_enable_media.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def _set_preview_mode(self, val: bool):
+        self.preview_mode = bool(val)
+        config.PREVIEW_MODE = self.preview_mode
+        if hasattr(self, "action_preview"):
+            self.action_preview.blockSignals(True)
+            self.action_preview.setChecked(self.preview_mode)
+            self.action_preview.blockSignals(False)
+        self._update_dashboard_summary()
+
+    def open_custom_resolution_dialog(self):
+        """彈出精簡自訂解析度輸入對話框"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QDialogButtonBox
+        dlg = QDialog(self)
+        dlg.setWindowTitle("自訂畫面解析度")
+        dlg.resize(320, 160)
+        layout = QVBoxLayout(dlg)
+
+        h_w = QHBoxLayout()
+        h_w.addWidget(QLabel("寬度 (Width):"))
+        sp_w = QSpinBox()
+        sp_w.setRange(240, 7680)
+        sp_w.setSingleStep(2)
+        sp_w.setValue(self.custom_width)
+        sp_w.setSuffix(" px")
+        h_w.addWidget(sp_w)
+        layout.addLayout(h_w)
+
+        h_h = QHBoxLayout()
+        h_h.addWidget(QLabel("高度 (Height):"))
+        sp_h = QSpinBox()
+        sp_h.setRange(240, 7680)
+        sp_h.setSingleStep(2)
+        sp_h.setValue(self.custom_height)
+        sp_h.setSuffix(" px")
+        h_h.addWidget(sp_h)
+        layout.addLayout(h_h)
+
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, dlg)
+        bb.button(QDialogButtonBox.Ok).setText("確定")
+        bb.button(QDialogButtonBox.Cancel).setText("取消")
+        bb.accepted.connect(dlg.accept)
+        bb.rejected.connect(dlg.reject)
+        layout.addWidget(bb)
+
+        if dlg.exec() == QDialog.Accepted:
+            self.custom_width = sp_w.value()
+            self.custom_height = sp_h.value()
+            config.FRAME_WIDTH = self.custom_width
+            config.FRAME_HEIGHT = self.custom_height
+            if "自訂" in self.combo_resolution_2.currentText():
+                self._update_dashboard_summary()
+                if hasattr(self, "media_tab"):
+                    self.media_tab.refresh_preview()
+
+    def open_advanced_settings_dialog(self):
+        """彈出進階渲染參數綜合設定對話框"""
+        from gpx_renderer.gui.main_window.components.advanced_settings_dialog import AdvancedSettingsDialog
+        dlg = AdvancedSettingsDialog(
+            parent=self,
+            custom_width=self.custom_width,
+            custom_height=self.custom_height,
+            workers=self.render_workers,
+            chunks=self.chunks_per_worker,
+            connections=self.map_connections,
+            preset=self.nvenc_preset,
+            bitrate=self.nvenc_bitrate,
+            basemap=self.enable_basemap,
+            parallel=self.parallel_render,
+            enable_media=self.enable_media,
+            preview_mode=self.preview_mode,
+        )
+        if dlg.exec() == QDialog.Accepted:
+            vals = dlg.get_values()
+            self.custom_width = vals["custom_width"]
+            self.custom_height = vals["custom_height"]
+            config.FRAME_WIDTH = self.custom_width
+            config.FRAME_HEIGHT = self.custom_height
+            self._set_workers(vals["workers"])
+            self.chunks_per_worker = vals["chunks"]
+            config.CHUNKS_PER_WORKER = self.chunks_per_worker
+            self._set_connections(vals["connections"])
+            self._set_preset(vals["preset"])
+            self._set_bitrate(vals["bitrate"])
+            self._set_basemap(vals["basemap"])
+            self._set_parallel(vals["parallel"])
+            self._set_enable_media(vals["enable_media"])
+            self._set_preview_mode(vals["preview_mode"])
+            self._update_dashboard_summary()
+            if hasattr(self, "media_tab"):
+                self.media_tab.refresh_preview()
 
     def set_status_message(self, msg: str):
         if hasattr(self, "lbl_main_status"):
@@ -388,16 +637,73 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "action_profile_quality"):
             self.action_profile_quality.triggered.connect(lambda: self._select_profile("高畫質"))
 
+        # NVENC Preset 互斥群組
+        self.preset_action_group = QActionGroup(self)
+        for p in ["p1", "p2", "p3", "p4", "p5", "p6", "p7"]:
+            act = getattr(self, f"action_preset_{p}", None)
+            if act:
+                act.setActionGroup(self.preset_action_group)
+                act.setChecked(p == self.nvenc_preset)
+                act.triggered.connect(lambda _, val=p: self._set_preset(val))
+
+        # NVENC Bitrate 互斥群組
+        self.bitrate_action_group = QActionGroup(self)
+        for b in ["8M", "12M", "20M", "24M", "30M", "40M", "60M"]:
+            act = getattr(self, f"action_bitrate_{b}", None)
+            if act:
+                act.setActionGroup(self.bitrate_action_group)
+                act.setChecked(b == self.nvenc_bitrate)
+                act.triggered.connect(lambda _, val=b: self._set_bitrate(val))
+
+        # Workers 互斥群組
+        self.workers_action_group = QActionGroup(self)
+        for w in [2, 4, 6, 8, 12, 16]:
+            act = getattr(self, f"action_workers_{w}", None)
+            if act:
+                act.setActionGroup(self.workers_action_group)
+                act.setChecked(w == self.render_workers)
+                act.triggered.connect(lambda _, val=w: self._set_workers(val))
+
+        # Tile Connections 互斥群組
+        self.tile_conn_action_group = QActionGroup(self)
+        for c in [4, 8, 16, 24, 32]:
+            act = getattr(self, f"action_tile_conn_{c}", None)
+            if act:
+                act.setActionGroup(self.tile_conn_action_group)
+                act.setChecked(c == self.map_connections)
+                act.triggered.connect(lambda _, val=c: self._set_connections(val))
+
+        # 自訂解析度與進階設定對話框動作
+        if hasattr(self, "action_custom_resolution"):
+            self.action_custom_resolution.triggered.connect(self.open_custom_resolution_dialog)
+        if hasattr(self, "action_advanced_settings"):
+            self.action_advanced_settings.triggered.connect(self.open_advanced_settings_dialog)
+
         # 資訊面板雙向連動
-        if hasattr(self, "action_show_speed") and hasattr(self, "chk_show_speed"):
-            self.action_show_speed.toggled.connect(self.chk_show_speed.setChecked)
-            self.chk_show_speed.toggled.connect(self.action_show_speed.setChecked)
-        if hasattr(self, "action_show_minimap") and hasattr(self, "chk_show_minimap"):
-            self.action_show_minimap.toggled.connect(self.chk_show_minimap.setChecked)
-            self.chk_show_minimap.toggled.connect(self.action_show_minimap.setChecked)
-        if hasattr(self, "action_show_elevation") and hasattr(self, "chk_show_elevation"):
-            self.action_show_elevation.toggled.connect(self.chk_show_elevation.setChecked)
-            self.chk_show_elevation.toggled.connect(self.action_show_elevation.setChecked)
+        def _on_action_speed_toggled(c: bool):
+            if hasattr(self, "combo_hud_panels"):
+                self.combo_hud_panels.set_item_checked_by_data("speed", c)
+            self.chk_show_speed.setChecked(c)
+
+        def _on_action_minimap_toggled(c: bool):
+            if hasattr(self, "combo_hud_panels"):
+                self.combo_hud_panels.set_item_checked_by_data("minimap", c)
+            self.chk_show_minimap.setChecked(c)
+
+        def _on_action_elevation_toggled(c: bool):
+            if hasattr(self, "combo_hud_panels"):
+                self.combo_hud_panels.set_item_checked_by_data("elevation", c)
+            self.chk_show_elevation.setChecked(c)
+
+        if hasattr(self, "action_show_speed"):
+            self.action_show_speed.setChecked(getattr(config, "SHOW_SPEED_HUD", True))
+            self.action_show_speed.toggled.connect(_on_action_speed_toggled)
+        if hasattr(self, "action_show_minimap"):
+            self.action_show_minimap.setChecked(getattr(config, "SHOW_MINIMAP", True))
+            self.action_show_minimap.toggled.connect(_on_action_minimap_toggled)
+        if hasattr(self, "action_show_elevation"):
+            self.action_show_elevation.setChecked(getattr(config, "SHOW_ELEVATION", True))
+            self.action_show_elevation.toggled.connect(_on_action_elevation_toggled)
 
         # 鏡頭與渲染特性雙向連動
         if hasattr(self, "action_dynamic_speed_zoom") and hasattr(self, "chk_dynamic_speed_zoom"):
@@ -406,21 +712,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "action_real_speed") and hasattr(self, "chk_real_speed_2"):
             self.action_real_speed.toggled.connect(self.chk_real_speed_2.setChecked)
             self.chk_real_speed_2.toggled.connect(self.action_real_speed.setChecked)
-        if hasattr(self, "action_basemap") and hasattr(self, "chk_basemap_2"):
-            self.action_basemap.toggled.connect(self.chk_basemap_2.setChecked)
-            self.chk_basemap_2.toggled.connect(self.action_basemap.setChecked)
-        if hasattr(self, "action_parallel") and hasattr(self, "chk_parallel_2"):
-            self.action_parallel.toggled.connect(self.chk_parallel_2.setChecked)
-            self.chk_parallel_2.toggled.connect(self.action_parallel.setChecked)
-        if hasattr(self, "action_enable_media") and hasattr(self, "chk_enable_media_2"):
-            self.action_enable_media.toggled.connect(self.chk_enable_media_2.setChecked)
-            self.chk_enable_media_2.toggled.connect(self.action_enable_media.setChecked)
-        if hasattr(self, "action_preview") and hasattr(self, "chk_preview"):
-            self.action_preview.toggled.connect(self.chk_preview.setChecked)
-            self.chk_preview.toggled.connect(self.action_preview.setChecked)
+        if hasattr(self, "action_basemap"):
+            self.action_basemap.setChecked(self.enable_basemap)
+            self.action_basemap.toggled.connect(self._set_basemap)
+        if hasattr(self, "action_parallel"):
+            self.action_parallel.setChecked(self.parallel_render)
+            self.action_parallel.toggled.connect(self._set_parallel)
+        if hasattr(self, "action_enable_media"):
+            self.action_enable_media.setChecked(self.enable_media)
+            self.action_enable_media.toggled.connect(self._set_enable_media)
+        if hasattr(self, "action_preview"):
+            self.action_preview.setChecked(self.preview_mode)
+            self.action_preview.toggled.connect(self._set_preview_mode)
 
         # 快取模式互斥群組與雙向連動
-        from PySide6.QtGui import QActionGroup
         self.cache_action_group = QActionGroup(self)
         if hasattr(self, "action_cache_session") and hasattr(self, "action_cache_persistent"):
             self.action_cache_session.setActionGroup(self.cache_action_group)
@@ -496,23 +801,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.combo_profile_2.addItems(["快速", "平衡", "高畫質"])
         self.combo_profile_2.setCurrentText("高畫質")
 
-        # 2. 地圖風格
+        # 2. 地圖風格 (預設：4. 衛星影像)
         self.combo_map_style_2.clear()
         self.map_labels = [f"{k}. {v[0]}" for k, v in config.MAP_STYLE_OPTIONS.items()]
         self.combo_map_style_2.addItems(self.map_labels)
+        target_map_idx = 3
+        for i, lbl in enumerate(self.map_labels):
+            if lbl.startswith("4.") or "衛星" in lbl:
+                target_map_idx = i
+                break
+        self.combo_map_style_2.setCurrentIndex(target_map_idx)
 
-        # 3. 視角模式
+        # 3. 視角模式 (預設：3D 真地形)
         self.combo_camera_mode_2.clear()
         self.combo_camera_mode_2.addItems(list(CAMERA_MODE_LABELS.values()))
+        self.combo_camera_mode_2.setCurrentText(CAMERA_MODE_LABELS.get("3D-Terrain", "3D 真地形 (3D-Terrain)"))
 
-        # 4. 解析度預設
+        # 4. 解析度預設 (預設：1080p 直式 1080×1920)
         self.combo_resolution_2.clear()
         self.combo_resolution_2.addItems([p[0] for p in RESOLUTION_PRESETS])
-        self._set_resolution_by_dim(1440, 1440)
+        self._set_resolution_by_dim(1080, 1920)
 
         # 5. 軌跡顏色
         self.combo_track_color_2.clear()
         self.combo_track_color_2.addItems(config.TRACK_COLOR_OPTIONS)
+        self.combo_track_color_2.setCurrentText(config.TRACK_COLOR_SCHEME)
 
         # 6. Local Zoom
         self.combo_local_zoom.clear()
@@ -585,36 +898,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chk_show_elevation.setChecked(getattr(config, "SHOW_ELEVATION", True))
         self.chk_dynamic_speed_zoom.setChecked(getattr(config, "ENABLE_DYNAMIC_SPEED_ZOOM", True))
 
-        # 建立主介面資訊面板複選下拉選單並隱藏舊勾選框
-        self.combo_hud_panels = CheckableComboBox(self.groupBox_settings_2)
-        self.combo_hud_panels.setObjectName(u"combo_hud_panels")
-        self.combo_hud_panels.setMinimumWidth(210)
-        self.combo_hud_panels.setToolTip("點擊可複數勾選或取消要在影片畫面上顯示的資訊面板")
-        self.combo_hud_panels.add_checkable_item("速度與里程 HUD", data="speed", checked=self.chk_show_speed.isChecked())
-        self.combo_hud_panels.add_checkable_item("路線小地圖", data="minimap", checked=self.chk_show_minimap.isChecked())
-        self.combo_hud_panels.add_checkable_item("全景高程剖面", data="elevation", checked=self.chk_show_elevation.isChecked())
+        # 初始化「路線媒體」分頁中由 .ui 載入的資訊面板複選下拉選單
+        if hasattr(self, "combo_hud_panels"):
+            self.combo_hud_panels.clear()
+            self.combo_hud_panels.add_checkable_item("速度與里程 HUD", data="speed", checked=self.chk_show_speed.isChecked())
+            self.combo_hud_panels.add_checkable_item("路線小地圖", data="minimap", checked=self.chk_show_minimap.isChecked())
+            self.combo_hud_panels.add_checkable_item("全景高程剖面", data="elevation", checked=self.chk_show_elevation.isChecked())
 
-        # 將舊 CheckBox 隱藏並將 combo_hud_panels 置入版面
-        self.chk_show_speed.setVisible(False)
-        self.chk_show_minimap.setVisible(False)
-        self.chk_show_elevation.setVisible(False)
-        if hasattr(self, "horizontalLayout_panels"):
-            self.horizontalLayout_panels.addWidget(self.combo_hud_panels)
+            # 雙向同步事件綁定
+            def _on_main_hud_selection_changed(checked_list):
+                is_speed = "速度與里程 HUD" in checked_list
+                is_mini = "路線小地圖" in checked_list
+                is_elev = "全景高程剖面" in checked_list
+                self.chk_show_speed.setChecked(is_speed)
+                self.chk_show_minimap.setChecked(is_mini)
+                self.chk_show_elevation.setChecked(is_elev)
+                config.SHOW_SPEED_HUD = is_speed
+                config.SHOW_MINIMAP = is_mini
+                config.SHOW_ELEVATION = is_elev
+                if hasattr(self, "action_show_speed"): self.action_show_speed.setChecked(is_speed)
+                if hasattr(self, "action_show_minimap"): self.action_show_minimap.setChecked(is_mini)
+                if hasattr(self, "action_show_elevation"): self.action_show_elevation.setChecked(is_elev)
+                self._update_dashboard_summary()
+                if hasattr(self, "media_tab") and self.media_tab:
+                    self.media_tab.refresh_preview()
 
-        # 雙向同步事件綁定
-        def _on_main_hud_selection_changed(checked_list):
-            is_speed = "速度與里程 HUD" in checked_list
-            is_mini = "路線小地圖" in checked_list
-            is_elev = "全景高程剖面" in checked_list
-            self.chk_show_speed.setChecked(is_speed)
-            self.chk_show_minimap.setChecked(is_mini)
-            self.chk_show_elevation.setChecked(is_elev)
-            config.SHOW_SPEED_HUD = is_speed
-            config.SHOW_MINIMAP = is_mini
-            config.SHOW_ELEVATION = is_elev
-            self._update_dashboard_summary()
-
-        self.combo_hud_panels.selection_changed.connect(_on_main_hud_selection_changed)
+            self.combo_hud_panels.selection_changed.connect(_on_main_hud_selection_changed)
 
         self.spin_hide_start.setValue(config.HIDE_START_DISTANCE_KM)
         self.spin_hide_end.setValue(config.HIDE_END_DISTANCE_KM)
@@ -658,6 +967,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spin_width.valueChanged.connect(self.on_custom_dim_change)
         self.spin_height.valueChanged.connect(self.on_custom_dim_change)
         self.spin_fps.valueChanged.connect(lambda: self._update_dashboard_summary())
+        self.combo_track_color_2.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
 
         self.combo_local_zoom.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
         self.combo_preset.currentIndexChanged.connect(lambda: self._update_dashboard_summary())
@@ -776,6 +1086,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.state["gpx_distance_km"] = None
             self.state["gpx_distance_path"] = None
             self.refresh_gpx_distance()
+            if hasattr(self, "media_tab"):
+                try:
+                    from gpx_renderer.core.data import load_gpx
+                    data = load_gpx(
+                        p,
+                        hide_start_km=self.spin_hide_start.value() if hasattr(self, "spin_hide_start") else 0.0,
+                        hide_end_km=self.spin_hide_end.value() if hasattr(self, "spin_hide_end") else 0.0,
+                    )
+                    self.media_tab.set_ride_data(data)
+                except Exception:
+                    pass
 
     def browse_output(self):
         p, _ = QFileDialog.getSaveFileName(self, "指定輸出 MP4 檔案", "", "MP4 影片檔 (*.mp4)")
@@ -801,142 +1122,64 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if files:
                 self.lineEdit_media.setText("; ".join(files))
                 self.chk_enable_media_2.setChecked(True)
+                if hasattr(self, "media_tab"):
+                    self.media_tab.load_media_from_paths(files)
                 self._update_dashboard_summary()
         elif chosen == act_folder:
             p = QFileDialog.getExistingDirectory(self, "選擇路線照片/影片資料夾")
             if p:
                 self.lineEdit_media.setText(p)
                 self.chk_enable_media_2.setChecked(True)
+                if hasattr(self, "media_tab"):
+                    self.media_tab.load_media_from_paths(p)
                 self._update_dashboard_summary()
 
     def open_media_dialog(self):
-        media_p = self.lineEdit_media.text().strip()
-        gpx_p = self.lineEdit_gpx.text().strip()
-        if not gpx_p or not Path(gpx_p).is_file():
-            QMessageBox.warning(self, "提示", "請先選擇有效的 GPX 檔案。")
-            return
+        """切換至第二分頁（路線媒體管理器）"""
+        if hasattr(self, "tabWidget"):
+            self.tabWidget.setCurrentIndex(1)
 
-        try:
-            from gpx_renderer.core.data import load_gpx
-            from gpx_renderer.core.media import scan_media_files
-            from gpx_renderer.gui.media_dialog import QtMediaManagerDialog
-            from PySide6.QtWidgets import QDialog
+    def on_map_change(self, *args):
+        if hasattr(self, "media_tab") and not getattr(self.media_tab, "_is_syncing_controls", False):
+            combo_preview = getattr(self, "combo_preview_map_style", None)
+            if combo_preview is not None and combo_preview.currentIndex() != self.combo_map_style_2.currentIndex():
+                self.media_tab._is_syncing_controls = True
+                try:
+                    combo_preview.setCurrentIndex(self.combo_map_style_2.currentIndex())
+                finally:
+                    self.media_tab._is_syncing_controls = False
 
-            data = load_gpx(
-                gpx_p,
-                hide_start_km=self.spin_hide_start.value(),
-                hide_end_km=self.spin_hide_end.value(),
-            )
-            scanned = scan_media_files(media_p, time_offset_sec=0.0) if media_p else []
+        self._update_dashboard_summary()
+        if hasattr(self, "media_tab"):
+            self.media_tab.refresh_preview()
 
-            initial_dur = float(self.state.get("media_popup_duration") or config.MEDIA_POPUP_DURATION)
-            initial_offset = float(self.state.get("media_time_offset_sec") or config.MEDIA_TIME_OFFSET_SEC)
-            initial_caption_size = int(self.state.get("media_caption_font_size") or getattr(config, "MEDIA_CAPTION_FONT_SIZE", 22))
-            cur_w, cur_h = self.get_current_resolution()
-            map_raw = self.combo_map_style_2.currentText()
-            map_key = map_raw.split(".", 1)[0].strip()
-            map_label, map_source = config.MAP_STYLE_OPTIONS.get(map_key, ("", None))
+    def on_camera_mode_change(self, *args):
+        if hasattr(self, "media_tab") and not getattr(self.media_tab, "_is_syncing_controls", False):
+            combo_preview = getattr(self, "combo_preview_camera_mode", None)
+            if combo_preview is not None and combo_preview.currentIndex() != self.combo_camera_mode_2.currentIndex():
+                self.media_tab._is_syncing_controls = True
+                try:
+                    combo_preview.setCurrentIndex(self.combo_camera_mode_2.currentIndex())
+                finally:
+                    self.media_tab._is_syncing_controls = False
 
-            dlg = QtMediaManagerDialog(
-                scanned,
-                data,
-                media_duration=initial_dur,
-                media_offset_sec=initial_offset,
-                media_path=media_p,
-                default_caption_size=initial_caption_size,
-                frame_width=cur_w,
-                frame_height=cur_h,
-                map_style_key=map_key,
-                map_style_label=map_label,
-                map_source=map_source,
-                camera_mode=self.combo_camera_mode_2.currentText(),
-                resolution_preset=self.combo_resolution_2.currentText(),
-                track_color=self.combo_track_color_2.currentText(),
-                hud_checked_items=self.combo_hud_panels.checked_items(),
-                local_zoom=self.combo_local_zoom.currentText(),
-                parent=self,
-            )
-            if dlg.exec() == QDialog.Accepted:
-                overrides = dlg.result_overrides
-                self.state["media_overrides_json"] = json.dumps(overrides, ensure_ascii=False)
-                self.state["media_popup_duration"] = float(dlg.spin_photo_dur.value())
-                self.state["media_caption_font_size"] = int(dlg.spin_default_caption_size.value())
-                self.state["media_time_offset_sec"] = float(dlg.spin_media_offset.value())
-                config.MEDIA_POPUP_DURATION = float(dlg.spin_photo_dur.value())
-                config.MEDIA_CAPTION_FONT_SIZE = int(dlg.spin_default_caption_size.value())
-                config.MEDIA_TIME_OFFSET_SEC = float(dlg.spin_media_offset.value())
-                config.MEDIA_OVERRIDES_JSON = self.state["media_overrides_json"]
-
-                # 同步回傳渲染設定至主介面
-                if hasattr(dlg, "result_map_style_text") and dlg.result_map_style_text:
-                    self.combo_map_style_2.setCurrentText(dlg.result_map_style_text)
-                if hasattr(dlg, "result_camera_mode") and dlg.result_camera_mode:
-                    self.combo_camera_mode_2.setCurrentText(dlg.result_camera_mode)
-                if hasattr(dlg, "result_resolution_preset") and dlg.result_resolution_preset:
-                    self.combo_resolution_2.setCurrentText(dlg.result_resolution_preset)
-                if hasattr(dlg, "result_track_color") and dlg.result_track_color:
-                    self.combo_track_color_2.setCurrentText(dlg.result_track_color)
-                if hasattr(dlg, "result_local_zoom") and dlg.result_local_zoom:
-                    self.combo_local_zoom.setCurrentText(dlg.result_local_zoom)
-                if hasattr(dlg, "result_hud_checked_items") and dlg.result_hud_checked_items is not None:
-                    for i in range(self.combo_hud_panels.model().rowCount()):
-                        item = self.combo_hud_panels.model().item(i)
-                        item.setCheckState(Qt.Checked if item.text() in dlg.result_hud_checked_items else Qt.Unchecked)
-                    self.combo_hud_panels._update_display_text()
-
-                # 若在對話框內新增或變更了媒體項目，同步回傳更新主介面路徑
-                if getattr(dlg, "media_items", None) is not None:
-                    active_items = dlg.media_items
-                    all_paths = [it.file_path for it in active_items]
-                    if len(all_paths) > 0:
-                        if not media_p or len(all_paths) != len(scanned) or ";" in media_p:
-                            if not (Path(media_p).is_dir() if media_p else False):
-                                self.lineEdit_media.setText("; ".join(all_paths))
-                        self.chk_enable_media_2.setChecked(True)
-
-                    # 直接使用對話框中編輯完成的最新媒體清單即時更新摘要快取
-                    media_item_count = len(active_items)
-                    media_video_count = sum(1 for it in active_items if it.media_type == "video")
-                    media_photo_count = sum(1 for it in active_items if it.media_type == "image")
-                    video_added_sec = sum(it.effective_duration for it in active_items if it.media_type == "video")
-                    photo_added_sec = sum(it.effective_duration for it in active_items if it.media_type == "image")
-                    media_added_sec = video_added_sec + photo_added_sec
-
-                    self._cached_media_path = self.lineEdit_media.text().strip()
-                    self._cached_media_summary = (
-                        media_item_count,
-                        media_video_count,
-                        media_photo_count,
-                        media_added_sec,
-                        video_added_sec,
-                        photo_added_sec,
-                    )
-
-                # 若在對話框內切換了模擬解析度，同步更新主畫面解析度
-                if hasattr(dlg, "result_frame_size") and dlg.result_frame_size:
-                    new_w, new_h = dlg.result_frame_size
-                    if new_w > 0 and new_h > 0 and (new_w != cur_w or new_h != cur_h):
-                        self.spin_width.setValue(new_w)
-                        self.spin_height.setValue(new_h)
-                        config.FRAME_WIDTH = new_w
-                        config.FRAME_HEIGHT = new_h
-
-                self._update_dashboard_summary()
-                QMessageBox.information(self, "成功", f"已儲存媒體自訂標籤與微調設定！")
-        except Exception as exc:
-            QMessageBox.critical(self, "錯誤", f"無法開啟媒體管理視窗：{exc}")
-
-    def on_map_change(self):
-        pass
-
-    def on_camera_mode_change(self):
-        pass
+        self._update_dashboard_summary()
+        if hasattr(self, "media_tab"):
+            self.media_tab.refresh_preview()
 
     def _set_resolution_by_dim(self, w: int, h: int):
         """依寬高自動選擇對應的解析度預設項目"""
         for label, pw, ph in RESOLUTION_PRESETS:
             if pw == w and ph == h:
                 self.combo_resolution_2.setCurrentText(label)
+                if hasattr(self, "media_tab") and not getattr(self.media_tab, "_is_syncing_controls", False):
+                    combo_preview = getattr(self, "combo_preview_resolution", getattr(self, "combo_preview_res", None))
+                    if combo_preview is not None and combo_preview.currentIndex() != self.combo_resolution_2.currentIndex():
+                        self.media_tab._is_syncing_controls = True
+                        try:
+                            combo_preview.setCurrentIndex(self.combo_resolution_2.currentIndex())
+                        finally:
+                            self.media_tab._is_syncing_controls = False
                 return
 
     def apply_profile(self):
@@ -944,55 +1187,59 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if mode == "快速":
             self._set_resolution_by_dim(1280, 720)
             self.combo_local_zoom.setCurrentText("auto")
-            self.combo_bitrate.setCurrentText("12M"); self.combo_preset.setCurrentText("p3")
-            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
+            self._set_bitrate("12M")
+            self._set_preset("p3")
+            self._set_workers(6)
+            self.chunks_per_worker = 4
         elif mode == "高畫質":
             self._set_resolution_by_dim(1440, 1440)
             self.combo_local_zoom.setCurrentText("17")
-            self.combo_bitrate.setCurrentText("30M"); self.combo_preset.setCurrentText("p5")
-            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
+            self._set_bitrate("30M")
+            self._set_preset("p5")
+            self._set_workers(6)
+            self.chunks_per_worker = 4
         else:
             self._set_resolution_by_dim(1080, 1080)
             self.combo_local_zoom.setCurrentText("16")
-            self.combo_bitrate.setCurrentText("20M"); self.combo_preset.setCurrentText("p4")
-            self.spin_workers.setValue(6); self.spin_chunks.setValue(4)
+            self._set_bitrate("20M")
+            self._set_preset("p4")
+            self._set_workers(6)
+            self.chunks_per_worker = 4
+        self._update_dashboard_summary()
 
     def get_current_resolution(self) -> tuple[int, int]:
-        """解析度優先採用一般設定的下拉選單；選「自訂解析度」才採用進階設定的自訂寬高。"""
+        """解析度優先採用一般設定的下拉選單；選「自訂解析度」才採用自訂寬高。"""
         sel = self.combo_resolution_2.currentText()
         for label, pw, ph in RESOLUTION_PRESETS:
             if label == sel and pw is not None and ph is not None:
                 return pw, ph
-        # 若為「自訂解析度...」，才採用進階設定中的 spin_width 與 spin_height
-        w = max(240, min(7680, self.spin_width.value()))
-        h = max(240, min(7680, self.spin_height.value()))
-        # 確保為偶數 (H.264 / NVENC 編碼要求)
-        w = (w // 2) * 2
-        h = (h // 2) * 2
-        return w, h
+        w = max(240, min(7680, self.custom_width))
+        h = max(240, min(7680, self.custom_height))
+        return (w // 2) * 2, (h // 2) * 2
 
     def on_res_preset_change(self):
         sel = self.combo_resolution_2.currentText()
-        is_custom = False
-        for label, w, h in RESOLUTION_PRESETS:
-            if label == sel:
-                if w is not None and h is not None:
-                    self.spin_width.blockSignals(True)
-                    self.spin_height.blockSignals(True)
-                    self.spin_width.setValue(w)
-                    self.spin_height.setValue(h)
-                    self.spin_width.blockSignals(False)
-                    self.spin_height.blockSignals(False)
-                else:
-                    is_custom = True
-                break
+        if "自訂" in sel:
+            self.open_custom_resolution_dialog()
+        else:
+            for label, w, h in RESOLUTION_PRESETS:
+                if label == sel and w is not None and h is not None:
+                    self.custom_width = w
+                    self.custom_height = h
+                    break
 
-        if is_custom:
-            self.toggle_advanced(show=True)
-            self.spin_width.setFocus()
-            self.spin_width.selectAll()
+        if hasattr(self, "media_tab") and not getattr(self.media_tab, "_is_syncing_controls", False):
+            combo_preview = getattr(self, "combo_preview_resolution", getattr(self, "combo_preview_res", None))
+            if combo_preview is not None and combo_preview.currentIndex() != self.combo_resolution_2.currentIndex():
+                self.media_tab._is_syncing_controls = True
+                try:
+                    combo_preview.setCurrentIndex(self.combo_resolution_2.currentIndex())
+                finally:
+                    self.media_tab._is_syncing_controls = False
 
         self._update_dashboard_summary()
+        if hasattr(self, "media_tab"):
+            self.media_tab.refresh_preview()
 
     def on_custom_dim_change(self):
         w, h = self.spin_width.value(), self.spin_height.value()
@@ -1009,7 +1256,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.combo_resolution_2.setCurrentText(label)
                     break
         self.combo_resolution_2.blockSignals(False)
+
+        if hasattr(self, "media_tab") and not getattr(self.media_tab, "_is_syncing_controls", False):
+            combo_preview = getattr(self, "combo_preview_resolution", getattr(self, "combo_preview_res", None))
+            if combo_preview is not None and combo_preview.currentIndex() != self.combo_resolution_2.currentIndex():
+                self.media_tab._is_syncing_controls = True
+                try:
+                    combo_preview.setCurrentIndex(self.combo_resolution_2.currentIndex())
+                finally:
+                    self.media_tab._is_syncing_controls = False
+
         self._update_dashboard_summary()
+        if hasattr(self, "media_tab"):
+            self.media_tab.refresh_preview()
 
     def on_auto_duration_toggle(self):
         is_auto = self.chk_auto_duration.isChecked()
@@ -1086,6 +1345,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.state["gpx_distance_km"] = dist
         self.state["gpx_distance_path"] = raw
         self._apply_cached_auto_duration()
+
+        if hasattr(self, "media_tab") and raw and Path(raw).is_file():
+            try:
+                from gpx_renderer.core.data import load_gpx
+                data = load_gpx(
+                    raw,
+                    hide_start_km=self.spin_hide_start.value() if hasattr(self, "spin_hide_start") else 0.0,
+                    hide_end_km=self.spin_hide_end.value() if hasattr(self, "spin_hide_end") else 0.0,
+                )
+                self.media_tab.set_ride_data(data)
+            except Exception:
+                pass
 
     def _on_dist_failed(self, err: str):
         self.state["gpx_distance_km"] = None

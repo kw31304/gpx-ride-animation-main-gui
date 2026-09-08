@@ -6,10 +6,10 @@
 from __future__ import annotations
 try:
     import contextily as cx
-    DEFAULT_MAP_STYLE = cx.providers.CartoDB.DarkMatter
+    DEFAULT_MAP_STYLE = cx.providers.Esri.WorldImagery
 except Exception:
     cx = None
-    DEFAULT_MAP_STYLE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+    DEFAULT_MAP_STYLE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
 from PIL import Image
 
@@ -20,16 +20,16 @@ gpx_filename = "your_ride.gpx"
 output_filename = "ride_animation.mp4"
 
 # 畫面 / 動畫
-FRAME_WIDTH = 1440
-FRAME_HEIGHT = 1440
+FRAME_WIDTH = 1080
+FRAME_HEIGHT = 1920
 FPS = 60
 VIDEO_DURATION = 180.0
 ZOOM_OUT_DURATION = 2.5
 END_HOLD_DURATION = 4.0
 
-VIEW_MARGIN = 1600.0
+VIEW_MARGIN = 800.0
 CAMERA_SMOOTH = 0.15
-CAMERA_MODE = "North-Up"  # "North-Up"（正北朝上）、"Heading-Up"（跟隨行進方向轉動）或 "3D-Terrain"（3D 地形透視）
+CAMERA_MODE = "3D-Terrain"  # "North-Up"（正北朝上）、"Heading-Up"（跟隨行進方向轉動）或 "3D-Terrain"（3D 地形透視）
 CAMERA_ROTATION_SMOOTH = 0.025  # Heading-Up / 3D 模式下視角轉向平滑係數（調低越平緩）
 CAMERA_MAX_ROTATION_SPEED_DEG = 25.0  # 視角每秒最大旋轉角度 (deg/sec)，防止過髮夾彎頭暈
 CAMERA_PITCH_DEG = 42.0  # 3D 模式下最佳鳥瞰俯角 (degrees, 42度無邊緣過度拉伸，呈現自然 3D 山體景深)
@@ -66,9 +66,9 @@ MAP_CACHE_SESSION_ID = ""           # 跨程序共用的 Session ID
 MAP_RESAMPLE = Image.Resampling.BILINEAR
 USE_OPENCV_FAST_PATH = True
 TRACK_LINE_WIDTH = 3
-TRACK_COLOR_SCHEME = "Strava 經典橘"
+TRACK_COLOR_SCHEME = "經典橘"
 TRACK_COLOR_OPTIONS = [
-    "Strava 經典橘",
+    "經典橘",
     "速度漸層",
     "螢光綠",
     "電光藍",
@@ -170,6 +170,7 @@ RUNTIME_CONFIG_KEYS = {
     "CAMERA_MODE", "CAMERA_ROTATION_SMOOTH", "CAMERA_MAX_ROTATION_SPEED_DEG",
     "CAMERA_PITCH_DEG", "ELEVATION_EXAGGERATION",
     "INTRO_HOLD_SEC", "INTRO_MOTION_2D_SEC", "INTRO_TRANSITION_SEC", "OUTRO_TRANSITION_SEC",
+    "TRACK_COLOR_SCHEME",
 }
 
 # 顏色

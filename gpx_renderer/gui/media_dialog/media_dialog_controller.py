@@ -4,11 +4,17 @@
 負責路線照片與影片清單之檢視、停留時間與說明文字欄位直接編輯、影片區間裁剪、Google 街道圖軌跡連動與動態預覽。
 """
 
+import sys
 from typing import List, Dict, Any, Optional, Tuple, Set
 from pathlib import Path
 import math
 import logging
 import numpy as np
+
+# 確保直接執行本模組時，專案根目錄能正確加入 sys.path
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 from PySide6.QtWidgets import (
     QDialog, QTableWidgetItem, QHeaderView, QMessageBox,
@@ -28,8 +34,13 @@ from gpx_renderer.core.media import (
     MediaItem, match_media_to_ride, load_media_thumbnail
 )
 from gpx_renderer.gui.video_trim_dialog import QtVideoTrimDialog
-from .map_worker import MediaBgTileWorker, GOOGLE_STREETS_URL
-from .ui_media_dialog import Ui_MediaManagerDialog
+
+try:
+    from .map_worker import MediaBgTileWorker, GOOGLE_STREETS_URL
+    from .ui_media_dialog import Ui_MediaManagerDialog
+except ImportError:
+    from gpx_renderer.gui.media_dialog.map_worker import MediaBgTileWorker, GOOGLE_STREETS_URL
+    from gpx_renderer.gui.media_dialog.ui_media_dialog import Ui_MediaManagerDialog
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +57,8 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
 
     def __init__(
         self,
-        media_items: List[MediaItem],
-        ride_data: RideData,
+        media_items: Optional[List[MediaItem]] = None,
+        ride_data: Optional[RideData] = None,
         media_duration: float = 3.0,
         media_offset_sec: float = 0.0,
         media_path: str = "",
@@ -60,7 +71,7 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
         **kwargs,
     ):
         super().__init__(parent)
-        self.media_items = list(media_items)
+        self.media_items = list(media_items) if media_items is not None else []
         self.ride_data = ride_data
 
         # 兼容 media_duration 與 default_duration
@@ -84,7 +95,7 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
         else:
             self.frame_width, self.frame_height = 1920, 1080
 
-        self.total_distance_km = float(self.ride_data.distances[-1]) if len(self.ride_data.distances) > 0 else 0.0
+        self.total_distance_km = float(self.ride_data.distances[-1]) if (self.ride_data and len(self.ride_data.distances) > 0) else 0.0
         self.selected_index: int = -1
         self.deleted_filenames: Set[str] = set()
         self._suppress_delete_confirm: bool = False
@@ -111,7 +122,7 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
         # 接收主介面傳入之渲染設定
         self.camera_mode = str(kwargs.get("camera_mode") or "North-Up")
         self.resolution_preset = str(kwargs.get("resolution_preset") or "")
-        self.track_color = str(kwargs.get("track_color") or getattr(config, "TRACK_COLOR_SCHEME", "Strava 經典橘"))
+        self.track_color = str(kwargs.get("track_color") or getattr(config, "TRACK_COLOR_SCHEME", "經典橘"))
         self.local_zoom = str(kwargs.get("local_zoom") or getattr(config, "LOCAL_MAP_ZOOM", 17))
         self.hud_checked_items = list(kwargs.get("hud_checked_items") or ["速度與里程 HUD", "路線小地圖", "全景高程剖面"])
 
@@ -984,18 +995,56 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
             disp_h = max(160, int(round(disp_w / aspect)))
         elif aspect <= 0.8:
             # 直向短影音 (例如 9:16 Shorts / Reels / TikTok)
-            disp_h = 320
-            disp_w = max(120, int(round(disp_h * aspect)))
+            disp_h = 380
+            disp_w = max(140, int(round(disp_h * aspect)))
         else:
             # 正方形或接近正方形 (例如 1:1 Instagram)
-            disp_w = min(avail_w, 260)
-            disp_h = max(160, int(round(disp_w / aspect)))
+            disp_w = min(avail_w, 280)
+            disp_h = max(180, int(round(disp_w / aspect)))
 
         box_h = disp_h + 12
         self.lbl_preview_image.setFixedHeight(box_h)
 
         scale_to_disp = disp_h / float(fh)
         ui_scale = min(fw, fh) / 1000.0
+
+        # 嚴格依據 renderer.py 計算實際輸出之標準幾何 (Video-space standard coordinates)
+        margin_x = max(14, int(round(24 * ui_scale)))
+        margin_y = max(14, int(round(22 * ui_scale)))
+        top_panel_h = max(110, int(round(136 * ui_scale)))
+
+        if aspect >= 1.3:
+            hud_w_ratio = 0.25
+        elif aspect <= 0.75:
+            hud_w_ratio = 0.44
+        else:
+            t = (aspect - 0.75) / (1.3 - 0.75)
+            hud_w_ratio = 0.44 + (0.25 - 0.44) * t
+
+        hud_w = int(round(fw * hud_w_ratio))
+        hud_w = max(int(round(240 * ui_scale)), min(int(round(620 * ui_scale)), hud_w))
+        hud_h = top_panel_h
+        hud_x = margin_x
+        hud_y = margin_y
+
+        if aspect <= 0.75:
+            mini_w = hud_w
+        else:
+            mini_w = max(int(round(200 * ui_scale)), int(round(top_panel_h * 1.35)))
+        mini_h = top_panel_h
+        mini_x = fw - mini_w - margin_x
+        mini_y = margin_y
+
+        elev_x = margin_x
+        elev_w = fw - 2 * margin_x
+        elev_h = max(80, int(round(105 * ui_scale))) if aspect > 0.75 else max(90, int(round(115 * ui_scale)))
+        elev_y = fh - elev_h - margin_y
+
+        # 投影至預覽畫布 (Preview-space coordinates)
+        sc = scale_to_disp
+        p_hud_rect = QRectF(hud_x * sc, hud_y * sc, hud_w * sc, hud_h * sc)
+        p_mini_rect = QRectF(mini_x * sc, mini_y * sc, mini_w * sc, mini_h * sc)
+        p_elev_rect = QRectF(elev_x * sc, elev_y * sc, elev_w * sc, elev_h * sc)
 
         # 2. 準備背景底圖 (依照所選的底圖風格非同步載入)
         item_key = f"{item.filename}::{self.map_style_key}"
@@ -1004,17 +1053,17 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
 
         if bg_pix is None and coords is not None and item_key not in self._pending_bg_fetches:
             wx, wy = coords
-            base_margin = float(getattr(config, "VIEW_MARGIN", 1600.0))
+            base_margin = float(getattr(config, "VIEW_MARGIN", 800.0))
             if aspect >= 1.0:
-                margin_x = base_margin * aspect
-                margin_y = base_margin
+                margin_x_bg = base_margin * aspect
+                margin_y_bg = base_margin
             else:
-                margin_x = base_margin
-                margin_y = base_margin / aspect
-            west = wx - margin_x
-            east = wx + margin_x
-            south = wy - margin_y
-            north = wy + margin_y
+                margin_x_bg = base_margin
+                margin_y_bg = base_margin / aspect
+            west = wx - margin_x_bg
+            east = wx + margin_x_bg
+            south = wy - margin_y_bg
+            north = wy + margin_y_bg
 
             self._pending_bg_fetches.add(item_key)
             target_zoom = getattr(config, "LOCAL_MAP_ZOOM", 17)
@@ -1051,7 +1100,9 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
         else:
             painter.fillRect(frame_rect, QColor("#111827"))
             if item_key in self._pending_bg_fetches:
-                painter.setFont(QFont("Segoe UI", 8))
+                font_loading = QFont("Segoe UI")
+                font_loading.setPixelSize(max(8, int(round(12 * sc))))
+                painter.setFont(font_loading)
                 painter.setPen(QColor(148, 163, 184, 180))
                 painter.drawText(frame_rect, Qt.AlignCenter, f"🗺️ 載入 [{self.map_style_label}] 底圖中…")
 
@@ -1075,16 +1126,21 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                 f"🎥 視角: <b style='color: #f59e0b;'>{cam_txt}</b>"
             )
 
+        checked_huds = getattr(self, "hud_checked_items", [])
+        show_speed = "速度與里程 HUD" in checked_huds
+        show_mini = "路線小地圖" in checked_huds
+        show_elev = "全景高程剖面" in checked_huds
+
         # 2.3 載入並繪製媒體卡片 (依 renderer.py 規範：卡片上限為畫面的 65% 寬度與 60% 高度)
-        max_card_w = max(20, int(disp_w * 0.65))
-        max_card_h = max(20, int(disp_h * 0.60))
+        max_card_w = max(20, int(round(disp_w * 0.65)))
+        max_card_h = max(20, int(round(disp_h * 0.60)))
         raw_pix = self._load_item_pixmap(item)
 
         if raw_pix and not raw_pix.isNull():
             card_pix = raw_pix.scaled(max_card_w, max_card_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             cw, ch = card_pix.width(), card_pix.height()
-            cx = (disp_w - cw) // 2
-            cy = (disp_h - ch) // 2
+            cx = (disp_w - cw) / 2.0
+            cy = (disp_h - ch) / 2.0
 
             # 劇院級中央圓角與精美白邊框
             radius = max(3.0, min(cw, ch) * 0.05)
@@ -1094,7 +1150,7 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
             path.addRoundedRect(QRectF(cx, cy, cw, ch), radius, radius)
             painter.save()
             painter.setClipPath(path)
-            painter.drawPixmap(cx, cy, card_pix)
+            painter.drawPixmap(int(round(cx)), int(round(cy)), card_pix)
             painter.restore()
 
             # 白邊框
@@ -1105,9 +1161,12 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
             # 2.4 說明文字標籤條渲染 (高對比、純白字體 + 陰影 + 亮白框線)
             if item.caption:
                 eff_sz = item.effective_caption_size
-                actual_font_pt = max(10, int(round(float(eff_sz) * ui_scale)))
-                disp_font_pt = max(9, int(round(actual_font_pt * scale_to_disp)))
-                cap_font = QFont("Segoe UI", disp_font_pt, QFont.Bold)
+                actual_font_px = max(10, int(round(float(eff_sz) * ui_scale)))
+                disp_font_px = max(9, int(round(actual_font_px * sc)))
+
+                cap_font = QFont("Segoe UI")
+                cap_font.setBold(True)
+                cap_font.setPixelSize(disp_font_px)
                 painter.setFont(cap_font)
                 fm = painter.fontMetrics()
 
@@ -1115,23 +1174,24 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                 tb_w = fm.horizontalAdvance(txt)
                 tb_h = fm.height()
 
-                pad_x = max(8, int(round(26 * ui_scale * scale_to_disp)))
-                pad_y = max(4, int(round(12 * ui_scale * scale_to_disp)))
-                gap = max(4, int(round(16 * ui_scale * scale_to_disp)))
+                pad_x = max(6, int(round(26 * ui_scale * sc)))
+                pad_y = max(3, int(round(12 * ui_scale * sc)))
+                gap = max(3, int(round(16 * ui_scale * sc)))
 
                 cap_w = min(disp_w - 12, tb_w + 2 * pad_x)
                 cap_h = tb_h + 2 * pad_y
-                cap_x = (disp_w - cap_w) // 2
+                cap_x = (disp_w - cap_w) / 2.0
                 cap_y = cy + ch + gap
 
-                # 若文字標籤超出畫面底部，向上移至卡片內部下方
-                if cap_y + cap_h > disp_h - 6:
-                    cap_y = cy + ch - cap_h - 6
+                # 避免與底部高程圖或邊緣重疊；若超出則移至照片內部下方
+                elev_limit = p_elev_rect.y() if show_elev else (disp_h - 6)
+                if cap_y + cap_h > elev_limit - 3:
+                    cap_y = cy + ch - cap_h - max(4, int(round(12 * ui_scale * sc)))
 
-                cap_radius = max(4, int(round(16 * ui_scale * scale_to_disp)))
+                cap_radius = max(4, int(round(16 * ui_scale * sc)))
 
-                # 繪製質感深海藍浮雕背景框 (帶 1.5px 亮白邊框)
-                painter.setPen(QPen(QColor(255, 255, 255, 180), 1.5))
+                # 繪製質感深海藍浮雕背景框 (帶 1.2px 亮白邊框)
+                painter.setPen(QPen(QColor(255, 255, 255, 180), 1.2))
                 painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
                 painter.drawRoundedRect(QRectF(cap_x, cap_y, cap_w, cap_h), cap_radius, cap_radius)
 
@@ -1146,48 +1206,67 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                 # 純亮白文字
                 painter.setPen(QPen(QColor(255, 255, 255, 255)))
                 painter.drawText(QRectF(cap_x, cap_y, cap_w, cap_h), Qt.AlignCenter, elided_txt)
-
+        else:
+            # 無縮圖狀態
+            painter.setPen(QColor("#cbd5e0"))
+            font_msg = QFont("Segoe UI")
+            font_msg.setBold(True)
+            font_msg.setPixelSize(max(9, int(round(13 * sc))))
+            painter.setFont(font_msg)
+            msg = "🎬 影片檔案\n(點擊此處播放影片)" if item.media_type == "video" else "📷 無法載入照片縮圖"
+            painter.drawText(frame_rect, Qt.AlignCenter, msg)
 
         # 3.3 繪製所選之資訊面板預覽 (HUD / 小地圖 / 高程剖面)
-        checked_huds = getattr(self, "hud_checked_items", [])
-
         # 3.3.1 速度與里程 HUD (左上角)
-        if "速度與里程 HUD" in checked_huds:
-            hud_w = max(60, min(140, int(round(disp_w * 0.38))))
-            hud_h = max(26, int(round(34 * scale_to_disp * (ui_scale / 1.0))))
-            hud_rect = QRectF(10, 10, hud_w, hud_h)
+        if show_speed:
             painter.save()
             painter.setPen(QPen(QColor(255, 255, 255, 50), 1))
             painter.setBrush(QBrush(QColor(9, 13, 18, 200)))
-            painter.drawRoundedRect(hud_rect, 6, 6)
+            painter.drawRoundedRect(p_hud_rect, max(3.0, 6.0 * sc), max(3.0, 6.0 * sc))
 
             # 速度文字
             spd_val = f"{item.current_km * 3.6:.1f}" if item.current_km > 0 else "28.5"
-            painter.setFont(QFont("Segoe UI", max(7, int(11 * scale_to_disp * ui_scale)), QFont.Bold))
+            font_spd = QFont("Segoe UI")
+            font_spd.setBold(True)
+            font_spd.setPixelSize(max(8, int(round(p_hud_rect.height() * 0.42))))
+            painter.setFont(font_spd)
             painter.setPen(QPen(QColor(255, 255, 255, 250)))
-            painter.drawText(QRectF(hud_rect.x() + 6, hud_rect.y() + 2, hud_w - 12, hud_h * 0.55), Qt.AlignLeft | Qt.AlignVCenter, f"{spd_val} km/h")
+            pad_h = max(4.0, 6.0 * sc)
+            painter.drawText(
+                QRectF(p_hud_rect.x() + pad_h, p_hud_rect.y() + 2, p_hud_rect.width() - 2 * pad_h, p_hud_rect.height() * 0.55),
+                Qt.AlignLeft | Qt.AlignVCenter, f"{spd_val} km/h"
+            )
 
             # 里程與標籤
             dist_val = f"{item.current_km:.1f} km" if item.current_km >= 0 else "0.0 km"
-            painter.setFont(QFont("Segoe UI", max(6, int(8 * scale_to_disp * ui_scale))))
+            font_dst = QFont("Segoe UI")
+            font_dst.setPixelSize(max(7, int(round(p_hud_rect.height() * 0.30))))
+            painter.setFont(font_dst)
             painter.setPen(QPen(QColor(148, 163, 184, 230)))
-            painter.drawText(QRectF(hud_rect.x() + 6, hud_rect.y() + hud_h * 0.5, hud_w - 12, hud_h * 0.45), Qt.AlignLeft | Qt.AlignVCenter, f"DST: {dist_val}")
+            painter.drawText(
+                QRectF(p_hud_rect.x() + pad_h, p_hud_rect.y() + p_hud_rect.height() * 0.5, p_hud_rect.width() - 2 * pad_h, p_hud_rect.height() * 0.45),
+                Qt.AlignLeft | Qt.AlignVCenter, f"DST: {dist_val}"
+            )
             painter.restore()
 
         # 3.3.2 路線小地圖 (右上角)
-        if "路線小地圖" in checked_huds:
-            mini_w = max(50, min(95, int(round(disp_w * 0.28))))
-            mini_h = max(34, min(65, int(round(disp_h * 0.22))))
-            mini_rect = QRectF(disp_w - mini_w - 10, 10, mini_w, mini_h)
+        if show_mini:
             painter.save()
             painter.setPen(QPen(QColor(255, 255, 255, 50), 1))
             painter.setBrush(QBrush(QColor(9, 13, 18, 200)))
-            painter.drawRoundedRect(mini_rect, 6, 6)
+            painter.drawRoundedRect(p_mini_rect, max(3.0, 6.0 * sc), max(3.0, 6.0 * sc))
 
             # 小地圖標籤
-            painter.setFont(QFont("Segoe UI", max(5, int(7 * scale_to_disp * ui_scale)), QFont.Bold))
+            font_lbl = QFont("Segoe UI")
+            font_lbl.setBold(True)
+            font_lbl.setPixelSize(max(6, int(round(p_mini_rect.height() * 0.24))))
+            painter.setFont(font_lbl)
             painter.setPen(QPen(QColor(148, 163, 184, 200)))
-            painter.drawText(QRectF(mini_rect.x() + 5, mini_rect.y() + 3, mini_w - 10, 12), Qt.AlignLeft | Qt.AlignTop, "MINIMAP")
+            title_h = max(8.0, p_mini_rect.height() * 0.30)
+            painter.drawText(
+                QRectF(p_mini_rect.x() + 5, p_mini_rect.y() + 2, p_mini_rect.width() - 10, title_h),
+                Qt.AlignLeft | Qt.AlignTop, "MINIMAP"
+            )
 
             # 繪製簡化路線
             if self.ride_data and len(self.ride_data.xs) > 1:
@@ -1196,24 +1275,21 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                 min_y, max_y = float(ys.min()), float(ys.max())
                 rw = max(max_x - min_x, 1.0)
                 rh = max(max_y - min_y, 1.0)
-                pad_m = 6
-                mw_avail = mini_w - 2 * pad_m
-                mh_avail = mini_h - 2 * pad_m - 8
-                sc = min(mw_avail / rw, mh_avail / rh)
-                cx_m = mini_rect.x() + pad_m + (mw_avail - rw * sc) / 2
-                cy_m = mini_rect.y() + pad_m + 8 + (mh_avail - rh * sc) / 2
+                pad_m = max(3.0, 5.0 * sc)
+                mw_avail = max(10.0, p_mini_rect.width() - 2 * pad_m)
+                mh_avail = max(10.0, p_mini_rect.height() - 2 * pad_m - title_h)
+                route_sc = min(mw_avail / rw, mh_avail / rh)
+                cx_m = p_mini_rect.x() + pad_m + (mw_avail - rw * route_sc) / 2.0
+                cy_m = p_mini_rect.y() + pad_m + title_h + (mh_avail - rh * route_sc) / 2.0
 
                 # 軌跡折線
                 pts = []
                 step = max(1, len(xs) // 35)
                 for k in range(0, len(xs), step):
-                    px_m = cx_m + (xs[k] - min_x) * sc
-                    py_m = cy_m + (max_y - ys[k]) * sc
-                    pts.append(QPointF(px_m, py_m))
+                    pts.append(QPointF(cx_m + (xs[k] - min_x) * route_sc, cy_m + (max_y - ys[k]) * route_sc))
                 if len(pts) >= 2:
-                    poly = QPolygonF(pts)
-                    painter.setPen(QPen(QColor(255, 255, 255, 80), 1.2))
-                    painter.drawPolyline(poly)
+                    painter.setPen(QPen(QColor(255, 255, 255, 80), 1.0))
+                    painter.drawPolyline(QPolygonF(pts))
 
                 # 當前點位標記 (依 track_color 設定對應醒目顏色)
                 dot_color = QColor(252, 76, 2)
@@ -1227,27 +1303,29 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                 if item.current_km >= 0 and len(self.ride_data.distances) > 0:
                     ix = float(np.interp(item.current_km, self.ride_data.distances, xs))
                     iy = float(np.interp(item.current_km, self.ride_data.distances, ys))
-                    ipx = cx_m + (ix - min_x) * sc
-                    ipy = cy_m + (max_y - iy) * sc
-                    painter.setPen(QPen(QColor(255, 255, 255, 255), 1.5))
+                    painter.setPen(QPen(QColor(255, 255, 255, 255), 1.2))
                     painter.setBrush(QBrush(dot_color))
-                    painter.drawEllipse(QPointF(ipx, ipy), 3.0, 3.0)
+                    dot_r = max(2.0, 3.0 * sc)
+                    painter.drawEllipse(QPointF(cx_m + (ix - min_x) * route_sc, cy_m + (max_y - iy) * route_sc), dot_r, dot_r)
             painter.restore()
 
         # 3.3.3 全景高程剖面 (底部)
-        if "全景高程剖面" in checked_huds:
-            elev_w = disp_w - 20
-            elev_h = max(26, min(45, int(round(disp_h * 0.16))))
-            elev_y = disp_h - elev_h - 10
-            elev_rect = QRectF(10, elev_y, elev_w, elev_h)
+        if show_elev:
             painter.save()
             painter.setPen(QPen(QColor(255, 255, 255, 50), 1))
             painter.setBrush(QBrush(QColor(9, 13, 18, 200)))
-            painter.drawRoundedRect(elev_rect, 6, 6)
+            painter.drawRoundedRect(p_elev_rect, max(3.0, 6.0 * sc), max(3.0, 6.0 * sc))
 
-            painter.setFont(QFont("Segoe UI", max(5, int(7 * scale_to_disp * ui_scale)), QFont.Bold))
+            font_lbl = QFont("Segoe UI")
+            font_lbl.setBold(True)
+            font_lbl.setPixelSize(max(6, int(round(p_elev_rect.height() * 0.28))))
+            painter.setFont(font_lbl)
             painter.setPen(QPen(QColor(148, 163, 184, 200)))
-            painter.drawText(QRectF(elev_rect.x() + 6, elev_rect.y() + 3, elev_w - 12, 10), Qt.AlignLeft | Qt.AlignTop, "ELEVATION")
+            title_h = max(8.0, p_elev_rect.height() * 0.32)
+            painter.drawText(
+                QRectF(p_elev_rect.x() + 6, p_elev_rect.y() + 2, p_elev_rect.width() - 12, title_h),
+                Qt.AlignLeft | Qt.AlignTop, "ELEVATION"
+            )
 
             if self.ride_data and len(self.ride_data.eles) > 1:
                 dists = self.ride_data.distances
@@ -1256,18 +1334,16 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                 e_min, e_max = float(eles.min()) - 5.0, float(eles.max()) + 5.0
                 if e_max <= e_min: e_max = e_min + 10.0
 
-                pad_e = 6
-                ew_avail = elev_w - 2 * pad_e
-                eh_avail = elev_h - 2 * pad_e - 6
-                ex_base = elev_rect.x() + pad_e
-                ey_base = elev_rect.y() + pad_e + 6
+                pad_e = max(3.0, 5.0 * sc)
+                ew_avail = max(10.0, p_elev_rect.width() - 2 * pad_e)
+                eh_avail = max(8.0, p_elev_rect.height() - 2 * pad_e - title_h)
+                ex_base = p_elev_rect.x() + pad_e
+                ey_base = p_elev_rect.y() + pad_e + title_h
 
                 step = max(1, len(dists) // 45)
                 poly_pts = [QPointF(ex_base, ey_base + eh_avail)]
                 for k in range(0, len(dists), step):
-                    px_e = ex_base + (dists[k] - d_min) / (d_max - d_min) * ew_avail
-                    py_e = ey_base + (e_max - eles[k]) / (e_max - e_min) * eh_avail
-                    poly_pts.append(QPointF(px_e, py_e))
+                    poly_pts.append(QPointF(ex_base + (dists[k] - d_min) / (d_max - d_min) * ew_avail, ey_base + (e_max - eles[k]) / (e_max - e_min) * eh_avail))
                 poly_pts.append(QPointF(ex_base + ew_avail, ey_base + eh_avail))
 
                 painter.setPen(Qt.NoPen)
@@ -1289,21 +1365,14 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
                     painter.setPen(QPen(QColor(255, 255, 255, 180), 1, Qt.DashLine))
                     painter.drawLine(QPointF(cur_px, ey_base), QPointF(cur_px, ey_base + eh_avail))
 
-                    painter.setPen(QPen(QColor(255, 255, 255, 255), 1.2))
+                    painter.setPen(QPen(QColor(255, 255, 255, 255), 1.0))
                     painter.setBrush(QBrush(QColor(56, 189, 248)))
-                    painter.drawEllipse(QPointF(cur_px, cur_py), 2.5, 2.5)
+                    dot_r = max(2.0, 2.5 * sc)
+                    painter.drawEllipse(QPointF(cur_px, cur_py), dot_r, dot_r)
             painter.restore()
 
-            painter.end()
-            self.lbl_preview_image.setPixmap(canvas)
-        else:
-            # 無縮圖狀態
-            painter.setPen(QColor("#cbd5e0"))
-            painter.setFont(QFont("Segoe UI", 9, QFont.Bold))
-            msg = "🎬 影片檔案\n(點擊此處播放影片)" if item.media_type == "video" else "📷 無法載入照片縮圖"
-            painter.drawText(frame_rect, Qt.AlignCenter, msg)
-            painter.end()
-            self.lbl_preview_image.setPixmap(canvas)
+        painter.end()
+        self.lbl_preview_image.setPixmap(canvas)
 
         if item.media_type == "video":
             self.lbl_preview_image.setToolTip("▶ 點擊使用系統預設播放器開啟影片原檔")
@@ -1420,3 +1489,15 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
             event.ignore()
             return
         super().keyPressEvent(event)
+ 
+ 
+if __name__ == "__main__":
+    import os
+    from PySide6.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+    dlg = QtMediaManagerDialog()
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        print("QtMediaManagerDialog initialized successfully in offscreen mode!")
+        sys.exit(0)
+    dlg.show()
+    sys.exit(app.exec())

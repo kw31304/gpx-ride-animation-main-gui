@@ -78,12 +78,31 @@ class CheckableComboBox(QComboBox):
     def set_item_checked(self, index: int, checked: bool):
         """設定指定索引項目的勾選狀態。"""
         if 0 <= index < self.model().rowCount():
-            self._is_updating = True
             item = self.model().item(index)
-            item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
+            target_state = Qt.Checked if checked else Qt.Unchecked
+            if item.checkState() == target_state:
+                return
+            self._is_updating = True
+            item.setCheckState(target_state)
             self._is_updating = False
             self._update_display_text()
             self.selection_changed.emit(self.checked_items())
+
+    def set_item_checked_by_text(self, text: str, checked: bool):
+        """以項目文字比對並設定勾選狀態。"""
+        for row in range(self.model().rowCount()):
+            item = self.model().item(row)
+            if item and item.text() == text:
+                self.set_item_checked(row, checked)
+                break
+
+    def set_item_checked_by_data(self, data, checked: bool):
+        """以項目 UserData 比對並設定勾選狀態。"""
+        for row in range(self.model().rowCount()):
+            item = self.model().item(row)
+            if item and item.data(Qt.UserRole) == data:
+                self.set_item_checked(row, checked)
+                break
 
     def is_item_checked(self, index: int) -> bool:
         """檢查指定索引項目是否已被勾選。"""

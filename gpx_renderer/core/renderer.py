@@ -611,24 +611,27 @@ class RideRenderer:
         return int(round(px)), int(round(py))
 
     def _build_track_colors(self):
-        scheme = getattr(config, "TRACK_COLOR_SCHEME", "Strava 經典橘")
+        scheme = getattr(config, "TRACK_COLOR_SCHEME", "經典橘")
         n_points = max(1, len(self.d.speeds) - 1)
 
-        if "Strava" in scheme:
-            # Strava 經典橘 (#FC4C02 -> RGB(252, 76, 2))
-            return [(252, 76, 2)] * n_points
+        if "速度漸層" in scheme:
+            # 速度漸層熱圖 (Speed Rainbow / Plasma)
+            cmap = matplotlib.colormaps[getattr(config, "TRACK_CMAP", "plasma")]
+            normalized = self.d.speed_norm(self.d.speeds[1:])
+            rgba = cmap(normalized, bytes=True)
+            return [tuple(map(int, c[:3])) for c in rgba]
         elif "螢光綠" in scheme:
             return [(0, 255, 102)] * n_points
         elif "電光藍" in scheme:
             return [(0, 229, 255)] * n_points
         elif "熾熱紅" in scheme:
             return [(255, 42, 42)] * n_points
+        elif "經典橘" in scheme or "橘" in scheme or "Strava" in scheme:
+            # 經典橘 (#FC4C02 -> RGB(252, 76, 2))
+            return [(252, 76, 2)] * n_points
         else:
-            # 速度漸層熱圖 (Speed Rainbow / Plasma)
-            cmap = matplotlib.colormaps[getattr(config, "TRACK_CMAP", "plasma")]
-            normalized = self.d.speed_norm(self.d.speeds[1:])
-            rgba = cmap(normalized, bytes=True)
-            return [tuple(map(int, c[:3])) for c in rgba]
+            # 預設：經典橘 (#FC4C02 -> RGB(252, 76, 2))
+            return [(252, 76, 2)] * n_points
 
     def _crop_raster(self, rm: RasterMap, view_x: float, view_y: float, margin: float, heading_rad: float = math.pi / 2.0, pitch_deg: float = 0.0, rider_z: float | None = None) -> Image.Image:
         if getattr(config, "CAMERA_MODE", "North-Up") == "3D-Terrain" and pitch_deg > 0.1:

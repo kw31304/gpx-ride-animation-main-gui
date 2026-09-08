@@ -70,9 +70,15 @@ class QtRoutePreviewWidget(QWidget):
             self.sampled_xs = np.array([])
             self.sampled_ys = np.array([])
 
-    def set_ride_data(self, ride_data: RideData):
+    def set_ride_data(self, ride_data: Optional[RideData]):
         """設置或更新 GPX 騎乘軌跡資料，重新初始化視圖座標與抽樣點。"""
         self.ride_data = ride_data
+        if not ride_data or getattr(ride_data, "xs", None) is None or len(ride_data.xs) == 0:
+            self.sampled_xs = np.array([])
+            self.sampled_ys = np.array([])
+            self.update()
+            return
+
         self.view_center_x = float(ride_data.route_center_x)
         self.view_center_y = float(ride_data.route_center_y)
 
@@ -121,6 +127,8 @@ class QtRoutePreviewWidget(QWidget):
 
     def _do_fetch_viewport_basemap(self):
         """非同步下載涵蓋目前視窗視野範圍 (Viewport) 之 Google 街道圖底圖，保證放大後清晰銳利。"""
+        if not self.ride_data:
+            return
         if self.width() <= 10 or self.height() <= 10 or self.scale <= 1e-6:
             return
 
@@ -169,11 +177,13 @@ class QtRoutePreviewWidget(QWidget):
         self.update()
 
     def reset_view(self):
+        if not self.ride_data or getattr(self.ride_data, "route_center_x", None) is None:
+            return
         cw = max(self.width(), 200)
         ch = max(self.height(), 200)
 
-        scale_x = (cw * 0.82) / self.route_w
-        scale_y = (ch * 0.82) / self.route_h
+        scale_x = (cw * 0.82) / max(self.route_w, 1.0)
+        scale_y = (ch * 0.82) / max(self.route_h, 1.0)
         self.scale = min(scale_x, scale_y)
 
         self.view_center_x = float(self.ride_data.route_center_x)
@@ -183,7 +193,11 @@ class QtRoutePreviewWidget(QWidget):
 
     def _get_km_world_coord(self, km: float) -> tuple[float, float]:
         """利用線性插值極速獲取指定里程在 WebMercator 座標系中的 (wx, wy)。"""
-        if km < 0 or len(self.ride_data.distances) == 0:
+        if not self.ride_data or getattr(self.ride_data, "distances", None) is None or len(self.ride_data.distances) == 0:
+            cx = float(getattr(self.ride_data, "route_center_x", 0.0)) if self.ride_data else self.view_center_x
+            cy = float(getattr(self.ride_data, "route_center_y", 0.0)) if self.ride_data else self.view_center_y
+            return cx, cy
+        if km < 0:
             return float(self.ride_data.route_center_x), float(self.ride_data.route_center_y)
         wx = float(np.interp(km, self.ride_data.distances, self.ride_data.xs))
         wy = float(np.interp(km, self.ride_data.distances, self.ride_data.ys))
@@ -195,7 +209,7 @@ class QtRoutePreviewWidget(QWidget):
         self.schedule_basemap_reload()
 
     def focus_active(self):
-        if self.active_km >= 0 and len(self.ride_data.distances) > 0:
+        if self.ride_data and self.active_km >= 0 and getattr(self.ride_data, "distances", None) is not None and len(self.ride_data.distances) > 0:
             self.view_center_x, self.view_center_y = self._get_km_world_coord(self.active_km)
             self.update()
             self.schedule_basemap_reload()
@@ -213,109 +227,123 @@ class QtRoutePreviewWidget(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.fillRect(self.rect(), QColor("#121820"))
+        try:
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            painter.fillRect(self.rect(), QColor("#121820"))
 
-        if self.scale == 1.0 and self.width() > 10 and self.height() > 10:
-            self.reset_view()
+            # 若尚未載入 GPX 軌跡資料，顯示提示文字
+            if not self.ride_data or len(self.sampled_xs) == 0:
+                painter.setPen(QPen(QColor("#718096")))
+                painter.setFont(QFont("Segoe UI", 11))
+                painter.drawText(
+                    self.rect(),
+                    Qt.AlignCenter,
+                    "📍 尚未載入 GPX 軌跡資料\n請在「基本與渲染設定」分頁選取 GPX 檔案以檢視路線"
+                )
+                return
 
-        # 1. 繪製 Google Map 底圖
-        if self.map_qimage and self.map_extent:
-            left, right, bottom, top = self.map_extent
-            px_l, py_t = self._world_to_canvas(left, top)
-            px_r, py_b = self._world_to_canvas(right, bottom)
-            dest_rect = QRectF(px_l, py_t, px_r - px_l, py_b - py_t)
-            painter.drawImage(dest_rect, self.map_qimage)
+            if self.scale == 1.0 and self.width() > 10 and self.height() > 10:
+                self.reset_view()
 
-        # 2. 向量化繪製軌跡主線段 (C++ Qt Polyline 快速渲染)
-        if len(self.sampled_xs) > 1:
-            cx = self.width() * 0.5
-            cy = self.height() * 0.5
-            pxs = cx + (self.sampled_xs - self.view_center_x) * self.scale
-            pys = cy - (self.sampled_ys - self.view_center_y) * self.scale
-            poly = QPolygonF([QPointF(x, y) for x, y in zip(pxs, pys)])
+            # 1. 繪製 Google Map 底圖
+            if self.map_qimage and self.map_extent:
+                left, right, bottom, top = self.map_extent
+                px_l, py_t = self._world_to_canvas(left, top)
+                px_r, py_b = self._world_to_canvas(right, bottom)
+                dest_rect = QRectF(px_l, py_t, px_r - px_l, py_b - py_t)
+                painter.drawImage(dest_rect, self.map_qimage)
 
-            # 2.1 黑色外框光暈 (增強對比)
-            pen_outline = QPen(QColor(0, 0, 0, 180), 5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-            painter.setPen(pen_outline)
-            painter.drawPolyline(poly)
+            # 2. 向量化繪製軌跡主線段 (C++ Qt Polyline 快速渲染)
+            if len(self.sampled_xs) > 1:
+                cx = self.width() * 0.5
+                cy = self.height() * 0.5
+                pxs = cx + (self.sampled_xs - self.view_center_x) * self.scale
+                pys = cy - (self.sampled_ys - self.view_center_y) * self.scale
+                poly = QPolygonF([QPointF(x, y) for x, y in zip(pxs, pys)])
 
-            # 2.2 青色核心軌跡
-            pen_route = QPen(QColor("#00e5ff"), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-            painter.setPen(pen_route)
-            painter.drawPolyline(poly)
+                # 2.1 黑色外框光暈 (增強對比)
+                pen_outline = QPen(QColor(0, 0, 0, 180), 5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(pen_outline)
+                painter.drawPolyline(poly)
 
-            # 起點 (綠色) 與 終點 (紅色)
-            spx, spy = pxs[0], pys[0]
-            epx, epy = pxs[-1], pys[-1]
-            painter.setPen(QPen(QColor("#ffffff"), 1.8))
-            painter.setBrush(QBrush(QColor("#4caf50")))
-            painter.drawEllipse(QPointF(spx, spy), 7, 7)
+                # 2.2 青色核心軌跡
+                pen_route = QPen(QColor("#00e5ff"), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(pen_route)
+                painter.drawPolyline(poly)
 
-            painter.setPen(QPen(QColor("#ffffff"), 1.8))
-            painter.setBrush(QBrush(QColor("#f44336")))
-            painter.drawEllipse(QPointF(epx, epy), 7, 7)
+                # 起點 (綠色) 與 終點 (紅色)
+                spx, spy = pxs[0], pys[0]
+                epx, epy = pxs[-1], pys[-1]
+                painter.setPen(QPen(QColor("#ffffff"), 1.8))
+                painter.setBrush(QBrush(QColor("#4caf50")))
+                painter.drawEllipse(QPointF(spx, spy), 7, 7)
 
-        # 3. 繪製所有媒體標記點 (使用 O(1) 座標快查，無繁複 numpy 搜尋)
-        for i, item in enumerate(self.media_items):
-            wx, wy = self._get_km_world_coord(item.current_km)
-            px, py = self._world_to_canvas(wx, wy)
+                painter.setPen(QPen(QColor("#ffffff"), 1.8))
+                painter.setBrush(QBrush(QColor("#f44336")))
+                painter.drawEllipse(QPointF(epx, epy), 7, 7)
 
-            is_sel = (i == self.selected_index)
-            color = QColor("#ff9800") if not is_sel else QColor("#ff5722")
-            radius = 6 if not is_sel else 9
+            # 3. 繪製所有媒體標記點 (使用 O(1) 座標快查，無繁複 numpy 搜尋)
+            for i, item in enumerate(self.media_items):
+                wx, wy = self._get_km_world_coord(item.current_km)
+                px, py = self._world_to_canvas(wx, wy)
 
-            # 黑色外光暈底
-            painter.setPen(QPen(QColor(0, 0, 0, 160), 3))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(QPointF(px, py), radius + 1, radius + 1)
+                is_sel = (i == self.selected_index)
+                color = QColor("#ff9800") if not is_sel else QColor("#ff5722")
+                radius = 6 if not is_sel else 9
 
-            # 實心標記
-            painter.setPen(QPen(QColor("#ffffff"), 1.8 if is_sel else 1.2))
-            painter.setBrush(QBrush(color))
-            painter.drawEllipse(QPointF(px, py), radius, radius)
+                # 黑色外光暈底
+                painter.setPen(QPen(QColor(0, 0, 0, 160), 3))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(QPointF(px, py), radius + 1, radius + 1)
 
-        # 4. 高亮選取中的標記資訊框
-        if self.active_km >= 0 and len(self.ride_data.distances) > 0:
-            wx, wy = self._get_km_world_coord(self.active_km)
-            apx, apy = self._world_to_canvas(wx, wy)
+                # 實心標記
+                painter.setPen(QPen(QColor("#ffffff"), 1.8 if is_sel else 1.2))
+                painter.setBrush(QBrush(color))
+                painter.drawEllipse(QPointF(px, py), radius, radius)
 
-            painter.setPen(QPen(QColor("#ffab40"), 2.5))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(QPointF(apx, apy), 15, 15)
+            # 4. 高亮選取中的標記資訊框
+            if self.active_km >= 0 and self.ride_data and getattr(self.ride_data, "distances", None) is not None and len(self.ride_data.distances) > 0:
+                wx, wy = self._get_km_world_coord(self.active_km)
+                apx, apy = self._world_to_canvas(wx, wy)
 
-            # Bubble text
-            txt = f"{self.active_km:.2f} km"
-            bw = max(68, len(txt) * 9)
-            bh = 20
-            bx = apx - bw / 2
-            by = apy - 34
+                painter.setPen(QPen(QColor("#ffab40"), 2.5))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(QPointF(apx, apy), 15, 15)
 
-            painter.setPen(QPen(QColor("#ff7043"), 1.2))
-            painter.setBrush(QBrush(QColor(13, 17, 23, 235)))
-            painter.drawRoundedRect(QRectF(bx, by, bw, bh), 5, 5)
+                # Bubble text
+                txt = f"{self.active_km:.2f} km"
+                bw = max(68, len(txt) * 9)
+                bh = 20
+                bx = apx - bw / 2
+                by = apy - 34
 
-            painter.setPen(QPen(QColor("#ffffff")))
-            painter.setFont(QFont("Segoe UI", 8, QFont.Bold))
-            painter.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, txt)
+                painter.setPen(QPen(QColor("#ff7043"), 1.2))
+                painter.setBrush(QBrush(QColor(13, 17, 23, 235)))
+                painter.drawRoundedRect(QRectF(bx, by, bw, bh), 5, 5)
 
-        # 5. 右上角底圖載入指示與左下角標籤
-        label_text = self.map_style_label or "Google Maps 街道圖"
-        if self.is_loading_map:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(0, 0, 0, 180)))
-            painter.drawRoundedRect(QRectF(self.width() - 200, 8, 192, 24), 4, 4)
-            painter.setPen(QPen(QColor("#ffcc00")))
-            painter.setFont(QFont("Segoe UI", 8))
-            painter.drawText(QRectF(self.width() - 200, 8, 192, 24), Qt.AlignCenter, f"📡 載入 {label_text}...")
+                painter.setPen(QPen(QColor("#ffffff")))
+                painter.setFont(QFont("Segoe UI", 8, QFont.Bold))
+                painter.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, txt)
 
-        # 水印標籤
-        painter.setPen(QPen(QColor(0, 0, 0, 160)))
-        painter.setFont(QFont("Segoe UI", 7, QFont.Bold))
-        painter.drawText(QRectF(9, self.height() - 19, 220, 16), Qt.AlignLeft | Qt.AlignVCenter, label_text)
-        painter.setPen(QPen(QColor(255, 255, 255, 200)))
-        painter.drawText(QRectF(8, self.height() - 20, 220, 16), Qt.AlignLeft | Qt.AlignVCenter, label_text)
+            # 5. 右上角底圖載入指示與左下角標籤
+            label_text = self.map_style_label or "Google Maps 街道圖"
+            if self.is_loading_map:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(0, 0, 0, 180)))
+                painter.drawRoundedRect(QRectF(self.width() - 200, 8, 192, 24), 4, 4)
+                painter.setPen(QPen(QColor("#ffcc00")))
+                painter.setFont(QFont("Segoe UI", 8))
+                painter.drawText(QRectF(self.width() - 200, 8, 192, 24), Qt.AlignCenter, f"📡 載入 {label_text}...")
+
+            # 水印標籤
+            painter.setPen(QPen(QColor(0, 0, 0, 160)))
+            painter.setFont(QFont("Segoe UI", 7, QFont.Bold))
+            painter.drawText(QRectF(9, self.height() - 19, 220, 16), Qt.AlignLeft | Qt.AlignVCenter, label_text)
+            painter.setPen(QPen(QColor(255, 255, 255, 200)))
+            painter.drawText(QRectF(8, self.height() - 20, 220, 16), Qt.AlignLeft | Qt.AlignVCenter, label_text)
+        finally:
+            painter.end()
 
     # --- 滑鼠互動事件 ---
     def wheelEvent(self, event):
