@@ -569,14 +569,14 @@ class RideRenderer:
         else:
             ch_arr.fill(math.pi / 2.0)
 
-        # 4. 根據 3D 俯角計算相機後撤距離 d_offset，使騎乘指示點 100% 精準置於畫面正中央 (W/2, H/2)
+        # 4. 根據 3D 俯角計算相機後撤距離 d_behind，使騎乘指示點 100% 精準置於畫面正中央 (W/2, H/2)
         for i in range(self.main_frames):
             if is_3d and cp_arr[i] > 0.001:
                 pitch_rad = math.radians(cp_arr[i])
                 cam_alt = cm_arr[i] * 0.85
-                d_offset = -cam_alt * math.tan(pitch_rad)
-                cx_arr[i] = rx_arr[i] - d_offset * math.cos(ch_arr[i])
-                cy_arr[i] = ry_arr[i] - d_offset * math.sin(ch_arr[i])
+                d_behind = cam_alt * math.sin(pitch_rad)
+                cx_arr[i] = rx_arr[i] - d_behind * math.cos(ch_arr[i])
+                cy_arr[i] = ry_arr[i] - d_behind * math.sin(ch_arr[i])
             else:
                 cx_arr[i] = rx_arr[i]
                 cy_arr[i] = ry_arr[i]
@@ -588,11 +588,13 @@ class RideRenderer:
             from gpx_renderer.core.terrain_3d import Camera3D, project_3d_points
             exaggeration = float(getattr(config, "ELEVATION_EXAGGERATION", 1.5))
             cam_alt = margin * 0.85
+            pitch_rad = math.radians(pitch_deg)
+            z_safe = max(0.0, float(z))
             cam = Camera3D(
-                x=view_x, y=view_y, z=(z * exaggeration) + cam_alt,
+                x=view_x, y=view_y, z=(z_safe * exaggeration) + cam_alt * math.cos(pitch_rad),
                 heading_rad=heading_rad, pitch_deg=pitch_deg, exaggeration=exaggeration
             )
-            px_arr, py_arr, _ = project_3d_points(np.array([x]), np.array([y]), np.array([z]), cam, margin)
+            px_arr, py_arr, _ = project_3d_points(np.array([x]), np.array([y]), np.array([z_safe]), cam, margin)
             return int(round(px_arr[0])), int(round(py_arr[0]))
 
         margin_x, margin_y = _get_aspect_margins(margin)

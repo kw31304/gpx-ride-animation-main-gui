@@ -82,24 +82,27 @@ def project_3d_points(
     ry = -dx * sin_a + dy * cos_a
     rz = dz
 
-    # 2. 旋轉 Pitch (俯角)
-    ry_p = ry * cos_p - rz * sin_p
-    rz_p = ry * sin_p + rz * cos_p
+    # 2. 相機座標透視轉換 (Pitch: 俯角向下鳥瞰，光軸向前且向下)
+    # 相機光軸深入螢幕前方 (Depth / Forward):
+    zc = ry * sin_p - rz * cos_p
+    # 螢幕垂直向上 (Screen UP / Elevation: 海拔越高朝向天空):
+    yc = ry * cos_p + rz * sin_p
+    # 螢幕水平向右:
+    xc = rx
 
-    # 3. 視距與 Perspective 遠小近大縮放
-    d_cam = float(view_margin) * 1.8
-    dist = d_cam + rz_p
-    dist_safe = np.maximum(dist, 10.0)
+    # 3. 視距保護與 Perspective 透視投影縮放
+    dist_safe = np.maximum(zc, 10.0)
 
     aspect = config.FRAME_WIDTH / float(config.FRAME_HEIGHT)
     margin_x = view_margin * aspect if aspect >= 1.0 else view_margin
     margin_y = view_margin if aspect >= 1.0 else view_margin / aspect
 
-    kx = (config.FRAME_WIDTH / (2.0 * margin_x)) * d_cam
-    ky = (config.FRAME_HEIGHT / (2.0 * margin_y)) * d_cam
+    R = float(view_margin) * 0.85
+    kx = (config.FRAME_WIDTH / (2.0 * margin_x)) * R
+    ky = (config.FRAME_HEIGHT / (2.0 * margin_y)) * R
 
-    px = (config.FRAME_WIDTH * 0.5) + (rx / dist_safe) * kx
-    py = (config.FRAME_HEIGHT * 0.5) - (ry_p / dist_safe) * ky
+    px = (config.FRAME_WIDTH * 0.5) + (xc / dist_safe) * kx
+    py = (config.FRAME_HEIGHT * 0.5) - (yc / dist_safe) * ky
 
     return px, py, dist_safe
 
@@ -136,7 +139,7 @@ def sample_dem_elevation(local_rm: RasterMap, x: float, y: float) -> float:
 
     top = z00 + du * (z01 - z00)
     bot = z10 + du * (z11 - z10)
-    return top + dv * (bot - top)
+    return max(0.0, float(top + dv * (bot - top)))
 
 
 def _fill_sky_gradient(out_arr: np.ndarray):
@@ -184,14 +187,19 @@ def render_3d_terrain_frame(
             dem_grid = local_rm.dem_grid
     else:
         dem_grid = get_elevation_grid(local_rm.west, local_rm.south, local_rm.east, local_rm.north, rows=grid_res, cols=grid_res)
+
+    # 海平面截斷：將海洋 DEM 瓦片中的水深負值截斷為 0m 海平面，杜絕海底水深扭曲造成海水倒灌或浮起
+    dem_grid = np.maximum(dem_grid, 0.0)
+
     avg_z = float(np.mean(dem_grid))
-    z_ref = float(rider_z) if (rider_z is not None and not math.isnan(rider_z)) else avg_z
+    z_ref = max(0.0, float(rider_z)) if (rider_z is not None and not math.isnan(rider_z)) else avg_z
     cam_alt = margin * 0.85
+    pitch_rad = math.radians(pitch_deg)
 
     camera = Camera3D(
         x=view_x,
         y=view_y,
-        z=(z_ref * exaggeration) + cam_alt,
+        z=(z_ref * exaggeration) + cam_alt * math.cos(pitch_rad),
         heading_rad=heading_rad,
         pitch_deg=pitch_deg,
         exaggeration=exaggeration,

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_window.ui'
+## Form generated from reading UI file 'main_windowDZyWIx.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.1
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -33,7 +33,12 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1186, 968)
+        MainWindow.resize(1249, 896)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
+        MainWindow.setSizePolicy(sizePolicy)
         MainWindow.setMinimumSize(QSize(0, 0))
         MainWindow.setMaximumSize(QSize(16777215, 16777215))
         self.action_open_gpx = QAction(MainWindow)
@@ -214,576 +219,143 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout_10 = QGridLayout(self.centralwidget)
         self.gridLayout_10.setObjectName(u"gridLayout_10")
-        self.groupBox_files = QGroupBox(self.centralwidget)
-        self.groupBox_files.setObjectName(u"groupBox_files")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.groupBox_files.sizePolicy().hasHeightForWidth())
-        self.groupBox_files.setSizePolicy(sizePolicy)
-        self.groupBox_files.setMinimumSize(QSize(0, 0))
-        self.gridLayout_files = QGridLayout(self.groupBox_files)
-        self.gridLayout_files.setObjectName(u"gridLayout_files")
-        self.lbl_gpx = QLabel(self.groupBox_files)
-        self.lbl_gpx.setObjectName(u"lbl_gpx")
-
-        self.gridLayout_files.addWidget(self.lbl_gpx, 0, 0, 1, 1)
-
-        self.lineEdit_gpx = QLineEdit(self.groupBox_files)
-        self.lineEdit_gpx.setObjectName(u"lineEdit_gpx")
-
-        self.gridLayout_files.addWidget(self.lineEdit_gpx, 0, 1, 1, 1)
-
-        self.btn_browse_gpx = QPushButton(self.groupBox_files)
-        self.btn_browse_gpx.setObjectName(u"btn_browse_gpx")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.btn_browse_gpx.sizePolicy().hasHeightForWidth())
-        self.btn_browse_gpx.setSizePolicy(sizePolicy1)
-
-        self.gridLayout_files.addWidget(self.btn_browse_gpx, 0, 2, 1, 1)
-
-        self.lbl_output = QLabel(self.groupBox_files)
-        self.lbl_output.setObjectName(u"lbl_output")
-
-        self.gridLayout_files.addWidget(self.lbl_output, 1, 0, 1, 1)
-
-        self.lineEdit_output = QLineEdit(self.groupBox_files)
-        self.lineEdit_output.setObjectName(u"lineEdit_output")
-
-        self.gridLayout_files.addWidget(self.lineEdit_output, 1, 1, 1, 1)
-
-        self.btn_browse_output = QPushButton(self.groupBox_files)
-        self.btn_browse_output.setObjectName(u"btn_browse_output")
-        sizePolicy1.setHeightForWidth(self.btn_browse_output.sizePolicy().hasHeightForWidth())
-        self.btn_browse_output.setSizePolicy(sizePolicy1)
-
-        self.gridLayout_files.addWidget(self.btn_browse_output, 1, 2, 1, 1)
-
-        self.lbl_media = QLabel(self.groupBox_files)
-        self.lbl_media.setObjectName(u"lbl_media")
-
-        self.gridLayout_files.addWidget(self.lbl_media, 2, 0, 1, 1)
-
-        self.lineEdit_media = QLineEdit(self.groupBox_files)
-        self.lineEdit_media.setObjectName(u"lineEdit_media")
-
-        self.gridLayout_files.addWidget(self.lineEdit_media, 2, 1, 1, 1)
-
-        self.horizontalLayout_media = QHBoxLayout()
-        self.horizontalLayout_media.setObjectName(u"horizontalLayout_media")
-        self.btn_browse_media = QPushButton(self.groupBox_files)
-        self.btn_browse_media.setObjectName(u"btn_browse_media")
-        sizePolicy1.setHeightForWidth(self.btn_browse_media.sizePolicy().hasHeightForWidth())
-        self.btn_browse_media.setSizePolicy(sizePolicy1)
-
-        self.horizontalLayout_media.addWidget(self.btn_browse_media)
-
-        self.btn_media_dialog = QPushButton(self.groupBox_files)
-        self.btn_media_dialog.setObjectName(u"btn_media_dialog")
-        sizePolicy1.setHeightForWidth(self.btn_media_dialog.sizePolicy().hasHeightForWidth())
-        self.btn_media_dialog.setSizePolicy(sizePolicy1)
-
-        self.horizontalLayout_media.addWidget(self.btn_media_dialog)
-
-
-        self.gridLayout_files.addLayout(self.horizontalLayout_media, 2, 2, 1, 1)
-
-
-        self.gridLayout_10.addWidget(self.groupBox_files, 0, 0, 1, 1)
-
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tabWidget.setMinimumSize(QSize(0, 0))
         self.tab_general = QWidget()
         self.tab_general.setObjectName(u"tab_general")
-        self.gridLayout_2 = QGridLayout(self.tab_general)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.groupBox_settings_2 = QGroupBox(self.tab_general)
-        self.groupBox_settings_2.setObjectName(u"groupBox_settings_2")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.gridLayout_7 = QGridLayout(self.tab_general)
+        self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.splitter_2 = QSplitter(self.tab_general)
+        self.splitter_2.setObjectName(u"splitter_2")
+        self.splitter_2.setOrientation(Qt.Orientation.Horizontal)
+        self.widget = QWidget(self.splitter_2)
+        self.widget.setObjectName(u"widget")
+        self.verticalLayout_27 = QVBoxLayout(self.widget)
+        self.verticalLayout_27.setObjectName(u"verticalLayout_27")
+        self.verticalLayout_27.setContentsMargins(0, 0, 0, 0)
+        self.groupBox_files = QGroupBox(self.widget)
+        self.groupBox_files.setObjectName(u"groupBox_files")
+        sizePolicy.setHeightForWidth(self.groupBox_files.sizePolicy().hasHeightForWidth())
+        self.groupBox_files.setSizePolicy(sizePolicy)
+        self.groupBox_files.setMinimumSize(QSize(0, 0))
+        self.verticalLayout_22 = QVBoxLayout(self.groupBox_files)
+        self.verticalLayout_22.setObjectName(u"verticalLayout_22")
+        self.horizontalLayout_17 = QHBoxLayout()
+        self.horizontalLayout_17.setObjectName(u"horizontalLayout_17")
+        self.lbl_gpx = QLabel(self.groupBox_files)
+        self.lbl_gpx.setObjectName(u"lbl_gpx")
+        sizePolicy.setHeightForWidth(self.lbl_gpx.sizePolicy().hasHeightForWidth())
+        self.lbl_gpx.setSizePolicy(sizePolicy)
+        self.lbl_gpx.setMinimumSize(QSize(63, 0))
+        self.lbl_gpx.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_17.addWidget(self.lbl_gpx)
+
+        self.lineEdit_gpx = QLineEdit(self.groupBox_files)
+        self.lineEdit_gpx.setObjectName(u"lineEdit_gpx")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.lineEdit_gpx.sizePolicy().hasHeightForWidth())
+        self.lineEdit_gpx.setSizePolicy(sizePolicy1)
+        self.lineEdit_gpx.setMinimumSize(QSize(150, 0))
+
+        self.horizontalLayout_17.addWidget(self.lineEdit_gpx)
+
+        self.btn_browse_gpx = QPushButton(self.groupBox_files)
+        self.btn_browse_gpx.setObjectName(u"btn_browse_gpx")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         sizePolicy2.setHorizontalStretch(0)
         sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.groupBox_settings_2.sizePolicy().hasHeightForWidth())
-        self.groupBox_settings_2.setSizePolicy(sizePolicy2)
-        self.groupBox_settings_2.setMinimumSize(QSize(0, 0))
-        self.groupBox_settings_2.setMaximumSize(QSize(16777215, 16777215))
-        self.gridLayout_6 = QGridLayout(self.groupBox_settings_2)
-        self.gridLayout_6.setObjectName(u"gridLayout_6")
-        self.verticalLayout_4 = QVBoxLayout()
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.horizontalLayout_9 = QHBoxLayout()
-        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
-        self.lbl_profile_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_profile_2.setObjectName(u"lbl_profile_2")
-        self.lbl_profile_2.setMinimumSize(QSize(65, 0))
+        sizePolicy2.setHeightForWidth(self.btn_browse_gpx.sizePolicy().hasHeightForWidth())
+        self.btn_browse_gpx.setSizePolicy(sizePolicy2)
 
-        self.horizontalLayout_9.addWidget(self.lbl_profile_2)
+        self.horizontalLayout_17.addWidget(self.btn_browse_gpx)
 
-        self.combo_profile_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_profile_2.setObjectName(u"combo_profile_2")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        self.verticalLayout_22.addLayout(self.horizontalLayout_17)
+
+        self.horizontalLayout_18 = QHBoxLayout()
+        self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
+        self.lbl_output = QLabel(self.groupBox_files)
+        self.lbl_output.setObjectName(u"lbl_output")
+        sizePolicy.setHeightForWidth(self.lbl_output.sizePolicy().hasHeightForWidth())
+        self.lbl_output.setSizePolicy(sizePolicy)
+        self.lbl_output.setMinimumSize(QSize(63, 0))
+        self.lbl_output.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_18.addWidget(self.lbl_output)
+
+        self.lineEdit_output = QLineEdit(self.groupBox_files)
+        self.lineEdit_output.setObjectName(u"lineEdit_output")
+        sizePolicy1.setHeightForWidth(self.lineEdit_output.sizePolicy().hasHeightForWidth())
+        self.lineEdit_output.setSizePolicy(sizePolicy1)
+        self.lineEdit_output.setMinimumSize(QSize(150, 0))
+
+        self.horizontalLayout_18.addWidget(self.lineEdit_output)
+
+        self.btn_browse_output = QPushButton(self.groupBox_files)
+        self.btn_browse_output.setObjectName(u"btn_browse_output")
+        sizePolicy2.setHeightForWidth(self.btn_browse_output.sizePolicy().hasHeightForWidth())
+        self.btn_browse_output.setSizePolicy(sizePolicy2)
+
+        self.horizontalLayout_18.addWidget(self.btn_browse_output)
+
+
+        self.verticalLayout_22.addLayout(self.horizontalLayout_18)
+
+        self.horizontalLayout_21 = QHBoxLayout()
+        self.horizontalLayout_21.setObjectName(u"horizontalLayout_21")
+        self.lbl_media = QLabel(self.groupBox_files)
+        self.lbl_media.setObjectName(u"lbl_media")
+        sizePolicy.setHeightForWidth(self.lbl_media.sizePolicy().hasHeightForWidth())
+        self.lbl_media.setSizePolicy(sizePolicy)
+        self.lbl_media.setMinimumSize(QSize(63, 0))
+        self.lbl_media.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_21.addWidget(self.lbl_media)
+
+        self.lineEdit_media = QLineEdit(self.groupBox_files)
+        self.lineEdit_media.setObjectName(u"lineEdit_media")
+        sizePolicy1.setHeightForWidth(self.lineEdit_media.sizePolicy().hasHeightForWidth())
+        self.lineEdit_media.setSizePolicy(sizePolicy1)
+        self.lineEdit_media.setMinimumSize(QSize(150, 0))
+
+        self.horizontalLayout_21.addWidget(self.lineEdit_media)
+
+        self.horizontalLayout_media = QHBoxLayout()
+        self.horizontalLayout_media.setObjectName(u"horizontalLayout_media")
+        self.btn_browse_media = QPushButton(self.groupBox_files)
+        self.btn_browse_media.setObjectName(u"btn_browse_media")
+        sizePolicy2.setHeightForWidth(self.btn_browse_media.sizePolicy().hasHeightForWidth())
+        self.btn_browse_media.setSizePolicy(sizePolicy2)
+
+        self.horizontalLayout_media.addWidget(self.btn_browse_media)
+
+        self.btn_media_dialog = QPushButton(self.groupBox_files)
+        self.btn_media_dialog.setObjectName(u"btn_media_dialog")
+        sizePolicy2.setHeightForWidth(self.btn_media_dialog.sizePolicy().hasHeightForWidth())
+        self.btn_media_dialog.setSizePolicy(sizePolicy2)
+
+        self.horizontalLayout_media.addWidget(self.btn_media_dialog)
+
+
+        self.horizontalLayout_21.addLayout(self.horizontalLayout_media)
+
+
+        self.verticalLayout_22.addLayout(self.horizontalLayout_21)
+
+
+        self.verticalLayout_27.addWidget(self.groupBox_files)
+
+        self.groupBox_summary = QGroupBox(self.widget)
+        self.groupBox_summary.setObjectName(u"groupBox_summary")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         sizePolicy3.setHorizontalStretch(0)
         sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.combo_profile_2.sizePolicy().hasHeightForWidth())
-        self.combo_profile_2.setSizePolicy(sizePolicy3)
-        self.combo_profile_2.setMinimumSize(QSize(150, 0))
-
-        self.horizontalLayout_9.addWidget(self.combo_profile_2)
-
-
-        self.verticalLayout_4.addLayout(self.horizontalLayout_9)
-
-        self.horizontalLayout_11 = QHBoxLayout()
-        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
-        self.lbl_map_style_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_map_style_2.setObjectName(u"lbl_map_style_2")
-        self.lbl_map_style_2.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_11.addWidget(self.lbl_map_style_2)
-
-        self.combo_map_style_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_map_style_2.setObjectName(u"combo_map_style_2")
-        sizePolicy3.setHeightForWidth(self.combo_map_style_2.sizePolicy().hasHeightForWidth())
-        self.combo_map_style_2.setSizePolicy(sizePolicy3)
-        self.combo_map_style_2.setMinimumSize(QSize(150, 0))
-
-        self.horizontalLayout_11.addWidget(self.combo_map_style_2)
-
-
-        self.verticalLayout_4.addLayout(self.horizontalLayout_11)
-
-        self.horizontalLayout_10 = QHBoxLayout()
-        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
-        self.lbl_camera_mode_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_camera_mode_2.setObjectName(u"lbl_camera_mode_2")
-        self.lbl_camera_mode_2.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_10.addWidget(self.lbl_camera_mode_2)
-
-        self.combo_camera_mode_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_camera_mode_2.setObjectName(u"combo_camera_mode_2")
-        sizePolicy3.setHeightForWidth(self.combo_camera_mode_2.sizePolicy().hasHeightForWidth())
-        self.combo_camera_mode_2.setSizePolicy(sizePolicy3)
-        self.combo_camera_mode_2.setMinimumSize(QSize(150, 0))
-
-        self.horizontalLayout_10.addWidget(self.combo_camera_mode_2)
-
-
-        self.verticalLayout_4.addLayout(self.horizontalLayout_10)
-
-
-        self.gridLayout_6.addLayout(self.verticalLayout_4, 0, 0, 2, 1)
-
-        self.verticalLayout_23 = QVBoxLayout()
-        self.verticalLayout_23.setObjectName(u"verticalLayout_23")
-        self.horizontalLayout_8 = QHBoxLayout()
-        self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
-        self.lbl_track_color_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_track_color_2.setObjectName(u"lbl_track_color_2")
-        self.lbl_track_color_2.setMinimumSize(QSize(71, 0))
-
-        self.horizontalLayout_8.addWidget(self.lbl_track_color_2)
-
-        self.combo_track_color_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_track_color_2.setObjectName(u"combo_track_color_2")
-        sizePolicy3.setHeightForWidth(self.combo_track_color_2.sizePolicy().hasHeightForWidth())
-        self.combo_track_color_2.setSizePolicy(sizePolicy3)
-
-        self.horizontalLayout_8.addWidget(self.combo_track_color_2)
-
-
-        self.verticalLayout_23.addLayout(self.horizontalLayout_8)
-
-        self.horizontalLayout_14 = QHBoxLayout()
-        self.horizontalLayout_14.setObjectName(u"horizontalLayout_14")
-        self.lbl_local_zoom = QLabel(self.groupBox_settings_2)
-        self.lbl_local_zoom.setObjectName(u"lbl_local_zoom")
-        self.lbl_local_zoom.setMinimumSize(QSize(71, 0))
-
-        self.horizontalLayout_14.addWidget(self.lbl_local_zoom)
-
-        self.combo_local_zoom = QComboBox(self.groupBox_settings_2)
-        self.combo_local_zoom.setObjectName(u"combo_local_zoom")
-        sizePolicy3.setHeightForWidth(self.combo_local_zoom.sizePolicy().hasHeightForWidth())
-        self.combo_local_zoom.setSizePolicy(sizePolicy3)
-        self.combo_local_zoom.setMinimumSize(QSize(0, 0))
-        self.combo_local_zoom.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_14.addWidget(self.combo_local_zoom)
-
-
-        self.verticalLayout_23.addLayout(self.horizontalLayout_14)
-
-        self.horizontalLayout_13 = QHBoxLayout()
-        self.horizontalLayout_13.setObjectName(u"horizontalLayout_13")
-        self.lbl_view_margin = QLabel(self.groupBox_settings_2)
-        self.lbl_view_margin.setObjectName(u"lbl_view_margin")
-        self.lbl_view_margin.setMinimumSize(QSize(71, 0))
-
-        self.horizontalLayout_13.addWidget(self.lbl_view_margin)
-
-        self.lineEdit_view_margin = QLineEdit(self.groupBox_settings_2)
-        self.lineEdit_view_margin.setObjectName(u"lineEdit_view_margin")
-        sizePolicy3.setHeightForWidth(self.lineEdit_view_margin.sizePolicy().hasHeightForWidth())
-        self.lineEdit_view_margin.setSizePolicy(sizePolicy3)
-        self.lineEdit_view_margin.setMinimumSize(QSize(0, 0))
-        self.lineEdit_view_margin.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_13.addWidget(self.lineEdit_view_margin)
-
-
-        self.verticalLayout_23.addLayout(self.horizontalLayout_13)
-
-
-        self.gridLayout_6.addLayout(self.verticalLayout_23, 0, 1, 2, 1)
-
-        self.horizontalLayout_2 = QHBoxLayout()
-        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.lbl_resolution_2 = QLabel(self.groupBox_settings_2)
-        self.lbl_resolution_2.setObjectName(u"lbl_resolution_2")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.lbl_resolution_2.sizePolicy().hasHeightForWidth())
-        self.lbl_resolution_2.setSizePolicy(sizePolicy4)
-        self.lbl_resolution_2.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_2.addWidget(self.lbl_resolution_2)
-
-        self.combo_resolution_2 = QComboBox(self.groupBox_settings_2)
-        self.combo_resolution_2.setObjectName(u"combo_resolution_2")
-        sizePolicy1.setHeightForWidth(self.combo_resolution_2.sizePolicy().hasHeightForWidth())
-        self.combo_resolution_2.setSizePolicy(sizePolicy1)
-        self.combo_resolution_2.setMinimumSize(QSize(0, 0))
-
-        self.horizontalLayout_2.addWidget(self.combo_resolution_2)
-
-        self.label = QLabel(self.groupBox_settings_2)
-        self.label.setObjectName(u"label")
-        sizePolicy4.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
-        self.label.setSizePolicy(sizePolicy4)
-
-        self.horizontalLayout_2.addWidget(self.label)
-
-        self.spin_fps = QSpinBox(self.groupBox_settings_2)
-        self.spin_fps.setObjectName(u"spin_fps")
-        sizePolicy1.setHeightForWidth(self.spin_fps.sizePolicy().hasHeightForWidth())
-        self.spin_fps.setSizePolicy(sizePolicy1)
-        self.spin_fps.setMinimumSize(QSize(0, 0))
-        self.spin_fps.setMaximumSize(QSize(16777215, 16777215))
-        self.spin_fps.setValue(60)
-
-        self.horizontalLayout_2.addWidget(self.spin_fps)
-
-        self.horizontalSpacer_4 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_2.addItem(self.horizontalSpacer_4)
-
-
-        self.gridLayout_6.addLayout(self.horizontalLayout_2, 0, 2, 1, 1)
-
-        self.horizontalLayout_6 = QHBoxLayout()
-        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
-        self.chk_dynamic_speed_zoom = QCheckBox(self.groupBox_settings_2)
-        self.chk_dynamic_speed_zoom.setObjectName(u"chk_dynamic_speed_zoom")
-        self.chk_dynamic_speed_zoom.setChecked(True)
-
-        self.horizontalLayout_6.addWidget(self.chk_dynamic_speed_zoom)
-
-        self.chk_real_speed_2 = QCheckBox(self.groupBox_settings_2)
-        self.chk_real_speed_2.setObjectName(u"chk_real_speed_2")
-
-        self.horizontalLayout_6.addWidget(self.chk_real_speed_2)
-
-        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_6.addItem(self.horizontalSpacer_2)
-
-
-        self.gridLayout_6.addLayout(self.horizontalLayout_6, 1, 2, 1, 1)
-
-
-        self.gridLayout_2.addWidget(self.groupBox_settings_2, 0, 0, 1, 1)
-
-        self.horizontalLayout = QHBoxLayout()
-        self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.groupBox = QGroupBox(self.tab_general)
-        self.groupBox.setObjectName(u"groupBox")
-        sizePolicy2.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
-        self.groupBox.setSizePolicy(sizePolicy2)
-        self.groupBox.setMinimumSize(QSize(0, 0))
-        self.gridLayout_8 = QGridLayout(self.groupBox)
-        self.gridLayout_8.setObjectName(u"gridLayout_8")
-        self.verticalLayout_26 = QVBoxLayout()
-        self.verticalLayout_26.setObjectName(u"verticalLayout_26")
-        self.horizontalLayout_cache_actions_2 = QHBoxLayout()
-        self.horizontalLayout_cache_actions_2.setObjectName(u"horizontalLayout_cache_actions_2")
-        self.label_2 = QLabel(self.groupBox)
-        self.label_2.setObjectName(u"label_2")
-        self.label_2.setMinimumSize(QSize(73, 0))
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.label_2)
-
-        self.combo_cache_mode = QComboBox(self.groupBox)
-        self.combo_cache_mode.setObjectName(u"combo_cache_mode")
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.combo_cache_mode)
-
-        self.lbl_cache_size = QLabel(self.groupBox)
-        self.lbl_cache_size.setObjectName(u"lbl_cache_size")
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.lbl_cache_size)
-
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_cache_actions_2.addItem(self.horizontalSpacer)
-
-        self.btn_clear_cache = QPushButton(self.groupBox)
-        self.btn_clear_cache.setObjectName(u"btn_clear_cache")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.btn_clear_cache.sizePolicy().hasHeightForWidth())
-        self.btn_clear_cache.setSizePolicy(sizePolicy5)
-        self.btn_clear_cache.setMinimumSize(QSize(0, 0))
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.btn_clear_cache)
-
-
-        self.verticalLayout_26.addLayout(self.horizontalLayout_cache_actions_2)
-
-        self.horizontalLayout_autotune_2 = QHBoxLayout()
-        self.horizontalLayout_autotune_2.setObjectName(u"horizontalLayout_autotune_2")
-        self.btn_autotune = QPushButton(self.groupBox)
-        self.btn_autotune.setObjectName(u"btn_autotune")
-        self.btn_autotune.setMaximumSize(QSize(150, 16777215))
-
-        self.horizontalLayout_autotune_2.addWidget(self.btn_autotune)
-
-        self.label_autotune_result = QLabel(self.groupBox)
-        self.label_autotune_result.setObjectName(u"label_autotune_result")
-
-        self.horizontalLayout_autotune_2.addWidget(self.label_autotune_result)
-
-        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_autotune_2.addItem(self.horizontalSpacer_3)
-
-        self.btn_apply_benchmark = QPushButton(self.groupBox)
-        self.btn_apply_benchmark.setObjectName(u"btn_apply_benchmark")
-        self.btn_apply_benchmark.setEnabled(False)
-        sizePolicy5.setHeightForWidth(self.btn_apply_benchmark.sizePolicy().hasHeightForWidth())
-        self.btn_apply_benchmark.setSizePolicy(sizePolicy5)
-        self.btn_apply_benchmark.setMinimumSize(QSize(0, 0))
-        self.btn_apply_benchmark.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_autotune_2.addWidget(self.btn_apply_benchmark)
-
-
-        self.verticalLayout_26.addLayout(self.horizontalLayout_autotune_2)
-
-
-        self.gridLayout_8.addLayout(self.verticalLayout_26, 1, 0, 1, 2)
-
-        self.verticalLayout_25 = QVBoxLayout()
-        self.verticalLayout_25.setObjectName(u"verticalLayout_25")
-        self.horizontalLayout_22 = QHBoxLayout()
-        self.horizontalLayout_22.setObjectName(u"horizontalLayout_22")
-        self.chk_auto_duration = QCheckBox(self.groupBox)
-        self.chk_auto_duration.setObjectName(u"chk_auto_duration")
-        sizePolicy1.setHeightForWidth(self.chk_auto_duration.sizePolicy().hasHeightForWidth())
-        self.chk_auto_duration.setSizePolicy(sizePolicy1)
-
-        self.horizontalLayout_22.addWidget(self.chk_auto_duration)
-
-        self.horizontalLayout_rate_2 = QHBoxLayout()
-        self.horizontalLayout_rate_2.setObjectName(u"horizontalLayout_rate_2")
-        self.lbl_rate = QLabel(self.groupBox)
-        self.lbl_rate.setObjectName(u"lbl_rate")
-        sizePolicy2.setHeightForWidth(self.lbl_rate.sizePolicy().hasHeightForWidth())
-        self.lbl_rate.setSizePolicy(sizePolicy2)
-
-        self.horizontalLayout_rate_2.addWidget(self.lbl_rate)
-
-        self.spin_seconds_per_100km = QSpinBox(self.groupBox)
-        self.spin_seconds_per_100km.setObjectName(u"spin_seconds_per_100km")
-        sizePolicy1.setHeightForWidth(self.spin_seconds_per_100km.sizePolicy().hasHeightForWidth())
-        self.spin_seconds_per_100km.setSizePolicy(sizePolicy1)
-        self.spin_seconds_per_100km.setMinimumSize(QSize(0, 0))
-        self.spin_seconds_per_100km.setMinimum(1)
-        self.spin_seconds_per_100km.setMaximum(9999)
-        self.spin_seconds_per_100km.setValue(60)
-
-        self.horizontalLayout_rate_2.addWidget(self.spin_seconds_per_100km)
-
-        self.lbl_rate_unit = QLabel(self.groupBox)
-        self.lbl_rate_unit.setObjectName(u"lbl_rate_unit")
-
-        self.horizontalLayout_rate_2.addWidget(self.lbl_rate_unit)
-
-
-        self.horizontalLayout_22.addLayout(self.horizontalLayout_rate_2)
-
-
-        self.verticalLayout_25.addLayout(self.horizontalLayout_22)
-
-        self.label_distance_info = QLabel(self.groupBox)
-        self.label_distance_info.setObjectName(u"label_distance_info")
-
-        self.verticalLayout_25.addWidget(self.label_distance_info)
-
-        self.horizontalLayout_5 = QHBoxLayout()
-        self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
-        self.lbl_hide_privacy = QLabel(self.groupBox)
-        self.lbl_hide_privacy.setObjectName(u"lbl_hide_privacy")
-
-        self.horizontalLayout_5.addWidget(self.lbl_hide_privacy)
-
-        self.horizontalLayout_3 = QHBoxLayout()
-        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
-        self.lbl_hide_start = QLabel(self.groupBox)
-        self.lbl_hide_start.setObjectName(u"lbl_hide_start")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.lbl_hide_start.sizePolicy().hasHeightForWidth())
-        self.lbl_hide_start.setSizePolicy(sizePolicy6)
-        self.lbl_hide_start.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.horizontalLayout_3.addWidget(self.lbl_hide_start)
-
-        self.spin_hide_start = QDoubleSpinBox(self.groupBox)
-        self.spin_hide_start.setObjectName(u"spin_hide_start")
-        sizePolicy1.setHeightForWidth(self.spin_hide_start.sizePolicy().hasHeightForWidth())
-        self.spin_hide_start.setSizePolicy(sizePolicy1)
-        self.spin_hide_start.setMinimumSize(QSize(0, 0))
-
-        self.horizontalLayout_3.addWidget(self.spin_hide_start)
-
-        self.lbl_hide_end = QLabel(self.groupBox)
-        self.lbl_hide_end.setObjectName(u"lbl_hide_end")
-        sizePolicy6.setHeightForWidth(self.lbl_hide_end.sizePolicy().hasHeightForWidth())
-        self.lbl_hide_end.setSizePolicy(sizePolicy6)
-        self.lbl_hide_end.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
-
-        self.horizontalLayout_3.addWidget(self.lbl_hide_end)
-
-
-        self.horizontalLayout_5.addLayout(self.horizontalLayout_3)
-
-        self.lbl_hide_end_3 = QLabel(self.groupBox)
-        self.lbl_hide_end_3.setObjectName(u"lbl_hide_end_3")
-        sizePolicy6.setHeightForWidth(self.lbl_hide_end_3.sizePolicy().hasHeightForWidth())
-        self.lbl_hide_end_3.setSizePolicy(sizePolicy6)
-        self.lbl_hide_end_3.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
-
-        self.horizontalLayout_5.addWidget(self.lbl_hide_end_3)
-
-        self.horizontalLayout_4 = QHBoxLayout()
-        self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
-        self.lbl_hide_end_4 = QLabel(self.groupBox)
-        self.lbl_hide_end_4.setObjectName(u"lbl_hide_end_4")
-        sizePolicy6.setHeightForWidth(self.lbl_hide_end_4.sizePolicy().hasHeightForWidth())
-        self.lbl_hide_end_4.setSizePolicy(sizePolicy6)
-        self.lbl_hide_end_4.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
-
-        self.horizontalLayout_4.addWidget(self.lbl_hide_end_4)
-
-        self.spin_hide_end = QDoubleSpinBox(self.groupBox)
-        self.spin_hide_end.setObjectName(u"spin_hide_end")
-        sizePolicy1.setHeightForWidth(self.spin_hide_end.sizePolicy().hasHeightForWidth())
-        self.spin_hide_end.setSizePolicy(sizePolicy1)
-        self.spin_hide_end.setMinimumSize(QSize(0, 0))
-
-        self.horizontalLayout_4.addWidget(self.spin_hide_end)
-
-        self.lbl_hide_unit = QLabel(self.groupBox)
-        self.lbl_hide_unit.setObjectName(u"lbl_hide_unit")
-        sizePolicy6.setHeightForWidth(self.lbl_hide_unit.sizePolicy().hasHeightForWidth())
-        self.lbl_hide_unit.setSizePolicy(sizePolicy6)
-
-        self.horizontalLayout_4.addWidget(self.lbl_hide_unit)
-
-
-        self.horizontalLayout_5.addLayout(self.horizontalLayout_4)
-
-
-        self.verticalLayout_25.addLayout(self.horizontalLayout_5)
-
-
-        self.gridLayout_8.addLayout(self.verticalLayout_25, 0, 1, 1, 1)
-
-        self.verticalLayout_22 = QVBoxLayout()
-        self.verticalLayout_22.setObjectName(u"verticalLayout_22")
-        self.horizontalLayout_23 = QHBoxLayout()
-        self.horizontalLayout_23.setObjectName(u"horizontalLayout_23")
-        self.lbl_duration = QLabel(self.groupBox)
-        self.lbl_duration.setObjectName(u"lbl_duration")
-        sizePolicy1.setHeightForWidth(self.lbl_duration.sizePolicy().hasHeightForWidth())
-        self.lbl_duration.setSizePolicy(sizePolicy1)
-        self.lbl_duration.setMinimumSize(QSize(73, 0))
-
-        self.horizontalLayout_23.addWidget(self.lbl_duration)
-
-        self.lineEdit_duration = QLineEdit(self.groupBox)
-        self.lineEdit_duration.setObjectName(u"lineEdit_duration")
-        sizePolicy1.setHeightForWidth(self.lineEdit_duration.sizePolicy().hasHeightForWidth())
-        self.lineEdit_duration.setSizePolicy(sizePolicy1)
-        self.lineEdit_duration.setMinimumSize(QSize(0, 0))
-
-        self.horizontalLayout_23.addWidget(self.lineEdit_duration)
-
-
-        self.verticalLayout_22.addLayout(self.horizontalLayout_23)
-
-        self.horizontalLayout_27 = QHBoxLayout()
-        self.horizontalLayout_27.setObjectName(u"horizontalLayout_27")
-        self.lbl_end_hold = QLabel(self.groupBox)
-        self.lbl_end_hold.setObjectName(u"lbl_end_hold")
-        self.lbl_end_hold.setMinimumSize(QSize(73, 0))
-
-        self.horizontalLayout_27.addWidget(self.lbl_end_hold)
-
-        self.lineEdit_end_hold = QLineEdit(self.groupBox)
-        self.lineEdit_end_hold.setObjectName(u"lineEdit_end_hold")
-        sizePolicy1.setHeightForWidth(self.lineEdit_end_hold.sizePolicy().hasHeightForWidth())
-        self.lineEdit_end_hold.setSizePolicy(sizePolicy1)
-        self.lineEdit_end_hold.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_27.addWidget(self.lineEdit_end_hold)
-
-
-        self.verticalLayout_22.addLayout(self.horizontalLayout_27)
-
-        self.horizontalLayout_28 = QHBoxLayout()
-        self.horizontalLayout_28.setObjectName(u"horizontalLayout_28")
-        self.lbl_zoomout = QLabel(self.groupBox)
-        self.lbl_zoomout.setObjectName(u"lbl_zoomout")
-        self.lbl_zoomout.setMinimumSize(QSize(73, 0))
-
-        self.horizontalLayout_28.addWidget(self.lbl_zoomout)
-
-        self.lineEdit_zoomout = QLineEdit(self.groupBox)
-        self.lineEdit_zoomout.setObjectName(u"lineEdit_zoomout")
-        sizePolicy1.setHeightForWidth(self.lineEdit_zoomout.sizePolicy().hasHeightForWidth())
-        self.lineEdit_zoomout.setSizePolicy(sizePolicy1)
-        self.lineEdit_zoomout.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_28.addWidget(self.lineEdit_zoomout)
-
-
-        self.verticalLayout_22.addLayout(self.horizontalLayout_28)
-
-
-        self.gridLayout_8.addLayout(self.verticalLayout_22, 0, 0, 1, 1)
-
-
-        self.horizontalLayout.addWidget(self.groupBox)
-
-        self.groupBox_summary = QGroupBox(self.tab_general)
-        self.groupBox_summary.setObjectName(u"groupBox_summary")
+        sizePolicy3.setHeightForWidth(self.groupBox_summary.sizePolicy().hasHeightForWidth())
+        self.groupBox_summary.setSizePolicy(sizePolicy3)
         self.verticalLayout_18 = QVBoxLayout(self.groupBox_summary)
         self.verticalLayout_18.setObjectName(u"verticalLayout_18")
         self.verticalLayout_17 = QVBoxLayout()
@@ -812,13 +384,342 @@ class Ui_MainWindow(object):
         self.verticalLayout_18.addLayout(self.verticalLayout_17)
 
 
-        self.horizontalLayout.addWidget(self.groupBox_summary)
+        self.verticalLayout_27.addWidget(self.groupBox_summary)
+
+        self.splitter_2.addWidget(self.widget)
+        self.groupBox_settings_2 = QGroupBox(self.splitter_2)
+        self.groupBox_settings_2.setObjectName(u"groupBox_settings_2")
+        sizePolicy.setHeightForWidth(self.groupBox_settings_2.sizePolicy().hasHeightForWidth())
+        self.groupBox_settings_2.setSizePolicy(sizePolicy)
+        self.groupBox_settings_2.setMinimumSize(QSize(0, 0))
+        self.groupBox_settings_2.setMaximumSize(QSize(16777215, 16777215))
+        self.verticalLayout_4 = QVBoxLayout(self.groupBox_settings_2)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.lbl_resolution_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_resolution_2.setObjectName(u"lbl_resolution_2")
+        sizePolicy2.setHeightForWidth(self.lbl_resolution_2.sizePolicy().hasHeightForWidth())
+        self.lbl_resolution_2.setSizePolicy(sizePolicy2)
+        self.lbl_resolution_2.setMinimumSize(QSize(60, 0))
+        self.lbl_resolution_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_2.addWidget(self.lbl_resolution_2)
+
+        self.combo_resolution_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_resolution_2.setObjectName(u"combo_resolution_2")
+        sizePolicy1.setHeightForWidth(self.combo_resolution_2.sizePolicy().hasHeightForWidth())
+        self.combo_resolution_2.setSizePolicy(sizePolicy1)
+        self.combo_resolution_2.setMinimumSize(QSize(200, 0))
+
+        self.horizontalLayout_2.addWidget(self.combo_resolution_2)
+
+        self.label = QLabel(self.groupBox_settings_2)
+        self.label.setObjectName(u"label")
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
+        self.label.setSizePolicy(sizePolicy4)
+
+        self.horizontalLayout_2.addWidget(self.label)
+
+        self.spin_fps = QSpinBox(self.groupBox_settings_2)
+        self.spin_fps.setObjectName(u"spin_fps")
+        sizePolicy2.setHeightForWidth(self.spin_fps.sizePolicy().hasHeightForWidth())
+        self.spin_fps.setSizePolicy(sizePolicy2)
+        self.spin_fps.setMinimumSize(QSize(120, 0))
+        self.spin_fps.setMaximumSize(QSize(16777215, 16777215))
+        self.spin_fps.setValue(60)
+
+        self.horizontalLayout_2.addWidget(self.spin_fps)
 
 
-        self.gridLayout_2.addLayout(self.horizontalLayout, 1, 0, 1, 1)
+        self.verticalLayout_4.addLayout(self.horizontalLayout_2)
+
+        self.horizontalLayout_9 = QHBoxLayout()
+        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
+        self.lbl_profile_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_profile_2.setObjectName(u"lbl_profile_2")
+        self.lbl_profile_2.setMinimumSize(QSize(60, 0))
+        self.lbl_profile_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_9.addWidget(self.lbl_profile_2)
+
+        self.combo_profile_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_profile_2.setObjectName(u"combo_profile_2")
+        sizePolicy1.setHeightForWidth(self.combo_profile_2.sizePolicy().hasHeightForWidth())
+        self.combo_profile_2.setSizePolicy(sizePolicy1)
+        self.combo_profile_2.setMinimumSize(QSize(180, 0))
+
+        self.horizontalLayout_9.addWidget(self.combo_profile_2)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_9)
+
+        self.horizontalLayout_11 = QHBoxLayout()
+        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
+        self.lbl_map_style_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_map_style_2.setObjectName(u"lbl_map_style_2")
+        self.lbl_map_style_2.setMinimumSize(QSize(60, 0))
+        self.lbl_map_style_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_11.addWidget(self.lbl_map_style_2)
+
+        self.combo_map_style_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_map_style_2.addItem("")
+        self.combo_map_style_2.setObjectName(u"combo_map_style_2")
+        sizePolicy1.setHeightForWidth(self.combo_map_style_2.sizePolicy().hasHeightForWidth())
+        self.combo_map_style_2.setSizePolicy(sizePolicy1)
+        self.combo_map_style_2.setMinimumSize(QSize(180, 0))
+
+        self.horizontalLayout_11.addWidget(self.combo_map_style_2)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_11)
+
+        self.horizontalLayout_10 = QHBoxLayout()
+        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
+        self.lbl_camera_mode_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_camera_mode_2.setObjectName(u"lbl_camera_mode_2")
+        self.lbl_camera_mode_2.setMinimumSize(QSize(60, 0))
+        self.lbl_camera_mode_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_10.addWidget(self.lbl_camera_mode_2)
+
+        self.combo_camera_mode_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_camera_mode_2.setObjectName(u"combo_camera_mode_2")
+        sizePolicy1.setHeightForWidth(self.combo_camera_mode_2.sizePolicy().hasHeightForWidth())
+        self.combo_camera_mode_2.setSizePolicy(sizePolicy1)
+        self.combo_camera_mode_2.setMinimumSize(QSize(180, 0))
+
+        self.horizontalLayout_10.addWidget(self.combo_camera_mode_2)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_10)
+
+        self.verticalLayout_23 = QVBoxLayout()
+        self.verticalLayout_23.setObjectName(u"verticalLayout_23")
+        self.horizontalLayout_8 = QHBoxLayout()
+        self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
+        self.lbl_track_color_2 = QLabel(self.groupBox_settings_2)
+        self.lbl_track_color_2.setObjectName(u"lbl_track_color_2")
+        self.lbl_track_color_2.setMinimumSize(QSize(60, 0))
+        self.lbl_track_color_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_8.addWidget(self.lbl_track_color_2)
+
+        self.combo_track_color_2 = QComboBox(self.groupBox_settings_2)
+        self.combo_track_color_2.setObjectName(u"combo_track_color_2")
+        sizePolicy1.setHeightForWidth(self.combo_track_color_2.sizePolicy().hasHeightForWidth())
+        self.combo_track_color_2.setSizePolicy(sizePolicy1)
+        self.combo_track_color_2.setMinimumSize(QSize(110, 0))
+
+        self.horizontalLayout_8.addWidget(self.combo_track_color_2)
+
+
+        self.verticalLayout_23.addLayout(self.horizontalLayout_8)
+
+        self.horizontalLayout_14 = QHBoxLayout()
+        self.horizontalLayout_14.setObjectName(u"horizontalLayout_14")
+        self.lbl_local_zoom = QLabel(self.groupBox_settings_2)
+        self.lbl_local_zoom.setObjectName(u"lbl_local_zoom")
+        self.lbl_local_zoom.setMinimumSize(QSize(60, 0))
+        self.lbl_local_zoom.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_14.addWidget(self.lbl_local_zoom)
+
+        self.combo_local_zoom = QComboBox(self.groupBox_settings_2)
+        self.combo_local_zoom.setObjectName(u"combo_local_zoom")
+        sizePolicy1.setHeightForWidth(self.combo_local_zoom.sizePolicy().hasHeightForWidth())
+        self.combo_local_zoom.setSizePolicy(sizePolicy1)
+        self.combo_local_zoom.setMinimumSize(QSize(110, 0))
+        self.combo_local_zoom.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_14.addWidget(self.combo_local_zoom)
+
+
+        self.verticalLayout_23.addLayout(self.horizontalLayout_14)
+
+        self.horizontalLayout_13 = QHBoxLayout()
+        self.horizontalLayout_13.setObjectName(u"horizontalLayout_13")
+        self.lbl_view_margin = QLabel(self.groupBox_settings_2)
+        self.lbl_view_margin.setObjectName(u"lbl_view_margin")
+        self.lbl_view_margin.setMinimumSize(QSize(60, 0))
+        self.lbl_view_margin.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_13.addWidget(self.lbl_view_margin)
+
+        self.lineEdit_view_margin = QLineEdit(self.groupBox_settings_2)
+        self.lineEdit_view_margin.setObjectName(u"lineEdit_view_margin")
+        sizePolicy1.setHeightForWidth(self.lineEdit_view_margin.sizePolicy().hasHeightForWidth())
+        self.lineEdit_view_margin.setSizePolicy(sizePolicy1)
+        self.lineEdit_view_margin.setMinimumSize(QSize(0, 0))
+        self.lineEdit_view_margin.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_13.addWidget(self.lineEdit_view_margin)
+
+
+        self.verticalLayout_23.addLayout(self.horizontalLayout_13)
+
+
+        self.verticalLayout_4.addLayout(self.verticalLayout_23)
+
+        self.horizontalLayout_5 = QHBoxLayout()
+        self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
+        self.lbl_hide_privacy = QLabel(self.groupBox_settings_2)
+        self.lbl_hide_privacy.setObjectName(u"lbl_hide_privacy")
+        self.lbl_hide_privacy.setMinimumSize(QSize(60, 0))
+        self.lbl_hide_privacy.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_5.addWidget(self.lbl_hide_privacy)
+
+        self.horizontalLayout_3 = QHBoxLayout()
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.spin_hide_start = QDoubleSpinBox(self.groupBox_settings_2)
+        self.spin_hide_start.setObjectName(u"spin_hide_start")
+        sizePolicy1.setHeightForWidth(self.spin_hide_start.sizePolicy().hasHeightForWidth())
+        self.spin_hide_start.setSizePolicy(sizePolicy1)
+        self.spin_hide_start.setMinimumSize(QSize(0, 0))
+        self.spin_hide_start.setDecimals(2)
+        self.spin_hide_start.setSingleStep(0.000000000000000)
+
+        self.horizontalLayout_3.addWidget(self.spin_hide_start)
+
+
+        self.horizontalLayout_5.addLayout(self.horizontalLayout_3)
+
+        self.lbl_hide_end_3 = QLabel(self.groupBox_settings_2)
+        self.lbl_hide_end_3.setObjectName(u"lbl_hide_end_3")
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.lbl_hide_end_3.sizePolicy().hasHeightForWidth())
+        self.lbl_hide_end_3.setSizePolicy(sizePolicy5)
+        self.lbl_hide_end_3.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_5.addWidget(self.lbl_hide_end_3)
+
+        self.horizontalLayout_4 = QHBoxLayout()
+        self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
+        self.spin_hide_end = QDoubleSpinBox(self.groupBox_settings_2)
+        self.spin_hide_end.setObjectName(u"spin_hide_end")
+        sizePolicy1.setHeightForWidth(self.spin_hide_end.sizePolicy().hasHeightForWidth())
+        self.spin_hide_end.setSizePolicy(sizePolicy1)
+        self.spin_hide_end.setMinimumSize(QSize(0, 0))
+
+        self.horizontalLayout_4.addWidget(self.spin_hide_end)
+
+
+        self.horizontalLayout_5.addLayout(self.horizontalLayout_4)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_5)
+
+        self.horizontalLayout_6 = QHBoxLayout()
+        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
+        self.chk_dynamic_speed_zoom = QCheckBox(self.groupBox_settings_2)
+        self.chk_dynamic_speed_zoom.setObjectName(u"chk_dynamic_speed_zoom")
+        self.chk_dynamic_speed_zoom.setChecked(True)
+
+        self.horizontalLayout_6.addWidget(self.chk_dynamic_speed_zoom)
+
+        self.chk_real_speed_2 = QCheckBox(self.groupBox_settings_2)
+        self.chk_real_speed_2.setObjectName(u"chk_real_speed_2")
+
+        self.horizontalLayout_6.addWidget(self.chk_real_speed_2)
+
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_6.addItem(self.horizontalSpacer_2)
+
+
+        self.verticalLayout_4.addLayout(self.horizontalLayout_6)
+
+        self.line_2 = QFrame(self.groupBox_settings_2)
+        self.line_2.setObjectName(u"line_2")
+        self.line_2.setFrameShape(QFrame.Shape.HLine)
+        self.line_2.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.verticalLayout_4.addWidget(self.line_2)
+
+        self.verticalLayout_26 = QVBoxLayout()
+        self.verticalLayout_26.setObjectName(u"verticalLayout_26")
+        self.horizontalLayout_cache_actions_2 = QHBoxLayout()
+        self.horizontalLayout_cache_actions_2.setObjectName(u"horizontalLayout_cache_actions_2")
+        self.combo_cache_mode = QComboBox(self.groupBox_settings_2)
+        self.combo_cache_mode.setObjectName(u"combo_cache_mode")
+        sizePolicy2.setHeightForWidth(self.combo_cache_mode.sizePolicy().hasHeightForWidth())
+        self.combo_cache_mode.setSizePolicy(sizePolicy2)
+        self.combo_cache_mode.setMinimumSize(QSize(160, 0))
+
+        self.horizontalLayout_cache_actions_2.addWidget(self.combo_cache_mode)
+
+        self.lbl_cache_size = QLabel(self.groupBox_settings_2)
+        self.lbl_cache_size.setObjectName(u"lbl_cache_size")
+
+        self.horizontalLayout_cache_actions_2.addWidget(self.lbl_cache_size)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_cache_actions_2.addItem(self.horizontalSpacer)
+
+        self.btn_clear_cache = QPushButton(self.groupBox_settings_2)
+        self.btn_clear_cache.setObjectName(u"btn_clear_cache")
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.btn_clear_cache.sizePolicy().hasHeightForWidth())
+        self.btn_clear_cache.setSizePolicy(sizePolicy6)
+        self.btn_clear_cache.setMinimumSize(QSize(0, 0))
+
+        self.horizontalLayout_cache_actions_2.addWidget(self.btn_clear_cache)
+
+
+        self.verticalLayout_26.addLayout(self.horizontalLayout_cache_actions_2)
+
+        self.horizontalLayout_autotune_2 = QHBoxLayout()
+        self.horizontalLayout_autotune_2.setObjectName(u"horizontalLayout_autotune_2")
+        self.btn_autotune = QPushButton(self.groupBox_settings_2)
+        self.btn_autotune.setObjectName(u"btn_autotune")
+        self.btn_autotune.setMinimumSize(QSize(160, 0))
+        self.btn_autotune.setMaximumSize(QSize(150, 16777215))
+
+        self.horizontalLayout_autotune_2.addWidget(self.btn_autotune)
+
+        self.label_autotune_result = QLabel(self.groupBox_settings_2)
+        self.label_autotune_result.setObjectName(u"label_autotune_result")
+
+        self.horizontalLayout_autotune_2.addWidget(self.label_autotune_result)
+
+        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_autotune_2.addItem(self.horizontalSpacer_3)
+
+        self.btn_apply_benchmark = QPushButton(self.groupBox_settings_2)
+        self.btn_apply_benchmark.setObjectName(u"btn_apply_benchmark")
+        self.btn_apply_benchmark.setEnabled(False)
+        sizePolicy6.setHeightForWidth(self.btn_apply_benchmark.sizePolicy().hasHeightForWidth())
+        self.btn_apply_benchmark.setSizePolicy(sizePolicy6)
+        self.btn_apply_benchmark.setMinimumSize(QSize(0, 0))
+        self.btn_apply_benchmark.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_autotune_2.addWidget(self.btn_apply_benchmark)
+
+
+        self.verticalLayout_26.addLayout(self.horizontalLayout_autotune_2)
+
+
+        self.verticalLayout_4.addLayout(self.verticalLayout_26)
+
+        self.splitter_2.addWidget(self.groupBox_settings_2)
+
+        self.gridLayout_7.addWidget(self.splitter_2, 0, 0, 1, 1)
 
         self.groupBox_workers = QGroupBox(self.tab_general)
         self.groupBox_workers.setObjectName(u"groupBox_workers")
+        sizePolicy.setHeightForWidth(self.groupBox_workers.sizePolicy().hasHeightForWidth())
+        self.groupBox_workers.setSizePolicy(sizePolicy)
         self.gridLayout_5 = QGridLayout(self.groupBox_workers)
         self.gridLayout_5.setObjectName(u"gridLayout_5")
         self.verticalLayout_16 = QVBoxLayout()
@@ -1097,34 +998,193 @@ class Ui_MainWindow(object):
         self.gridLayout_5.addLayout(self.gridLayout_4, 0, 1, 1, 1)
 
 
-        self.gridLayout_2.addWidget(self.groupBox_workers, 2, 0, 1, 1)
+        self.gridLayout_7.addWidget(self.groupBox_workers, 1, 0, 1, 1)
 
         self.tabWidget.addTab(self.tab_general, "")
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
-        self.gridLayout_3 = QGridLayout(self.tab)
-        self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.splitter = QSplitter(self.tab)
-        self.splitter.setObjectName(u"splitter")
-        self.splitter.setOrientation(Qt.Orientation.Horizontal)
-        self.widget = QWidget(self.splitter)
-        self.widget.setObjectName(u"widget")
-        self.verticalLayout_24 = QVBoxLayout(self.widget)
-        self.verticalLayout_24.setObjectName(u"verticalLayout_24")
-        self.verticalLayout_24.setContentsMargins(0, 0, 0, 0)
-        self.top_group = QGroupBox(self.widget)
+        self.gridLayout_2 = QGridLayout(self.tab)
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.top_group = QGroupBox(self.tab)
         self.top_group.setObjectName(u"top_group")
-        sizePolicy1.setHeightForWidth(self.top_group.sizePolicy().hasHeightForWidth())
-        self.top_group.setSizePolicy(sizePolicy1)
+        sizePolicy.setHeightForWidth(self.top_group.sizePolicy().hasHeightForWidth())
+        self.top_group.setSizePolicy(sizePolicy)
         self.top_group.setMinimumSize(QSize(0, 0))
-        self.gridLayout_11 = QGridLayout(self.top_group)
-        self.gridLayout_11.setObjectName(u"gridLayout_11")
-        self.gridLayout_7 = QGridLayout()
-        self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.gridLayout_6 = QGridLayout(self.top_group)
+        self.gridLayout_6.setObjectName(u"gridLayout_6")
+        self.verticalLayout_25 = QVBoxLayout()
+        self.verticalLayout_25.setObjectName(u"verticalLayout_25")
+        self.horizontalLayout_preview_res = QHBoxLayout()
+        self.horizontalLayout_preview_res.setObjectName(u"horizontalLayout_preview_res")
+        self.lbl_preview_resolution = QLabel(self.top_group)
+        self.lbl_preview_resolution.setObjectName(u"lbl_preview_resolution")
+        self.lbl_preview_resolution.setMinimumSize(QSize(85, 0))
+        self.lbl_preview_resolution.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_preview_res.addWidget(self.lbl_preview_resolution)
+
+        self.combo_preview_resolution = QComboBox(self.top_group)
+        self.combo_preview_resolution.setObjectName(u"combo_preview_resolution")
+        sizePolicy1.setHeightForWidth(self.combo_preview_resolution.sizePolicy().hasHeightForWidth())
+        self.combo_preview_resolution.setSizePolicy(sizePolicy1)
+        self.combo_preview_resolution.setMinimumSize(QSize(220, 0))
+        self.combo_preview_resolution.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_preview_res.addWidget(self.combo_preview_resolution)
+
+
+        self.verticalLayout_25.addLayout(self.horizontalLayout_preview_res)
+
+        self.horizontalLayout_preview_map_style = QHBoxLayout()
+        self.horizontalLayout_preview_map_style.setObjectName(u"horizontalLayout_preview_map_style")
+        self.lbl_preview_map_style = QLabel(self.top_group)
+        self.lbl_preview_map_style.setObjectName(u"lbl_preview_map_style")
+        self.lbl_preview_map_style.setMinimumSize(QSize(85, 0))
+        self.lbl_preview_map_style.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_preview_map_style.addWidget(self.lbl_preview_map_style)
+
+        self.combo_preview_map_style = QComboBox(self.top_group)
+        self.combo_preview_map_style.setObjectName(u"combo_preview_map_style")
+        sizePolicy1.setHeightForWidth(self.combo_preview_map_style.sizePolicy().hasHeightForWidth())
+        self.combo_preview_map_style.setSizePolicy(sizePolicy1)
+        self.combo_preview_map_style.setMinimumSize(QSize(220, 0))
+        self.combo_preview_map_style.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_preview_map_style.addWidget(self.combo_preview_map_style)
+
+
+        self.verticalLayout_25.addLayout(self.horizontalLayout_preview_map_style)
+
+        self.horizontalLayout_preview_camera = QHBoxLayout()
+        self.horizontalLayout_preview_camera.setObjectName(u"horizontalLayout_preview_camera")
+        self.lbl_preview_camera_mode = QLabel(self.top_group)
+        self.lbl_preview_camera_mode.setObjectName(u"lbl_preview_camera_mode")
+        self.lbl_preview_camera_mode.setMinimumSize(QSize(85, 0))
+        self.lbl_preview_camera_mode.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_preview_camera.addWidget(self.lbl_preview_camera_mode)
+
+        self.combo_preview_camera_mode = QComboBox(self.top_group)
+        self.combo_preview_camera_mode.setObjectName(u"combo_preview_camera_mode")
+        sizePolicy1.setHeightForWidth(self.combo_preview_camera_mode.sizePolicy().hasHeightForWidth())
+        self.combo_preview_camera_mode.setSizePolicy(sizePolicy1)
+        self.combo_preview_camera_mode.setMinimumSize(QSize(220, 0))
+        self.combo_preview_camera_mode.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_preview_camera.addWidget(self.combo_preview_camera_mode)
+
+
+        self.verticalLayout_25.addLayout(self.horizontalLayout_preview_camera)
+
+        self.horizontalLayout_panels_2 = QHBoxLayout()
+        self.horizontalLayout_panels_2.setObjectName(u"horizontalLayout_panels_2")
+        self.lbl_panels_2 = QLabel(self.top_group)
+        self.lbl_panels_2.setObjectName(u"lbl_panels_2")
+        self.lbl_panels_2.setMinimumSize(QSize(85, 0))
+        self.lbl_panels_2.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_panels_2.addWidget(self.lbl_panels_2)
+
+        self.combo_hud_panels = CheckableComboBox(self.top_group)
+        self.combo_hud_panels.setObjectName(u"combo_hud_panels")
+        sizePolicy1.setHeightForWidth(self.combo_hud_panels.sizePolicy().hasHeightForWidth())
+        self.combo_hud_panels.setSizePolicy(sizePolicy1)
+        self.combo_hud_panels.setMinimumSize(QSize(220, 0))
+        self.combo_hud_panels.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_panels_2.addWidget(self.combo_hud_panels)
+
+
+        self.verticalLayout_25.addLayout(self.horizontalLayout_panels_2)
+
+
+        self.gridLayout_6.addLayout(self.verticalLayout_25, 0, 0, 1, 1)
+
+        self.label_distance_info = QLabel(self.top_group)
+        self.label_distance_info.setObjectName(u"label_distance_info")
+
+        self.gridLayout_6.addWidget(self.label_distance_info, 2, 0, 1, 1)
+
+        self.verticalLayout = QVBoxLayout()
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.horizontalLayout_23 = QHBoxLayout()
+        self.horizontalLayout_23.setObjectName(u"horizontalLayout_23")
+        self.lbl_duration = QLabel(self.top_group)
+        self.lbl_duration.setObjectName(u"lbl_duration")
+        sizePolicy2.setHeightForWidth(self.lbl_duration.sizePolicy().hasHeightForWidth())
+        self.lbl_duration.setSizePolicy(sizePolicy2)
+        self.lbl_duration.setMinimumSize(QSize(73, 0))
+        self.lbl_duration.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_23.addWidget(self.lbl_duration)
+
+        self.lineEdit_duration = QLineEdit(self.top_group)
+        self.lineEdit_duration.setObjectName(u"lineEdit_duration")
+        sizePolicy1.setHeightForWidth(self.lineEdit_duration.sizePolicy().hasHeightForWidth())
+        self.lineEdit_duration.setSizePolicy(sizePolicy1)
+        self.lineEdit_duration.setMinimumSize(QSize(0, 0))
+
+        self.horizontalLayout_23.addWidget(self.lineEdit_duration)
+
+
+        self.verticalLayout.addLayout(self.horizontalLayout_23)
+
+        self.horizontalLayout_27 = QHBoxLayout()
+        self.horizontalLayout_27.setObjectName(u"horizontalLayout_27")
+        self.lbl_end_hold = QLabel(self.top_group)
+        self.lbl_end_hold.setObjectName(u"lbl_end_hold")
+        self.lbl_end_hold.setMinimumSize(QSize(73, 0))
+        self.lbl_end_hold.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_27.addWidget(self.lbl_end_hold)
+
+        self.lineEdit_end_hold = QLineEdit(self.top_group)
+        self.lineEdit_end_hold.setObjectName(u"lineEdit_end_hold")
+        sizePolicy1.setHeightForWidth(self.lineEdit_end_hold.sizePolicy().hasHeightForWidth())
+        self.lineEdit_end_hold.setSizePolicy(sizePolicy1)
+        self.lineEdit_end_hold.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_27.addWidget(self.lineEdit_end_hold)
+
+
+        self.verticalLayout.addLayout(self.horizontalLayout_27)
+
+        self.horizontalLayout_28 = QHBoxLayout()
+        self.horizontalLayout_28.setObjectName(u"horizontalLayout_28")
+        self.lbl_zoomout = QLabel(self.top_group)
+        self.lbl_zoomout.setObjectName(u"lbl_zoomout")
+        self.lbl_zoomout.setMinimumSize(QSize(73, 0))
+        self.lbl_zoomout.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_28.addWidget(self.lbl_zoomout)
+
+        self.lineEdit_zoomout = QLineEdit(self.top_group)
+        self.lineEdit_zoomout.setObjectName(u"lineEdit_zoomout")
+        sizePolicy1.setHeightForWidth(self.lineEdit_zoomout.sizePolicy().hasHeightForWidth())
+        self.lineEdit_zoomout.setSizePolicy(sizePolicy1)
+        self.lineEdit_zoomout.setMaximumSize(QSize(16777215, 16777215))
+
+        self.horizontalLayout_28.addWidget(self.lineEdit_zoomout)
+
+
+        self.verticalLayout.addLayout(self.horizontalLayout_28)
+
+        self.line = QFrame(self.top_group)
+        self.line.setObjectName(u"line")
+        self.line.setFrameShape(QFrame.Shape.HLine)
+        self.line.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.verticalLayout.addWidget(self.line)
+
+        self.gridLayout_3 = QGridLayout()
+        self.gridLayout_3.setObjectName(u"gridLayout_3")
         self.horizontalLayout_25 = QHBoxLayout()
         self.horizontalLayout_25.setObjectName(u"horizontalLayout_25")
         self.lbl_photo_dur_title = QLabel(self.top_group)
         self.lbl_photo_dur_title.setObjectName(u"lbl_photo_dur_title")
+        self.lbl_photo_dur_title.setMinimumSize(QSize(73, 0))
+        self.lbl_photo_dur_title.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_25.addWidget(self.lbl_photo_dur_title)
 
@@ -1132,6 +1192,8 @@ class Ui_MainWindow(object):
         self.spin_photo_dur.setObjectName(u"spin_photo_dur")
         sizePolicy1.setHeightForWidth(self.spin_photo_dur.sizePolicy().hasHeightForWidth())
         self.spin_photo_dur.setSizePolicy(sizePolicy1)
+        self.spin_photo_dur.setMinimumSize(QSize(100, 0))
+        self.spin_photo_dur.setMaximumSize(QSize(16777215, 16777215))
         self.spin_photo_dur.setMinimum(1.000000000000000)
         self.spin_photo_dur.setMaximum(30.000000000000000)
         self.spin_photo_dur.setSingleStep(0.500000000000000)
@@ -1140,23 +1202,22 @@ class Ui_MainWindow(object):
         self.horizontalLayout_25.addWidget(self.spin_photo_dur)
 
 
-        self.gridLayout_7.addLayout(self.horizontalLayout_25, 0, 0, 1, 1)
+        self.gridLayout_3.addLayout(self.horizontalLayout_25, 0, 0, 1, 1)
 
         self.btn_reset_defaults = QPushButton(self.top_group)
         self.btn_reset_defaults.setObjectName(u"btn_reset_defaults")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.btn_reset_defaults.sizePolicy().hasHeightForWidth())
-        self.btn_reset_defaults.setSizePolicy(sizePolicy7)
+        sizePolicy.setHeightForWidth(self.btn_reset_defaults.sizePolicy().hasHeightForWidth())
+        self.btn_reset_defaults.setSizePolicy(sizePolicy)
         self.btn_reset_defaults.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.gridLayout_7.addWidget(self.btn_reset_defaults, 0, 1, 2, 1)
+        self.gridLayout_3.addWidget(self.btn_reset_defaults, 0, 1, 2, 1)
 
         self.horizontalLayout_26 = QHBoxLayout()
         self.horizontalLayout_26.setObjectName(u"horizontalLayout_26")
         self.lbl_caption_size_title = QLabel(self.top_group)
         self.lbl_caption_size_title.setObjectName(u"lbl_caption_size_title")
+        self.lbl_caption_size_title.setMinimumSize(QSize(73, 0))
+        self.lbl_caption_size_title.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_26.addWidget(self.lbl_caption_size_title)
 
@@ -1164,6 +1225,8 @@ class Ui_MainWindow(object):
         self.spin_default_caption_size.setObjectName(u"spin_default_caption_size")
         sizePolicy1.setHeightForWidth(self.spin_default_caption_size.sizePolicy().hasHeightForWidth())
         self.spin_default_caption_size.setSizePolicy(sizePolicy1)
+        self.spin_default_caption_size.setMinimumSize(QSize(100, 0))
+        self.spin_default_caption_size.setMaximumSize(QSize(16777215, 16777215))
         self.spin_default_caption_size.setMinimum(50)
         self.spin_default_caption_size.setMaximum(80)
         self.spin_default_caption_size.setSingleStep(1)
@@ -1172,18 +1235,85 @@ class Ui_MainWindow(object):
         self.horizontalLayout_26.addWidget(self.spin_default_caption_size)
 
 
-        self.gridLayout_7.addLayout(self.horizontalLayout_26, 1, 0, 1, 1)
+        self.gridLayout_3.addLayout(self.horizontalLayout_26, 1, 0, 1, 1)
 
 
-        self.gridLayout_11.addLayout(self.gridLayout_7, 0, 0, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout_3)
 
 
-        self.verticalLayout_24.addWidget(self.top_group)
+        self.gridLayout_6.addLayout(self.verticalLayout, 0, 2, 3, 1)
 
-        self.group_media_list = QGroupBox(self.widget)
+        self.horizontalLayout_22 = QHBoxLayout()
+        self.horizontalLayout_22.setObjectName(u"horizontalLayout_22")
+        self.horizontalLayout_rate_2 = QHBoxLayout()
+        self.horizontalLayout_rate_2.setObjectName(u"horizontalLayout_rate_2")
+        self.lbl_rate = QLabel(self.top_group)
+        self.lbl_rate.setObjectName(u"lbl_rate")
+        sizePolicy.setHeightForWidth(self.lbl_rate.sizePolicy().hasHeightForWidth())
+        self.lbl_rate.setSizePolicy(sizePolicy)
+        self.lbl_rate.setMinimumSize(QSize(85, 0))
+        self.lbl_rate.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.horizontalLayout_rate_2.addWidget(self.lbl_rate)
+
+        self.spin_seconds_per_100km = QSpinBox(self.top_group)
+        self.spin_seconds_per_100km.setObjectName(u"spin_seconds_per_100km")
+        sizePolicy1.setHeightForWidth(self.spin_seconds_per_100km.sizePolicy().hasHeightForWidth())
+        self.spin_seconds_per_100km.setSizePolicy(sizePolicy1)
+        self.spin_seconds_per_100km.setMinimumSize(QSize(0, 0))
+        self.spin_seconds_per_100km.setMinimum(1)
+        self.spin_seconds_per_100km.setMaximum(9999)
+        self.spin_seconds_per_100km.setValue(60)
+
+        self.horizontalLayout_rate_2.addWidget(self.spin_seconds_per_100km)
+
+        self.chk_auto_duration = QCheckBox(self.top_group)
+        self.chk_auto_duration.setObjectName(u"chk_auto_duration")
+        sizePolicy4.setHeightForWidth(self.chk_auto_duration.sizePolicy().hasHeightForWidth())
+        self.chk_auto_duration.setSizePolicy(sizePolicy4)
+
+        self.horizontalLayout_rate_2.addWidget(self.chk_auto_duration)
+
+
+        self.horizontalLayout_22.addLayout(self.horizontalLayout_rate_2)
+
+
+        self.gridLayout_6.addLayout(self.horizontalLayout_22, 1, 0, 1, 1)
+
+        self.line_3 = QFrame(self.top_group)
+        self.line_3.setObjectName(u"line_3")
+        self.line_3.setFrameShape(QFrame.Shape.VLine)
+        self.line_3.setFrameShadow(QFrame.Shadow.Sunken)
+
+        self.gridLayout_6.addWidget(self.line_3, 0, 1, 3, 1)
+
+
+        self.gridLayout_2.addWidget(self.top_group, 0, 0, 1, 1)
+
+        self.preview_group = QGroupBox(self.tab)
+        self.preview_group.setObjectName(u"preview_group")
+        sizePolicy.setHeightForWidth(self.preview_group.sizePolicy().hasHeightForWidth())
+        self.preview_group.setSizePolicy(sizePolicy)
+        self.gridLayout_9 = QGridLayout(self.preview_group)
+        self.gridLayout_9.setObjectName(u"gridLayout_9")
+        self.lbl_preview_image = ClickablePreviewLabel(self.preview_group)
+        self.lbl_preview_image.setObjectName(u"lbl_preview_image")
+        sizePolicy.setHeightForWidth(self.lbl_preview_image.sizePolicy().hasHeightForWidth())
+        self.lbl_preview_image.setSizePolicy(sizePolicy)
+        self.lbl_preview_image.setMinimumSize(QSize(450, 160))
+        self.lbl_preview_image.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.lbl_preview_image.setStyleSheet(u"background-color: #0b0f14; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;")
+        self.lbl_preview_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.gridLayout_9.addWidget(self.lbl_preview_image, 0, 0, 1, 2)
+
+
+        self.gridLayout_2.addWidget(self.preview_group, 0, 1, 2, 1)
+
+        self.group_media_list = QGroupBox(self.tab)
         self.group_media_list.setObjectName(u"group_media_list")
-        sizePolicy2.setHeightForWidth(self.group_media_list.sizePolicy().hasHeightForWidth())
-        self.group_media_list.setSizePolicy(sizePolicy2)
+        sizePolicy.setHeightForWidth(self.group_media_list.sizePolicy().hasHeightForWidth())
+        self.group_media_list.setSizePolicy(sizePolicy)
         self.group_media_list.setMinimumSize(QSize(0, 0))
         self.group_media_list.setMaximumSize(QSize(16777215, 300))
         self.verticalLayout_20 = QVBoxLayout(self.group_media_list)
@@ -1208,6 +1338,7 @@ class Ui_MainWindow(object):
         __qtablewidgetitem7 = QTableWidgetItem()
         self.table.setHorizontalHeaderItem(7, __qtablewidgetitem7)
         self.table.setObjectName(u"table")
+        self.table.setMinimumSize(QSize(0, 0))
         self.table.setMaximumSize(QSize(16777215, 16777215))
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -1238,9 +1369,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_20.addLayout(self.horizontalLayout_7)
 
 
-        self.verticalLayout_24.addWidget(self.group_media_list)
+        self.gridLayout_2.addWidget(self.group_media_list, 1, 0, 1, 1)
 
-        self.groupBox_2 = QGroupBox(self.widget)
+        self.groupBox_2 = QGroupBox(self.tab)
         self.groupBox_2.setObjectName(u"groupBox_2")
         self.groupBox_2.setMinimumSize(QSize(0, 0))
         self.gridLayout = QGridLayout(self.groupBox_2)
@@ -1282,22 +1413,22 @@ class Ui_MainWindow(object):
 
         self.btn_zoom_in = QPushButton(self.groupBox_2)
         self.btn_zoom_in.setObjectName(u"btn_zoom_in")
-        sizePolicy1.setHeightForWidth(self.btn_zoom_in.sizePolicy().hasHeightForWidth())
-        self.btn_zoom_in.setSizePolicy(sizePolicy1)
+        sizePolicy2.setHeightForWidth(self.btn_zoom_in.sizePolicy().hasHeightForWidth())
+        self.btn_zoom_in.setSizePolicy(sizePolicy2)
 
         self.map_toolbar.addWidget(self.btn_zoom_in)
 
         self.btn_zoom_out = QPushButton(self.groupBox_2)
         self.btn_zoom_out.setObjectName(u"btn_zoom_out")
-        sizePolicy1.setHeightForWidth(self.btn_zoom_out.sizePolicy().hasHeightForWidth())
-        self.btn_zoom_out.setSizePolicy(sizePolicy1)
+        sizePolicy2.setHeightForWidth(self.btn_zoom_out.sizePolicy().hasHeightForWidth())
+        self.btn_zoom_out.setSizePolicy(sizePolicy2)
 
         self.map_toolbar.addWidget(self.btn_zoom_out)
 
         self.btn_reset_view = QPushButton(self.groupBox_2)
         self.btn_reset_view.setObjectName(u"btn_reset_view")
-        sizePolicy1.setHeightForWidth(self.btn_reset_view.sizePolicy().hasHeightForWidth())
-        self.btn_reset_view.setSizePolicy(sizePolicy1)
+        sizePolicy2.setHeightForWidth(self.btn_reset_view.sizePolicy().hasHeightForWidth())
+        self.btn_reset_view.setSizePolicy(sizePolicy2)
 
         self.map_toolbar.addWidget(self.btn_reset_view)
 
@@ -1305,118 +1436,12 @@ class Ui_MainWindow(object):
         self.gridLayout.addLayout(self.map_toolbar, 1, 0, 1, 1)
 
 
-        self.verticalLayout_24.addWidget(self.groupBox_2)
+        self.gridLayout_2.addWidget(self.groupBox_2, 2, 0, 1, 1)
 
-        self.splitter.addWidget(self.widget)
-        self.preview_group = QGroupBox(self.splitter)
-        self.preview_group.setObjectName(u"preview_group")
-        sizePolicy2.setHeightForWidth(self.preview_group.sizePolicy().hasHeightForWidth())
-        self.preview_group.setSizePolicy(sizePolicy2)
-        self.verticalLayout = QVBoxLayout(self.preview_group)
-        self.verticalLayout.setObjectName(u"verticalLayout")
-        self.horizontalLayout_preview_map_style = QHBoxLayout()
-        self.horizontalLayout_preview_map_style.setObjectName(u"horizontalLayout_preview_map_style")
-        self.lbl_preview_map_style = QLabel(self.preview_group)
-        self.lbl_preview_map_style.setObjectName(u"lbl_preview_map_style")
-        self.lbl_preview_map_style.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_preview_map_style.addWidget(self.lbl_preview_map_style)
-
-        self.combo_preview_map_style = QComboBox(self.preview_group)
-        self.combo_preview_map_style.setObjectName(u"combo_preview_map_style")
-        self.combo_preview_map_style.setMinimumSize(QSize(210, 0))
-
-        self.horizontalLayout_preview_map_style.addWidget(self.combo_preview_map_style)
-
-        self.horizontalSpacer_preview_map = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_preview_map_style.addItem(self.horizontalSpacer_preview_map)
-
-
-        self.verticalLayout.addLayout(self.horizontalLayout_preview_map_style)
-
-        self.horizontalLayout_preview_camera = QHBoxLayout()
-        self.horizontalLayout_preview_camera.setObjectName(u"horizontalLayout_preview_camera")
-        self.lbl_preview_camera_mode = QLabel(self.preview_group)
-        self.lbl_preview_camera_mode.setObjectName(u"lbl_preview_camera_mode")
-        self.lbl_preview_camera_mode.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_preview_camera.addWidget(self.lbl_preview_camera_mode)
-
-        self.combo_preview_camera_mode = QComboBox(self.preview_group)
-        self.combo_preview_camera_mode.setObjectName(u"combo_preview_camera_mode")
-        self.combo_preview_camera_mode.setMinimumSize(QSize(210, 0))
-
-        self.horizontalLayout_preview_camera.addWidget(self.combo_preview_camera_mode)
-
-        self.horizontalSpacer_preview_cam = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_preview_camera.addItem(self.horizontalSpacer_preview_cam)
-
-
-        self.verticalLayout.addLayout(self.horizontalLayout_preview_camera)
-
-        self.horizontalLayout_preview_res = QHBoxLayout()
-        self.horizontalLayout_preview_res.setObjectName(u"horizontalLayout_preview_res")
-        self.lbl_preview_resolution = QLabel(self.preview_group)
-        self.lbl_preview_resolution.setObjectName(u"lbl_preview_resolution")
-        self.lbl_preview_resolution.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_preview_res.addWidget(self.lbl_preview_resolution)
-
-        self.combo_preview_resolution = QComboBox(self.preview_group)
-        self.combo_preview_resolution.setObjectName(u"combo_preview_resolution")
-        self.combo_preview_resolution.setMinimumSize(QSize(210, 0))
-
-        self.horizontalLayout_preview_res.addWidget(self.combo_preview_resolution)
-
-        self.horizontalSpacer_preview_res = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_preview_res.addItem(self.horizontalSpacer_preview_res)
-
-
-        self.verticalLayout.addLayout(self.horizontalLayout_preview_res)
-
-        self.horizontalLayout_panels_2 = QHBoxLayout()
-        self.horizontalLayout_panels_2.setObjectName(u"horizontalLayout_panels_2")
-        self.lbl_panels_2 = QLabel(self.preview_group)
-        self.lbl_panels_2.setObjectName(u"lbl_panels_2")
-        self.lbl_panels_2.setMinimumSize(QSize(65, 0))
-
-        self.horizontalLayout_panels_2.addWidget(self.lbl_panels_2)
-
-        self.combo_hud_panels = CheckableComboBox(self.preview_group)
-        self.combo_hud_panels.setObjectName(u"combo_hud_panels")
-        self.combo_hud_panels.setMinimumSize(QSize(210, 0))
-
-        self.horizontalLayout_panels_2.addWidget(self.combo_hud_panels)
-
-        self.horizontalSpacer_11 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_panels_2.addItem(self.horizontalSpacer_11)
-
-
-        self.verticalLayout.addLayout(self.horizontalLayout_panels_2)
-
-        self.lbl_preview_image = ClickablePreviewLabel(self.preview_group)
-        self.lbl_preview_image.setObjectName(u"lbl_preview_image")
-        sizePolicy.setHeightForWidth(self.lbl_preview_image.sizePolicy().hasHeightForWidth())
-        self.lbl_preview_image.setSizePolicy(sizePolicy)
-        self.lbl_preview_image.setMinimumSize(QSize(0, 160))
-        self.lbl_preview_image.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.lbl_preview_image.setStyleSheet(u"background-color: #0b0f14; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;")
-        self.lbl_preview_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.verticalLayout.addWidget(self.lbl_preview_image)
-
-        self.verticalSpacer_4 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.verticalLayout.addItem(self.verticalSpacer_4)
-
-        self.info_group = QGroupBox(self.preview_group)
+        self.info_group = QGroupBox(self.tab)
         self.info_group.setObjectName(u"info_group")
-        sizePolicy1.setHeightForWidth(self.info_group.sizePolicy().hasHeightForWidth())
-        self.info_group.setSizePolicy(sizePolicy1)
+        sizePolicy.setHeightForWidth(self.info_group.sizePolicy().hasHeightForWidth())
+        self.info_group.setSizePolicy(sizePolicy)
         self.info_group.setMinimumSize(QSize(0, 0))
         self.verticalLayout_21 = QVBoxLayout(self.info_group)
         self.verticalLayout_21.setObjectName(u"verticalLayout_21")
@@ -1522,22 +1547,18 @@ class Ui_MainWindow(object):
         self.verticalLayout_21.addLayout(self.horizontalLayout_20)
 
 
-        self.verticalLayout.addWidget(self.info_group)
-
-        self.splitter.addWidget(self.preview_group)
-
-        self.gridLayout_3.addWidget(self.splitter, 0, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.info_group, 2, 1, 1, 1)
 
         self.tabWidget.addTab(self.tab, "")
 
-        self.gridLayout_10.addWidget(self.tabWidget, 1, 0, 1, 1)
+        self.gridLayout_10.addWidget(self.tabWidget, 0, 0, 1, 1)
 
         self.horizontalLayout_actions = QHBoxLayout()
         self.horizontalLayout_actions.setObjectName(u"horizontalLayout_actions")
         self.btn_start_render = QPushButton(self.centralwidget)
         self.btn_start_render.setObjectName(u"btn_start_render")
-        sizePolicy1.setHeightForWidth(self.btn_start_render.sizePolicy().hasHeightForWidth())
-        self.btn_start_render.setSizePolicy(sizePolicy1)
+        sizePolicy2.setHeightForWidth(self.btn_start_render.sizePolicy().hasHeightForWidth())
+        self.btn_start_render.setSizePolicy(sizePolicy2)
         self.btn_start_render.setMinimumSize(QSize(0, 0))
         font1 = QFont()
         font1.setPointSize(12)
@@ -1548,20 +1569,20 @@ class Ui_MainWindow(object):
         self.btn_stop_render = QPushButton(self.centralwidget)
         self.btn_stop_render.setObjectName(u"btn_stop_render")
         self.btn_stop_render.setEnabled(False)
-        sizePolicy1.setHeightForWidth(self.btn_stop_render.sizePolicy().hasHeightForWidth())
-        self.btn_stop_render.setSizePolicy(sizePolicy1)
+        sizePolicy2.setHeightForWidth(self.btn_stop_render.sizePolicy().hasHeightForWidth())
+        self.btn_stop_render.setSizePolicy(sizePolicy2)
         self.btn_stop_render.setMinimumSize(QSize(0, 0))
         self.btn_stop_render.setFont(font1)
 
         self.horizontalLayout_actions.addWidget(self.btn_stop_render)
 
 
-        self.gridLayout_10.addLayout(self.horizontalLayout_actions, 2, 0, 1, 1)
+        self.gridLayout_10.addLayout(self.horizontalLayout_actions, 1, 0, 1, 1)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1186, 33))
+        self.menubar.setGeometry(QRect(0, 0, 1249, 33))
         self.menu_file = QMenu(self.menubar)
         self.menu_file.setObjectName(u"menu_file")
         self.menu_edit = QMenu(self.menubar)
@@ -1690,7 +1711,7 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"GPX Ride Renderer V1.3.5", None))
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"GPX Ride Renderer V1.4.0", None))
         self.action_open_gpx.setText(QCoreApplication.translate("MainWindow", u"\u9078\u64c7 GPX \u6a94\u6848...", None))
 #if QT_CONFIG(tooltip)
         self.action_open_gpx.setToolTip(QCoreApplication.translate("MainWindow", u"\u9078\u64c7\u6b32\u6e32\u67d3\u7684 GPX \u8ecc\u8de1\u8def\u5f91\u6a94\u6848 (.gpx) [Ctrl+O]", None))
@@ -1826,12 +1847,12 @@ class Ui_MainWindow(object):
         self.action_custom_resolution.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u8a02\u756b\u9762\u89e3\u6790\u5ea6 (\u5bec \u00d7 \u9ad8)...", None))
         self.action_advanced_settings.setText(QCoreApplication.translate("MainWindow", u"\u9032\u968e\u6e32\u67d3\u53c3\u6578\u8a73\u7d30\u8a2d\u5b9a...", None))
         self.groupBox_files.setTitle(QCoreApplication.translate("MainWindow", u"\u6a94\u6848", None))
-        self.lbl_gpx.setText(QCoreApplication.translate("MainWindow", u"GPX \u6a94\u6848", None))
+        self.lbl_gpx.setText(QCoreApplication.translate("MainWindow", u"GPX \u6a94\u6848\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.lineEdit_gpx.setToolTip(QCoreApplication.translate("MainWindow", u"\u9078\u64c7\u6b32\u6e32\u67d3\u7684 GPX \u8ecc\u8de1\u8def\u5f91\u6a94\u6848 (.gpx)", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_browse_gpx.setText(QCoreApplication.translate("MainWindow", u"\u700f\u89bd\u2026", None))
-        self.lbl_output.setText(QCoreApplication.translate("MainWindow", u"\u8f38\u51fa\u5f71\u7247", None))
+        self.lbl_output.setText(QCoreApplication.translate("MainWindow", u"\u8f38\u51fa\u5f71\u7247\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.lineEdit_output.setToolTip(QCoreApplication.translate("MainWindow", u"\u6307\u5b9a\u8f38\u51fa\u7684 MP4 \u5f71\u7247\u6a94\u540d\u8207\u8cc7\u6599\u593e\u8def\u5f91", None))
 #endif // QT_CONFIG(tooltip)
@@ -1839,17 +1860,34 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.lbl_media.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u5305\u542b\u7167\u7247\u6216\u5f71\u7247\u7684\u8cc7\u6599\u593e\u6216\u6a94\u6848\u3002\u7a0b\u5f0f\u6703\u81ea\u52d5\u8b80\u53d6 EXIF \u6642\u9593\u8207 GPS \u5ea7\u6a19\u9ede\u63d2\u5165\u6642\u9593\u8ef8\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_media.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u5a92\u9ad4", None))
+        self.lbl_media.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u5a92\u9ad4\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.lineEdit_media.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u5305\u542b\u7167\u7247\u6216\u5f71\u7247\u7684\u8cc7\u6599\u593e\u6216\u6a94\u6848\u3002\u7a0b\u5f0f\u6703\u81ea\u52d5\u8b80\u53d6 EXIF \u6642\u9593\u8207 GPS \u5ea7\u6a19\u9ede\u63d2\u5165\u6642\u9593\u8ef8\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_browse_media.setText(QCoreApplication.translate("MainWindow", u"\u700f\u89bd\u2026", None))
         self.btn_media_dialog.setText(QCoreApplication.translate("MainWindow", u"\u5a92\u9ad4\u7ba1\u7406", None))
+        self.groupBox_summary.setTitle(QCoreApplication.translate("MainWindow", u"\u8a2d\u5b9a\u6458\u8981", None))
+        self.label_cfg_res.setText(QCoreApplication.translate("MainWindow", u"\u756b\u9762\u898f\u683c: 1440x1440 @ 60 FPS (\u81ea\u52d5\u6642\u9577 20.0s)", None))
+        self.label_cfg_map.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u8996\u89d2: \u98a8\u683c [1] | North-Up | Zoom: 17", None))
+        self.label_cfg_enc.setText(QCoreApplication.translate("MainWindow", u"\u7de8\u78bc\u8a2d\u5b9a: NVENC 30M (preset: p5) | \u7121\u5a92\u9ad4 Overlay", None))
+        self.label_cfg_perf.setText(QCoreApplication.translate("MainWindow", u"\u6548\u80fd\u6a21\u5f0f: \u591a\u7a0b\u5e8f (6 Workers \u00d7 4 chunks) | \u505c\u7528 Cache", None))
         self.groupBox_settings_2.setTitle(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u8a2d\u5b9a", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_resolution_2.setText(QCoreApplication.translate("MainWindow", u"\u89e3\u6790\u5ea6\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.combo_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.label.setText(QCoreApplication.translate("MainWindow", u"/", None))
+#if QT_CONFIG(tooltip)
+        self.spin_fps.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u8a2d\u5b9a\u8f38\u51fa\u5f71\u7247\u6bcf\u79d2\u5305\u542b\u591a\u5c11\u5e40\uff08\u9810\u8a2d 60 FPS\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.spin_fps.setSuffix(QCoreApplication.translate("MainWindow", u" FPS", None))
 #if QT_CONFIG(tooltip)
         self.lbl_profile_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e00\u6b21\u5957\u7528\u4e00\u7d44\u89e3\u6790\u5ea6\u3001Local Zoom\u3001bitrate\u3001NVENC preset\u3001Workers \u8207 Chunks/Worker\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_profile_2.setText(QCoreApplication.translate("MainWindow", u"\u9810\u8a2d\u6a21\u5f0f", None))
+        self.lbl_profile_2.setText(QCoreApplication.translate("MainWindow", u"\u9810\u8a2d\u6a21\u5f0f\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.combo_profile_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e00\u6b21\u5957\u7528\u4e00\u7d44\u89e3\u6790\u5ea6\u3001Local Zoom\u3001bitrate\u3001NVENC preset\u3001Workers \u8207 Chunks/Worker\u3002", None))
 #endif // QT_CONFIG(tooltip)
@@ -1857,7 +1895,9 @@ class Ui_MainWindow(object):
         self.lbl_map_style_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
 "\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_map_style_2.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u98a8\u683c", None))
+        self.lbl_map_style_2.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u98a8\u683c\uff1a", None))
+        self.combo_map_style_2.setItemText(0, QCoreApplication.translate("MainWindow", u"4. \u885b\u661f\u5f71\u8c61 (\u5be6\u666f\u7a7a\u62cd)", None))
+
 #if QT_CONFIG(tooltip)
         self.combo_map_style_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
 "\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
@@ -1868,7 +1908,7 @@ class Ui_MainWindow(object):
 "\u2022 \u8ddf\u96a8\u884c\u9032\u65b9\u5411 (Heading-Up)\n"
 "\u2022 3D \u771f\u5730\u5f62 (3D-Terrain)", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_camera_mode_2.setText(QCoreApplication.translate("MainWindow", u"\u8996\u89d2\u6a21\u5f0f", None))
+        self.lbl_camera_mode_2.setText(QCoreApplication.translate("MainWindow", u"\u8996\u89d2\u6a21\u5f0f\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.combo_camera_mode_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u8def\u7dda\u52d5\u756b\u7684\u93e1\u982d\u8996\u89d2\u671d\u5411\u8207 3D \u5730\u5f62\u900f\u8996\u3002\n"
 "\u2022 \u6b63\u5317\u671d\u4e0a (North-Up)\n"
@@ -1881,7 +1921,7 @@ class Ui_MainWindow(object):
 "\u2022 \u4eae\u7da0\u3001\u9ec3\u3001\u7d05\u55ae\u8272\n"
 "\u2022 \u9a0e\u4e58\u901f\u5ea6\u6f38\u5c64", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_track_color_2.setText(QCoreApplication.translate("MainWindow", u"\u8ecc\u8de1\u984f\u8272", None))
+        self.lbl_track_color_2.setText(QCoreApplication.translate("MainWindow", u"\u8ecc\u8de1\u984f\u8272\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.combo_track_color_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u756b\u9762\u8ecc\u8de1\u7dda\u689d\u8207\u5347\u964d\u5f69\u5e36\u7684\u914d\u8272\u98a8\u683c\u3002\n"
 "\u2022 \u6d77\u62d4\u52d5\u614b\u6f38\u5c64\n"
@@ -1891,29 +1931,27 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.lbl_local_zoom.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u4e3b\u52d5\u756b\u5c40\u90e8\u5e95\u5716\u4e0b\u8f09\u7684\u5730\u5716\u7e2e\u653e\u5c64\u7d1a\uff08\u9810\u8a2d 17 \u6216 auto\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_local_zoom.setText(QCoreApplication.translate("MainWindow", u"Local Zoom", None))
+        self.lbl_local_zoom.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u5c64\u7d1a\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.combo_local_zoom.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u4e3b\u52d5\u756b\u5c40\u90e8\u5e95\u5716\u4e0b\u8f09\u7684\u5730\u5716\u7e2e\u653e\u5c64\u7d1a\uff08\u9810\u8a2d 17 \u6216 auto\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
-        self.lbl_view_margin.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u52d5\u756b\u93e1\u982d\u5728\u6469\u6258\u8eca\u4f4d\u7f6e\u5468\u570d\u4e00\u6b21\u770b\u591a\u5927\u7684\u5be6\u969b\u5730\u7406\u7bc4\u570d\uff08\u516c\u5c3a\uff0c\u9810\u8a2d 1600\uff09\u3002", None))
+        self.lbl_view_margin.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u52d5\u756b\u93e1\u982d\u5728\u6469\u6258\u8eca\u4f4d\u7f6e\u5468\u570d\u4e00\u6b21\u770b\u591a\u5927\u7684\u5be6\u969b\u5730\u7406\u7bc4\u570d\uff08\u516c\u5c3a\uff0c\u9810\u8a2d800\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_view_margin.setText(QCoreApplication.translate("MainWindow", u"View Margin", None))
+        self.lbl_view_margin.setText(QCoreApplication.translate("MainWindow", u"\u8996\u89d2\u8ddd\u96e2\uff1a", None))
 #if QT_CONFIG(tooltip)
-        self.lineEdit_view_margin.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u52d5\u756b\u93e1\u982d\u5728\u6469\u6258\u8eca\u4f4d\u7f6e\u5468\u570d\u4e00\u6b21\u770b\u591a\u5927\u7684\u5be6\u969b\u5730\u7406\u7bc4\u570d\uff08\u516c\u5c3a\uff0c\u9810\u8a2d 1600\uff09\u3002", None))
+        self.lineEdit_view_margin.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u52d5\u756b\u93e1\u982d\u5728\u6469\u6258\u8eca\u4f4d\u7f6e\u5468\u570d\u4e00\u6b21\u770b\u591a\u5927\u7684\u5be6\u969b\u5730\u7406\u7bc4\u570d\uff08\u516c\u5c3a\uff0c\u9810\u8a2d 800\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.lineEdit_view_margin.setText(QCoreApplication.translate("MainWindow", u"800", None))
 #if QT_CONFIG(tooltip)
-        self.lbl_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
+        self.lbl_hide_privacy.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u52d5\u756b\u524d\u6bb5\u96b1\u85cf\u7684 GPX \u8ecc\u8de1\u8ddd\u96e2 (0~50 km)\uff0c\u4fdd\u8b77\u8d77\u9ede\u96b1\u79c1\u3002", None))
 #endif // QT_CONFIG(tooltip)
-        self.lbl_resolution_2.setText(QCoreApplication.translate("MainWindow", u"\u89e3\u6790\u5ea6/FPS", None))
-#if QT_CONFIG(tooltip)
-        self.combo_resolution_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.label.setText(QCoreApplication.translate("MainWindow", u"/", None))
-#if QT_CONFIG(tooltip)
-        self.spin_fps.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u8a2d\u5b9a\u8f38\u51fa\u5f71\u7247\u6bcf\u79d2\u5305\u542b\u591a\u5c11\u5e40\uff08\u9810\u8a2d 60 FPS\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
+        self.lbl_hide_privacy.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u96b1\u85cf\uff1a", None))
+        self.spin_hide_start.setPrefix(QCoreApplication.translate("MainWindow", u"\u8d77\u9ede ", None))
+        self.spin_hide_start.setSuffix(QCoreApplication.translate("MainWindow", u" k", None))
+        self.lbl_hide_end_3.setText(QCoreApplication.translate("MainWindow", u"/", None))
+        self.spin_hide_end.setPrefix(QCoreApplication.translate("MainWindow", u"\u7d42\u9ede ", None))
+        self.spin_hide_end.setSuffix(QCoreApplication.translate("MainWindow", u" k", None))
 #if QT_CONFIG(tooltip)
         self.chk_dynamic_speed_zoom.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6839\u64da\u7576\u524d GPX \u9a0e\u4e58\u901f\u5ea6\u52d5\u614b\u7e2e\u653e\u93e1\u982d\uff08\u9ad8\u901f\u62c9\u9060\u3001\u4f4e\u901f\u62c9\u8fd1\uff09\uff0c\u5982\u540c\u8eca\u7528\u5c0e\u822a\u8996\u89ba\u6548\u679c\u3002", None))
 #endif // QT_CONFIG(tooltip)
@@ -1922,11 +1960,10 @@ class Ui_MainWindow(object):
         self.chk_real_speed_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u9a0e\u4e58\u52d5\u756b\u5728\u8def\u7dda\u4e0a\u7684\u79fb\u52d5\u901f\u5ea6\u6a21\u5f0f\uff08\u7b49\u901f vs \u5be6\u969b GPS \u901f\u5ea6\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.chk_real_speed_2.setText(QCoreApplication.translate("MainWindow", u"\u8ddf\u96a8 GPX \u5be6\u969b\u901f\u5ea6", None))
-        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"\u9032\u968e\u8a2d\u5b9a", None))
-        self.label_2.setText(QCoreApplication.translate("MainWindow", u"\u5feb\u53d6\u4fdd\u5b58\u65b9\u5f0f", None))
 #if QT_CONFIG(tooltip)
         self.combo_cache_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5207\u63db\u5e95\u5716\u78c1\u789f\u5feb\u53d6\u6a21\u5f0f\u3002\u81ea\u52d5\u66ab\u5b58\u6a21\u5f0f\u65bc\u95dc\u9589\u7a0b\u5f0f\u6642\u6e05\u9664\uff1b\u6c38\u4e45\u4fdd\u7559\u6a21\u5f0f\u5247\u4fdd\u7559\u4ee5\u52a0\u901f\u65e5\u5f8c\u6e32\u67d3\u3002", None))
 #endif // QT_CONFIG(tooltip)
+        self.combo_cache_mode.setPlaceholderText(QCoreApplication.translate("MainWindow", u"\u5feb\u53d6\u4fdd\u5b58\u65b9\u5f0f", None))
         self.lbl_cache_size.setText(QCoreApplication.translate("MainWindow", u"0.0 MB", None))
         self.btn_clear_cache.setText(QCoreApplication.translate("MainWindow", u"\u6e05\u9664\u5feb\u53d6", None))
 #if QT_CONFIG(tooltip)
@@ -1938,59 +1975,8 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.label_autotune_result.setText(QCoreApplication.translate("MainWindow", u"\u5c1a\u672a\u6e2c\u8a66", None))
         self.btn_apply_benchmark.setText(QCoreApplication.translate("MainWindow", u"\u5957\u7528\u5efa\u8b70", None))
-#if QT_CONFIG(tooltip)
-        self.chk_auto_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4f9d GPX \u7e3d\u8ddd\u96e2\u81ea\u52d5\u8a08\u7b97\u4e3b\u52d5\u756b\u9577\u5ea6\uff0c\u8b93\u4e0d\u540c\u9577\u5ea6\u7684\u9a0e\u4e58\u8def\u7dda\u4fdd\u6301\u76f8\u8fd1\u7bc0\u594f\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.chk_auto_duration.setText("")
-#if QT_CONFIG(tooltip)
-        self.lbl_rate.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u81ea\u52d5\u6642\u9577\u7684\u7bc0\u594f\u500d\u7387\u3002\u516c\u5f0f\u7d04\u70ba\uff1a\u8ddd\u96e2 km \u00f7 100 \u00d7 \u6b64\u6578\u503c\uff08\u9810\u8a2d 60 \u79d2/100km\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_rate.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u52d5\u6642\u9577\u500d\u7387", None))
-        self.lbl_rate_unit.setText(QCoreApplication.translate("MainWindow", u"\u79d2 / 100km", None))
-#if QT_CONFIG(tooltip)
-        self.label_distance_info.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4f9d GPX \u7e3d\u8ddd\u96e2\u81ea\u52d5\u8a08\u7b97\u4e3b\u52d5\u756b\u9577\u5ea6\uff0c\u8b93\u4e0d\u540c\u9577\u5ea6\u7684\u9a0e\u4e58\u8def\u7dda\u4fdd\u6301\u76f8\u8fd1\u7bc0\u594f\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.label_distance_info.setText(QCoreApplication.translate("MainWindow", u"GPX \u8ddd\u96e2\uff1a-- km (\u81ea\u52d5\u6642\u9577 --s)", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_hide_privacy.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u4e3b\u52d5\u756b\u524d\u6bb5\u96b1\u85cf\u7684 GPX \u8ecc\u8de1\u8ddd\u96e2 (0~50 km)\uff0c\u4fdd\u8b77\u8d77\u9ede\u96b1\u79c1\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_hide_privacy.setText(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u96b1\u85cf", None))
-        self.lbl_hide_start.setText(QCoreApplication.translate("MainWindow", u"\u8d77\u9ede", None))
-        self.lbl_hide_end.setText(QCoreApplication.translate("MainWindow", u"k", None))
-        self.lbl_hide_end_3.setText(QCoreApplication.translate("MainWindow", u" | ", None))
-        self.lbl_hide_end_4.setText(QCoreApplication.translate("MainWindow", u"\u7d42\u9ede", None))
-        self.lbl_hide_unit.setText(QCoreApplication.translate("MainWindow", u"k", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u6469\u6258\u8eca\u6cbf GPX \u8def\u5f91\u64ad\u653e\u7684\u4e3b\u52d5\u756b\u9577\u5ea6\uff08\u79d2\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_duration.setText(QCoreApplication.translate("MainWindow", u"\u4e3b\u52d5\u756b\u79d2\u6578", None))
-#if QT_CONFIG(tooltip)
-        self.lineEdit_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u6469\u6258\u8eca\u6cbf GPX \u8def\u5f91\u64ad\u653e\u7684\u4e3b\u52d5\u756b\u9577\u5ea6\uff08\u79d2\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lineEdit_duration.setText("")
-#if QT_CONFIG(tooltip)
-        self.lbl_end_hold.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5b8c\u6574\u8def\u5f91\u8207 RIDE STATS \u51fa\u73fe\u5f8c\uff0c\u756b\u9762\u7dad\u6301\u591a\u4e45\u518d\u7d50\u675f\u5f71\u7247\uff08\u79d2\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_end_hold.setText(QCoreApplication.translate("MainWindow", u"\u7d50\u5c3e\u505c\u7559\u79d2", None))
-#if QT_CONFIG(tooltip)
-        self.lineEdit_end_hold.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5b8c\u6574\u8def\u5f91\u8207 RIDE STATS \u51fa\u73fe\u5f8c\uff0c\u756b\u9762\u7dad\u6301\u591a\u4e45\u518d\u7d50\u675f\u5f71\u7247\uff08\u79d2\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lineEdit_end_hold.setText(QCoreApplication.translate("MainWindow", u"4.0", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_zoomout.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e3b\u52d5\u756b\u8dd1\u5b8c\u5f8c\uff0c\u93e1\u982d\u5f9e\u5c40\u90e8\u8996\u89d2\u62c9\u9060\u5230\u5b8c\u6574\u8def\u7dda overview \u6240\u82b1\u7684\u6642\u9593\uff08\u79d2\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_zoomout.setText(QCoreApplication.translate("MainWindow", u"Zoom-out \u79d2", None))
-#if QT_CONFIG(tooltip)
-        self.lineEdit_zoomout.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e3b\u52d5\u756b\u8dd1\u5b8c\u5f8c\uff0c\u93e1\u982d\u5f9e\u5c40\u90e8\u8996\u89d2\u62c9\u9060\u5230\u5b8c\u6574\u8def\u7dda overview \u6240\u82b1\u7684\u6642\u9593\uff08\u79d2\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lineEdit_zoomout.setText(QCoreApplication.translate("MainWindow", u"2.5", None))
-        self.groupBox_summary.setTitle(QCoreApplication.translate("MainWindow", u"\u8a2d\u5b9a\u6458\u8981", None))
-        self.label_cfg_res.setText(QCoreApplication.translate("MainWindow", u"\u756b\u9762\u898f\u683c: 1440x1440 @ 60 FPS (\u81ea\u52d5\u6642\u9577 20.0s)", None))
-        self.label_cfg_map.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u8996\u89d2: \u98a8\u683c [1] | North-Up | Zoom: 17", None))
-        self.label_cfg_enc.setText(QCoreApplication.translate("MainWindow", u"\u7de8\u78bc\u8a2d\u5b9a: NVENC 30M (preset: p5) | \u7121\u5a92\u9ad4 Overlay", None))
-        self.label_cfg_perf.setText(QCoreApplication.translate("MainWindow", u"\u6548\u80fd\u6a21\u5f0f: \u591a\u7a0b\u5e8f (6 Workers \u00d7 4 chunks) | \u505c\u7528 Cache", None))
         self.groupBox_workers.setTitle(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u9032\u5ea6", None))
-        self.label_eta_elapsed.setText(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u8a08\u6642: 00:00:00", None))
+        self.label_eta_elapsed.setText(QCoreApplication.translate("MainWindow", u"\u7d93\u904e\u6642\u9593: 00:00:00", None))
         self.label_eta_time.setText(QCoreApplication.translate("MainWindow", u"\u9810\u4f30\u5269\u9918\u6642\u9593: --", None))
         self.label_eta_clock.setText(QCoreApplication.translate("MainWindow", u"\u9810\u8a08\u5b8c\u6210\u6642\u523b: --:--:--", None))
         self.label_eta_frames.setText(QCoreApplication.translate("MainWindow", u"\u5df2\u5b8c\u6210\u5e40\u6578: 0 / 0", None))
@@ -2009,17 +1995,97 @@ class Ui_MainWindow(object):
         self.lbl_worker_status_6.setText(QCoreApplication.translate("MainWindow", u"\u5f85\u547d", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_general), QCoreApplication.translate("MainWindow", u"\u8a2d\u5b9a", None))
         self.top_group.setTitle(QCoreApplication.translate("MainWindow", u" \u5a92\u9ad4\u64ad\u653e\u8207\u8aaa\u660e\u8a2d\u5b9a ", None))
-        self.lbl_photo_dur_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4f7 \U000076f8\U00007247\U00009810\U00008a2d\U0000505c\U00007559\U0000ff1a", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_preview_resolution.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_preview_resolution.setText(QCoreApplication.translate("MainWindow", u"\u89e3\u6790\u5ea6\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.combo_preview_resolution.setToolTip(QCoreApplication.translate("MainWindow", u"\u5207\u63db\u9810\u89bd\u7684\u52d5\u756b\u9577\u5bec\u6bd4\u4f8b\u8207\u89e3\u6790\u5ea6\uff0c\u5373\u6642\u6aa2\u8996\u4e0d\u540c\u87a2\u5e55\u5c3a\u5bf8\u4e0b\u7684\u7167\u7247\u8207\u6587\u5b57\u6392\u7248", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.lbl_preview_map_style.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
+"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_preview_map_style.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u98a8\u683c\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.combo_preview_map_style.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
+"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.lbl_preview_camera_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u8def\u7dda\u52d5\u756b\u7684\u93e1\u982d\u8996\u89d2\u671d\u5411\u8207 3D \u5730\u5f62\u900f\u8996\u3002\n"
+"\u2022 \u6b63\u5317\u671d\u4e0a (North-Up)\n"
+"\u2022 \u8ddf\u96a8\u884c\u9032\u65b9\u5411 (Heading-Up)\n"
+"\u2022 3D \u771f\u5730\u5f62 (3D-Terrain)", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_preview_camera_mode.setText(QCoreApplication.translate("MainWindow", u"\u8996\u89d2\u6a21\u5f0f\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.combo_preview_camera_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u8def\u7dda\u52d5\u756b\u7684\u93e1\u982d\u8996\u89d2\u671d\u5411\u8207 3D \u5730\u5f62\u900f\u8996\u3002\n"
+"\u2022 \u6b63\u5317\u671d\u4e0a (North-Up)\n"
+"\u2022 \u8ddf\u96a8\u884c\u9032\u65b9\u5411 (Heading-Up)\n"
+"\u2022 3D \u771f\u5730\u5f62 (3D-Terrain)", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.lbl_panels_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u662f\u5426\u5728\u52d5\u756b\u4e3b\u756b\u9762\u4e2d\u986f\u793a\u901f\u5ea6\u5100\u8868\u3001\u8def\u7dda\u7e2e\u5716\u6216\u6d77\u62d4\u9ad8\u5ea6\u5256\u9762\u5716\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_panels_2.setText(QCoreApplication.translate("MainWindow", u"\u8cc7\u8a0a\u9762\u677f\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.combo_hud_panels.setToolTip(QCoreApplication.translate("MainWindow", u"\u9ede\u64ca\u53ef\u8907\u9078\u6216\u53d6\u6d88\u8981\u5728\u9810\u89bd\u756b\u9762\u8207\u8f38\u51fa\u5f71\u7247\u4e2d\u986f\u793a\u7684\u8cc7\u8a0a\u9762\u677f", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.label_distance_info.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4f9d GPX \u7e3d\u8ddd\u96e2\u81ea\u52d5\u8a08\u7b97\u4e3b\u52d5\u756b\u9577\u5ea6\uff0c\u8b93\u4e0d\u540c\u9577\u5ea6\u7684\u9a0e\u4e58\u8def\u7dda\u4fdd\u6301\u76f8\u8fd1\u7bc0\u594f\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_distance_info.setText(QCoreApplication.translate("MainWindow", u"GPX \u8ddd\u96e2\uff1a-- km (\u81ea\u52d5\u6642\u9577 --s)", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u6469\u6258\u8eca\u6cbf GPX \u8def\u5f91\u64ad\u653e\u7684\u4e3b\u52d5\u756b\u9577\u5ea6\uff08\u79d2\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_duration.setText(QCoreApplication.translate("MainWindow", u"\u4e3b\u52d5\u756b\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.lineEdit_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u6469\u6258\u8eca\u6cbf GPX \u8def\u5f91\u64ad\u653e\u7684\u4e3b\u52d5\u756b\u9577\u5ea6\uff08\u79d2\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lineEdit_duration.setText("")
+#if QT_CONFIG(tooltip)
+        self.lbl_end_hold.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5b8c\u6574\u8def\u5f91\u8207 RIDE STATS \u51fa\u73fe\u5f8c\uff0c\u756b\u9762\u7dad\u6301\u591a\u4e45\u518d\u7d50\u675f\u5f71\u7247\uff08\u79d2\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_end_hold.setText(QCoreApplication.translate("MainWindow", u"\u7d50\u5c3e\u505c\u7559\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.lineEdit_end_hold.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5b8c\u6574\u8def\u5f91\u8207 RIDE STATS \u51fa\u73fe\u5f8c\uff0c\u756b\u9762\u7dad\u6301\u591a\u4e45\u518d\u7d50\u675f\u5f71\u7247\uff08\u79d2\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lineEdit_end_hold.setInputMask("")
+        self.lineEdit_end_hold.setText("")
+#if QT_CONFIG(tooltip)
+        self.lbl_zoomout.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e3b\u52d5\u756b\u8dd1\u5b8c\u5f8c\uff0c\u93e1\u982d\u5f9e\u5c40\u90e8\u8996\u89d2\u62c9\u9060\u5230\u5b8c\u6574\u8def\u7dda overview \u6240\u82b1\u7684\u6642\u9593\uff08\u79d2\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_zoomout.setText(QCoreApplication.translate("MainWindow", u"Zoom-out\uff1a", None))
+#if QT_CONFIG(tooltip)
+        self.lineEdit_zoomout.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4e3b\u52d5\u756b\u8dd1\u5b8c\u5f8c\uff0c\u93e1\u982d\u5f9e\u5c40\u90e8\u8996\u89d2\u62c9\u9060\u5230\u5b8c\u6574\u8def\u7dda overview \u6240\u82b1\u7684\u6642\u9593\uff08\u79d2\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lineEdit_zoomout.setText(QCoreApplication.translate("MainWindow", u"2.5", None))
+        self.lbl_photo_dur_title.setText(QCoreApplication.translate("MainWindow", u"\u5a92\u9ad4\u505c\u7559\uff1a", None))
         self.spin_photo_dur.setSuffix(QCoreApplication.translate("MainWindow", u" \u79d2", None))
 #if QT_CONFIG(tooltip)
         self.btn_reset_defaults.setToolTip(QCoreApplication.translate("MainWindow", u"\u5c07\u6240\u6709\u7167\u7247\u8a2d\u70ba\u9810\u8a2d\u505c\u7559\u79d2\u6578\u8207\u9810\u8a2d\u8aaa\u660e\u5b57\u7d1a\uff0c\u6240\u6709\u5f71\u7247\u9084\u539f\u70ba\u539f\u59cb\u7247\u9577", None))
 #endif // QT_CONFIG(tooltip)
-        self.btn_reset_defaults.setText(QCoreApplication.translate("MainWindow", u"\u26a1 \u4e00\u9375\u5957\u7528\u9810\u8a2d\u503c (\u505c\u7559/\u5b57\u7d1a)", None))
-        self.lbl_caption_size_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f524 \U00008aaa\U0000660e\U00009810\U00008a2d\U00005b57\U00007d1a\U0000ff1a", None))
+        self.btn_reset_defaults.setText(QCoreApplication.translate("MainWindow", u"\u5168\u90e8\u5957\u7528", None))
+        self.lbl_caption_size_title.setText(QCoreApplication.translate("MainWindow", u"\u6587\u5b57\u5927\u5c0f\uff1a", None))
 #if QT_CONFIG(tooltip)
         self.spin_default_caption_size.setToolTip(QCoreApplication.translate("MainWindow", u"\u8a2d\u5b9a\u8aaa\u660e\u6587\u5b57\u4e4b\u9810\u8a2d\u5b57\u7d1a\u5927\u5c0f (50~80 pt)", None))
 #endif // QT_CONFIG(tooltip)
         self.spin_default_caption_size.setSuffix(QCoreApplication.translate("MainWindow", u" pt", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_rate.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u81ea\u52d5\u6642\u9577\u7684\u7bc0\u594f\u500d\u7387\u3002\u516c\u5f0f\u7d04\u70ba\uff1a\u8ddd\u96e2 km \u00f7 100 \u00d7 \u6b64\u6578\u503c\uff08\u9810\u8a2d 60 \u79d2/100km\uff09\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_rate.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u52d5\u6642\u9577\u500d\u7387\uff1a", None))
+        self.spin_seconds_per_100km.setSuffix(QCoreApplication.translate("MainWindow", u"  \u79d2 / 100km", None))
+        self.spin_seconds_per_100km.setPrefix("")
+#if QT_CONFIG(tooltip)
+        self.chk_auto_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4f9d GPX \u7e3d\u8ddd\u96e2\u81ea\u52d5\u8a08\u7b97\u4e3b\u52d5\u756b\u9577\u5ea6\uff0c\u8b93\u4e0d\u540c\u9577\u5ea6\u7684\u9a0e\u4e58\u8def\u7dda\u4fdd\u6301\u76f8\u8fd1\u7bc0\u594f\u3002", None))
+#endif // QT_CONFIG(tooltip)
+        self.chk_auto_duration.setText("")
+        self.preview_group.setTitle(QCoreApplication.translate("MainWindow", u" \u5a92\u9ad4\u756b\u9762\u9810\u89bd", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_preview_image.setToolTip(QCoreApplication.translate("MainWindow", u"\U0001f4a1 \U00009ede\U000064ca\U000053ef\U0000958b\U0000555f\U0000539f\U00006a94\U00006aa2\U00008996\U0000ff08\U000076f8\U00007247\U00005168\U000087a2\U00005e55\U0000539f\U00005716 / \U00005f71\U00007247\U000064ad\U0000653e\U0000ff09", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_preview_image.setText(QCoreApplication.translate("MainWindow", u"\U0001f4f7 \U00008acb\U00005f9e\U00006e05\U000055ae\U00006216\U00005730\U00005716\U00009078\U000053d6\U00007167\U00007247", None))
         self.group_media_list.setTitle(QCoreApplication.translate("MainWindow", u"\u5a92\u9ad4\u6e05\u55ae (\u5171 0 \u9805)", None))
         ___qtablewidgetitem = self.table.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"\u6a94\u540d", None))
@@ -2060,47 +2126,6 @@ class Ui_MainWindow(object):
         self.btn_reset_view.setToolTip(QCoreApplication.translate("MainWindow", u"\u91cd\u8a2d\u8996\u89d2\u81f3\u8def\u7dda\u5168\u666f\u4e2d\u592e", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_reset_view.setText(QCoreApplication.translate("MainWindow", u"\U0001f504 ", None))
-        self.preview_group.setTitle(QCoreApplication.translate("MainWindow", u" \u5a92\u9ad4\u756b\u9762\u9810\u89bd", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_preview_map_style.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
-"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_preview_map_style.setText(QCoreApplication.translate("MainWindow", u"\u5730\u5716\u98a8\u683c", None))
-#if QT_CONFIG(tooltip)
-        self.combo_preview_map_style.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u5f71\u7247\u4e3b\u756b\u9762\u8207\u7d50\u5c3e overview \u4f7f\u7528\u7684\u5e95\u5716\u6a23\u5f0f\u3002\n"
-"\u5efa\u8b70\uff1a\u6df1\u8272\u8def\u7dda\u53ef\u7528 DarkMatter\uff0c\u9053\u8def\u7d30\u7bc0\u53ef\u7528 Voyager\uff0c\u885b\u661f\u5716\u8cc7\u8a0a\u91cf\u6700\u9ad8\u3002", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.lbl_preview_camera_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u8def\u7dda\u52d5\u756b\u7684\u93e1\u982d\u8996\u89d2\u671d\u5411\u8207 3D \u5730\u5f62\u900f\u8996\u3002\n"
-"\u2022 \u6b63\u5317\u671d\u4e0a (North-Up)\n"
-"\u2022 \u8ddf\u96a8\u884c\u9032\u65b9\u5411 (Heading-Up)\n"
-"\u2022 3D \u771f\u5730\u5f62 (3D-Terrain)", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_preview_camera_mode.setText(QCoreApplication.translate("MainWindow", u"\u8996\u89d2\u6a21\u5f0f", None))
-#if QT_CONFIG(tooltip)
-        self.combo_preview_camera_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u6c7a\u5b9a\u8def\u7dda\u52d5\u756b\u7684\u93e1\u982d\u8996\u89d2\u671d\u5411\u8207 3D \u5730\u5f62\u900f\u8996\u3002\n"
-"\u2022 \u6b63\u5317\u671d\u4e0a (North-Up)\n"
-"\u2022 \u8ddf\u96a8\u884c\u9032\u65b9\u5411 (Heading-Up)\n"
-"\u2022 3D \u771f\u5730\u5f62 (3D-Terrain)", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.lbl_preview_resolution.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u9078\u64c7\u8f38\u51fa\u5f71\u7247\u7684\u89e3\u6790\u5ea6\u5c3a\u5bf8\u8207\u756b\u9762\u6bd4\u4f8b\uff089:16, 16:9, 1:1 \u7b49\uff09\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_preview_resolution.setText(QCoreApplication.translate("MainWindow", u"\u89e3\u6790\u5ea6", None))
-#if QT_CONFIG(tooltip)
-        self.combo_preview_resolution.setToolTip(QCoreApplication.translate("MainWindow", u"\u5207\u63db\u9810\u89bd\u7684\u52d5\u756b\u9577\u5bec\u6bd4\u4f8b\u8207\u89e3\u6790\u5ea6\uff0c\u5373\u6642\u6aa2\u8996\u4e0d\u540c\u87a2\u5e55\u5c3a\u5bf8\u4e0b\u7684\u7167\u7247\u8207\u6587\u5b57\u6392\u7248", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.lbl_panels_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u662f\u5426\u5728\u52d5\u756b\u4e3b\u756b\u9762\u4e2d\u986f\u793a\u901f\u5ea6\u5100\u8868\u3001\u8def\u7dda\u7e2e\u5716\u6216\u6d77\u62d4\u9ad8\u5ea6\u5256\u9762\u5716\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_panels_2.setText(QCoreApplication.translate("MainWindow", u"\u8cc7\u8a0a\u9762\u677f", None))
-#if QT_CONFIG(tooltip)
-        self.combo_hud_panels.setToolTip(QCoreApplication.translate("MainWindow", u"\u9ede\u64ca\u53ef\u8907\u9078\u6216\u53d6\u6d88\u8981\u5728\u9810\u89bd\u756b\u9762\u8207\u8f38\u51fa\u5f71\u7247\u4e2d\u986f\u793a\u7684\u8cc7\u8a0a\u9762\u677f", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.lbl_preview_image.setToolTip(QCoreApplication.translate("MainWindow", u"\U0001f4a1 \U00009ede\U000064ca\U000053ef\U0000958b\U0000555f\U0000539f\U00006a94\U00006aa2\U00008996\U0000ff08\U000076f8\U00007247\U00005168\U000087a2\U00005e55\U0000539f\U00005716 / \U00005f71\U00007247\U000064ad\U0000653e\U0000ff09", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_preview_image.setText(QCoreApplication.translate("MainWindow", u"\U0001f4f7 \U00008acb\U00005f9e\U00006e05\U000055ae\U00006216\U00005730\U00005716\U00009078\U000053d6\U00007167\U00007247", None))
         self.info_group.setTitle(QCoreApplication.translate("MainWindow", u" \u62cd\u651d\u8207 EXIF \u8cc7\u8a0a ", None))
         self.lbl_fn_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4c1 \U00006a94\U00006848\U0000ff1a", None))
         self.lbl_info_filename.setText(QCoreApplication.translate("MainWindow", u"-", None))
