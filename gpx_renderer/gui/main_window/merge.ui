@@ -2162,43 +2162,23 @@
           <layout class="QGridLayout" name="gridLayout">
            <item row="0" column="0">
             <layout class="QVBoxLayout" name="verticalLayout_2">
-             <item>
-              <widget class="QtRoutePreviewWidget" name="preview_widget" native="true">
-               <layout class="QVBoxLayout" name="verticalLayout_19">
-                <item>
-                 <widget class="QLabel" name="lbl_map_hint">
-                  <property name="styleSheet">
-                   <string notr="true">color: #718096; font-size: 11px;</string>
-                  </property>
-                  <property name="text">
-                   <string>💡 滑鼠滾輪縮放 / 拖曳平移 / 點擊橘色標記選取照片</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignmentFlag::AlignCenter</set>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="1" column="0">
-            <layout class="QHBoxLayout" name="map_toolbar">
-             <item>
-              <widget class="QLabel" name="lbl_map_header">
-               <property name="font">
-                <font>
-                 <family>Segoe UI</family>
-                 <pointsize>9</pointsize>
-                 <bold>true</bold>
-                </font>
-               </property>
-               <property name="text">
-                <string />
-               </property>
-              </widget>
-             </item>
+              <item>
+               <widget class="QtRoutePreviewWidget" name="preview_widget" native="true"/>
+              </item>
+             </layout>
+            </item>
+            <item row="1" column="0">
+             <layout class="QHBoxLayout" name="map_toolbar">
+              <item>
+               <widget class="QLabel" name="lbl_map_hint">
+                <property name="styleSheet">
+                 <string notr="true">color: #718096; font-size: 11px;</string>
+                </property>
+                <property name="text">
+                 <string>💡 滑鼠滾輪縮放 / 拖曳平移 / 點擊橘色標記選取照片</string>
+                </property>
+               </widget>
+              </item>
              <item>
               <spacer name="horizontalSpacer_map_hdr">
                <property name="orientation">

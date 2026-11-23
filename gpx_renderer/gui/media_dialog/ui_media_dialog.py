@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'media_dialogqGFUsl.ui'
+## Form generated from reading UI file 'media_dialog.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.11.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -222,15 +222,6 @@ class Ui_MediaManagerDialog(object):
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.preview_widget = QtRoutePreviewWidget(self.groupBox_2)
         self.preview_widget.setObjectName(u"preview_widget")
-        self.verticalLayout_5 = QVBoxLayout(self.preview_widget)
-        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
-        self.lbl_map_hint = QLabel(self.preview_widget)
-        self.lbl_map_hint.setObjectName(u"lbl_map_hint")
-        self.lbl_map_hint.setStyleSheet(u"color: #718096; font-size: 11px;")
-        self.lbl_map_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.verticalLayout_5.addWidget(self.lbl_map_hint)
-
 
         self.verticalLayout.addWidget(self.preview_widget)
 
@@ -239,15 +230,11 @@ class Ui_MediaManagerDialog(object):
 
         self.map_toolbar = QHBoxLayout()
         self.map_toolbar.setObjectName(u"map_toolbar")
-        self.lbl_map_header = QLabel(self.groupBox_2)
-        self.lbl_map_header.setObjectName(u"lbl_map_header")
-        font = QFont()
-        font.setFamilies([u"Segoe UI"])
-        font.setPointSize(9)
-        font.setBold(True)
-        self.lbl_map_header.setFont(font)
+        self.lbl_map_hint = QLabel(self.groupBox_2)
+        self.lbl_map_hint.setObjectName(u"lbl_map_hint")
+        self.lbl_map_hint.setStyleSheet(u"color: #718096; font-size: 11px;")
 
-        self.map_toolbar.addWidget(self.lbl_map_header)
+        self.map_toolbar.addWidget(self.lbl_map_hint)
 
         self.horizontalSpacer_map_hdr = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -457,11 +444,11 @@ class Ui_MediaManagerDialog(object):
 
         self.btn_save = QPushButton(MediaManagerDialog)
         self.btn_save.setObjectName(u"btn_save")
-        font1 = QFont()
-        font1.setFamilies([u"Segoe UI"])
-        font1.setPointSize(10)
-        font1.setBold(True)
-        self.btn_save.setFont(font1)
+        font = QFont()
+        font.setFamilies([u"Segoe UI"])
+        font.setPointSize(10)
+        font.setBold(True)
+        self.btn_save.setFont(font)
         self.btn_save.setStyleSheet(u"background-color: #2b6cb0; color: white; padding: 6px 16px; border-radius: 4px;")
 
         self.bottom_bar.addWidget(self.btn_save)
@@ -528,7 +515,6 @@ class Ui_MediaManagerDialog(object):
         self.btn_add_folder.setText(QCoreApplication.translate("MediaManagerDialog", u"\U0001f4c1 \U000065b0\U0000589e\U00008cc7\U00006599\U0000593e", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("MediaManagerDialog", u"\u8def\u7dda\u8ecc\u8de1\u9810\u89bd", None))
         self.lbl_map_hint.setText(QCoreApplication.translate("MediaManagerDialog", u"\U0001f4a1 \U00006ed1\U00009f20\U00006efe\U00008f2a\U00007e2e\U0000653e / \U000062d6\U000066f3\U00005e73\U000079fb / \U00009ede\U000064ca\U00006a58\U00008272\U00006a19\U00008a18\U00009078\U000053d6\U00007167\U00007247", None))
-        self.lbl_map_header.setText("")
 #if QT_CONFIG(tooltip)
         self.btn_zoom_in.setToolTip(QCoreApplication.translate("MediaManagerDialog", u"\u653e\u5927\u8996\u89d2 (Canvas Zoom In)", None))
 #endif // QT_CONFIG(tooltip)

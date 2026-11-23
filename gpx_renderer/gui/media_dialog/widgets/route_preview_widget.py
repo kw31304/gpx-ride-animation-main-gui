@@ -69,6 +69,8 @@ class QtRoutePreviewWidget(QWidget):
             self.route_h = 100.0
             self.sampled_xs = np.array([])
             self.sampled_ys = np.array([])
+            for child in self.findChildren(QWidget):
+                child.setVisible(False)
 
     def set_ride_data(self, ride_data: Optional[RideData]):
         """設置或更新 GPX 騎乘軌跡資料，重新初始化視圖座標與抽樣點。"""
@@ -76,8 +78,13 @@ class QtRoutePreviewWidget(QWidget):
         if not ride_data or getattr(ride_data, "xs", None) is None or len(ride_data.xs) == 0:
             self.sampled_xs = np.array([])
             self.sampled_ys = np.array([])
+            for child in self.findChildren(QWidget):
+                child.setVisible(False)
             self.update()
             return
+
+        for child in self.findChildren(QWidget):
+            child.setVisible(True)
 
         self.view_center_x = float(ride_data.route_center_x)
         self.view_center_y = float(ride_data.route_center_y)
@@ -234,6 +241,9 @@ class QtRoutePreviewWidget(QWidget):
 
             # 若尚未載入 GPX 軌跡資料，顯示提示文字
             if not self.ride_data or len(self.sampled_xs) == 0:
+                for child in self.findChildren(QWidget):
+                    if child.isVisible():
+                        child.setVisible(False)
                 painter.setPen(QPen(QColor("#718096")))
                 painter.setFont(QFont("Segoe UI", 11))
                 painter.drawText(

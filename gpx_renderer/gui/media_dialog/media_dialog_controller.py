@@ -205,6 +205,16 @@ class QtMediaManagerDialog(QDialog, Ui_MediaManagerDialog):
         self.preview_widget.media_items = self.media_items
         self.preview_widget.item_selected.connect(self._on_canvas_select_item)
 
+        has_ride = bool(self.ride_data and getattr(self.ride_data, "distances", None) is not None and len(self.ride_data.distances) > 0)
+        if hasattr(self, "lbl_map_hint"):
+            self.lbl_map_hint.setVisible(has_ride)
+        if hasattr(self, "btn_zoom_in"):
+            self.btn_zoom_in.setEnabled(has_ride)
+        if hasattr(self, "btn_zoom_out"):
+            self.btn_zoom_out.setEnabled(has_ride)
+        if hasattr(self, "btn_reset_view"):
+            self.btn_reset_view.setEnabled(has_ride)
+
         # 2. 欄位寬度自適應設置 (共 8 欄：檔名, 類型, 停留秒數, 拍攝時間, 匹配里程, 自訂說明, 字級, 操作)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)           # 檔名

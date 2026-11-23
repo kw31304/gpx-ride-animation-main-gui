@@ -361,6 +361,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def open_advanced_settings_dialog(self):
         """彈出進階渲染參數綜合設定對話框"""
         from gpx_renderer.gui.main_window.components.advanced_settings_dialog import AdvancedSettingsDialog
+        is_benchmarking = self.state.get("proc_mode") == "benchmark" and self.state.get("proc") is not None
         dlg = AdvancedSettingsDialog(
             parent=self,
             custom_width=self.custom_width,
@@ -374,26 +375,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parallel=self.parallel_render,
             enable_media=self.enable_media,
             preview_mode=self.preview_mode,
+            cache_mode=getattr(config, "MAP_CACHE_MODE", "session"),
+            benchmark_result=self.state.get("benchmark_result"),
+            is_benchmarking=is_benchmarking,
         )
-        if dlg.exec() == QDialog.Accepted:
-            vals = dlg.get_values()
-            self.custom_width = vals["custom_width"]
-            self.custom_height = vals["custom_height"]
-            config.FRAME_WIDTH = self.custom_width
-            config.FRAME_HEIGHT = self.custom_height
-            self._set_workers(vals["workers"])
-            self.chunks_per_worker = vals["chunks"]
-            config.CHUNKS_PER_WORKER = self.chunks_per_worker
-            self._set_connections(vals["connections"])
-            self._set_preset(vals["preset"])
-            self._set_bitrate(vals["bitrate"])
-            self._set_basemap(vals["basemap"])
-            self._set_parallel(vals["parallel"])
-            self._set_enable_media(vals["enable_media"])
-            self._set_preview_mode(vals["preview_mode"])
-            self._update_dashboard_summary()
-            if hasattr(self, "media_tab"):
-                self.media_tab.refresh_preview()
+        self._advanced_dialog = dlg
+        try:
+            if dlg.exec() == QDialog.Accepted:
+                vals = dlg.get_values()
+                self.custom_width = vals["custom_width"]
+                self.custom_height = vals["custom_height"]
+                config.FRAME_WIDTH = self.custom_width
+                config.FRAME_HEIGHT = self.custom_height
+                self._set_workers(vals["workers"])
+                self.chunks_per_worker = vals["chunks"]
+                config.CHUNKS_PER_WORKER = self.chunks_per_worker
+                self._set_connections(vals["connections"])
+                self._set_preset(vals["preset"])
+                self._set_bitrate(vals["bitrate"])
+                self._set_basemap(vals["basemap"])
+                self._set_parallel(vals["parallel"])
+                self._set_enable_media(vals["enable_media"])
+                self._set_preview_mode(vals["preview_mode"])
+                self._set_cache_mode(vals.get("cache_mode", "session"))
+                self._update_dashboard_summary()
+                if hasattr(self, "media_tab"):
+                    self.media_tab.refresh_preview()
+        finally:
+            if getattr(self, "_advanced_dialog", None) is dlg:
+                self._advanced_dialog = None
 
     def set_status_message(self, msg: str):
         if hasattr(self, "lbl_main_status"):
@@ -557,7 +567,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parallel = self.chk_parallel_2.isChecked()
             workers = self.spin_workers.value()
             chunks = self.spin_chunks.value()
-            if self.combo_cache_mode.currentIndex() == 1:
+            cache_mode = getattr(config, "MAP_CACHE_MODE", "session")
+            if hasattr(self, "combo_cache_mode"):
+                cache_mode = "persistent" if self.combo_cache_mode.currentIndex() == 1 else "session"
+            if cache_mode == "persistent":
                 cache_html = "<span style='color: #38bdf8; font-weight: bold;'>永久保留快取</span>"
             else:
                 cache_html = "<span style='color: #94a3b8;'>自動暫存 (關閉清除)</span>"
@@ -596,6 +609,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "action_clear_cache"): self.action_clear_cache.setIcon(_get_icon("clear_cache"))
         if hasattr(self, "action_open_log_folder"): self.action_open_log_folder.setIcon(_get_icon("log_folder"))
         if hasattr(self, "action_toggle_advanced"): self.action_toggle_advanced.setIcon(_get_icon("settings"))
+        if hasattr(self, "action_advanced_settings"):
+            self.action_advanced_settings.setIcon(_get_icon("settings"))
+            self.action_advanced_settings.setToolTip("開啟進階渲染與效能調校詳細設定對話框")
         if hasattr(self, "action_start_render"): self.action_start_render.setIcon(_get_icon("start_render"))
         if hasattr(self, "action_stop_render"): self.action_stop_render.setIcon(_get_icon("stop_render"))
         if hasattr(self, "action_refresh_distance"): self.action_refresh_distance.setIcon(_get_icon("refresh"))
@@ -733,8 +749,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             cur_idx = 1 if getattr(config, "MAP_CACHE_MODE", "session") == "persistent" else 0
             self.action_cache_session.setChecked(cur_idx == 0)
             self.action_cache_persistent.setChecked(cur_idx == 1)
-            self.action_cache_session.triggered.connect(lambda: self.combo_cache_mode.setCurrentIndex(0))
-            self.action_cache_persistent.triggered.connect(lambda: self.combo_cache_mode.setCurrentIndex(1))
+            self.action_cache_session.triggered.connect(lambda: self._set_cache_mode("session"))
+            self.action_cache_persistent.triggered.connect(lambda: self._set_cache_mode("persistent"))
 
         # 啟動與停止渲染動作
         if hasattr(self, "action_start_render"):
@@ -842,10 +858,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.combo_bitrate.addItems(["8M", "12M", "20M", "24M", "30M", "40M", "60M"])
         self.combo_bitrate.setCurrentText(config.NVENC_BITRATE)
 
-        # 9. 快取模式
-        self.combo_cache_mode.clear()
-        self.combo_cache_mode.addItems(["自動暫存 (關閉清除)", "永久保留 (保留快取)"])
-        self.combo_cache_mode.setCurrentIndex(1 if getattr(config, "MAP_CACHE_MODE", "session") == "persistent" else 0)
+        # 9. 快取模式 (若 UI 存在則初始化，現已移至進階設定)
+        if hasattr(self, "combo_cache_mode"):
+            self.combo_cache_mode.clear()
+            self.combo_cache_mode.addItems(["自動暫存 (關閉清除)", "永久保留 (保留快取)"])
+            self.combo_cache_mode.setCurrentIndex(1 if getattr(config, "MAP_CACHE_MODE", "session") == "persistent" else 0)
 
     def _init_default_values(self):
         default_gpx = Path(config.gpx_filename)
@@ -987,8 +1004,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spin_seconds_per_100km.valueChanged.connect(self.on_duration_rate_change)
         self.lineEdit_duration.textChanged.connect(lambda: self._update_dashboard_summary())
 
-        self.combo_cache_mode.currentIndexChanged.connect(self.on_cache_mode_change)
-        self.btn_clear_cache.clicked.connect(self.on_clear_cache_clicked)
+        if hasattr(self, "combo_cache_mode"):
+            self.combo_cache_mode.currentIndexChanged.connect(self.on_cache_mode_change)
+        if hasattr(self, "btn_clear_cache"):
+            self.btn_clear_cache.clicked.connect(self.on_clear_cache_clicked)
 
         # 加入 400ms Debounce 防抖，避免連續輸入字元快速開線程
         self.gpx_debounce_timer = QTimer(self)
@@ -1023,21 +1042,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if hasattr(self, "lbl_cache_size"):
             self.lbl_cache_size.setText(f"快取: {mb:.1f} MB")
 
-    def on_cache_mode_change(self, idx: int):
-        mode = "session" if idx == 0 else "persistent"
+    def _set_cache_mode(self, mode: str):
+        mode = "persistent" if str(mode).lower() == "persistent" else "session"
         config.MAP_CACHE_MODE = mode
         if hasattr(self, "settings"):
             self.settings.setValue("map_cache_mode", mode)
         CacheManager.init_cache_system()
+        if hasattr(self, "combo_cache_mode"):
+            self.combo_cache_mode.blockSignals(True)
+            self.combo_cache_mode.setCurrentIndex(1 if mode == "persistent" else 0)
+            self.combo_cache_mode.blockSignals(False)
         if hasattr(self, "action_cache_session") and hasattr(self, "action_cache_persistent"):
             self.action_cache_session.blockSignals(True)
             self.action_cache_persistent.blockSignals(True)
-            self.action_cache_session.setChecked(idx == 0)
-            self.action_cache_persistent.setChecked(idx == 1)
+            self.action_cache_session.setChecked(mode == "session")
+            self.action_cache_persistent.setChecked(mode == "persistent")
             self.action_cache_session.blockSignals(False)
             self.action_cache_persistent.blockSignals(False)
         self.refresh_cache_size_display()
         self._update_dashboard_summary()
+
+    def on_cache_mode_change(self, idx: int):
+        self._set_cache_mode("persistent" if idx == 1 else "session")
 
     def on_clear_cache_clicked(self):
         reply = QMessageBox.question(
@@ -1318,6 +1344,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.lineEdit_duration.setText("")
                 self.lineEdit_duration.setPlaceholderText("自動計算 (待載入 GPX)")
             self._update_dashboard_summary()
+            if hasattr(self, "media_tab"):
+                self.media_tab.set_ride_data(None)
             return
 
         if self.state.get("gpx_distance_path") == raw and self.state.get("gpx_distance_km") is not None:
@@ -1362,6 +1390,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.state["gpx_distance_km"] = None
         self.state["gpx_distance_path"] = None
         self.label_distance_info.setText(f"GPX 距離：讀取失敗 ({err})")
+        if hasattr(self, "media_tab"):
+            self.media_tab.set_ride_data(None)
 
     # ---------- Render Subprocess Job Management ----------
     def collect_config(dict_self) -> dict:
@@ -1398,7 +1428,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             "ENABLE_BASEMAP": dict_self.chk_basemap_2.isChecked(),
             "PREVIEW_MODE": dict_self.chk_preview.isChecked(),
             "MAP_USE_CACHE": True,
-            "MAP_CACHE_MODE": "session" if dict_self.combo_cache_mode.currentIndex() == 0 else "persistent",
+            "MAP_CACHE_MODE": getattr(config, "MAP_CACHE_MODE", "session"),
             "MAP_CACHE_SESSION_ID": CacheManager.get_session_id(),
             "MAP_CACHE_MAX_MB": getattr(config, "MAP_CACHE_MAX_MB", 1024),
             "PARALLEL_DISABLE_TILE_CACHE": False,
@@ -1651,6 +1681,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if hasattr(self, "action_apply_benchmark"): self.action_apply_benchmark.setEnabled(True)
                 if hasattr(self, "btn_apply_benchmark"):
                     self.btn_apply_benchmark.setEnabled(True)
+                if getattr(self, "_advanced_dialog", None) is not None:
+                    try:
+                        self._advanced_dialog.update_benchmark_result(res)
+                    except Exception:
+                        pass
                 self.set_status_message(f"Auto Tune 完成：建議 {rec} Workers")
             except Exception:
                 pass
@@ -1705,6 +1740,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 pass
         self.state["log_file"] = None
         self.refresh_cache_size_display()
+        if getattr(self, "_advanced_dialog", None) is not None:
+            try:
+                self._advanced_dialog.on_benchmark_finished()
+            except Exception:
+                pass
 
     def closeEvent(self, event):
         proc = self.state.get("proc")

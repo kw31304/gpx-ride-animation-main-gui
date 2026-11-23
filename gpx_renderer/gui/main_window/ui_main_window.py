@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'main_windowDZyWIx.ui'
+## Form generated from reading UI file 'main_windowMWMByF.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.11.0
 ##
@@ -33,7 +33,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1249, 896)
+        MainWindow.resize(1150, 819)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -217,8 +217,8 @@ class Ui_MainWindow(object):
         self.action_advanced_settings.setObjectName(u"action_advanced_settings")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.gridLayout_10 = QGridLayout(self.centralwidget)
-        self.gridLayout_10.setObjectName(u"gridLayout_10")
+        self.gridLayout_8 = QGridLayout(self.centralwidget)
+        self.gridLayout_8.setObjectName(u"gridLayout_8")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tabWidget.setMinimumSize(QSize(0, 0))
@@ -229,12 +229,12 @@ class Ui_MainWindow(object):
         self.splitter_2 = QSplitter(self.tab_general)
         self.splitter_2.setObjectName(u"splitter_2")
         self.splitter_2.setOrientation(Qt.Orientation.Horizontal)
-        self.widget = QWidget(self.splitter_2)
-        self.widget.setObjectName(u"widget")
-        self.verticalLayout_27 = QVBoxLayout(self.widget)
+        self.layoutWidget = QWidget(self.splitter_2)
+        self.layoutWidget.setObjectName(u"layoutWidget")
+        self.verticalLayout_27 = QVBoxLayout(self.layoutWidget)
         self.verticalLayout_27.setObjectName(u"verticalLayout_27")
         self.verticalLayout_27.setContentsMargins(0, 0, 0, 0)
-        self.groupBox_files = QGroupBox(self.widget)
+        self.groupBox_files = QGroupBox(self.layoutWidget)
         self.groupBox_files.setObjectName(u"groupBox_files")
         sizePolicy.setHeightForWidth(self.groupBox_files.sizePolicy().hasHeightForWidth())
         self.groupBox_files.setSizePolicy(sizePolicy)
@@ -349,7 +349,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_27.addWidget(self.groupBox_files)
 
-        self.groupBox_summary = QGroupBox(self.widget)
+        self.groupBox_summary = QGroupBox(self.layoutWidget)
         self.groupBox_summary.setObjectName(u"groupBox_summary")
         sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         sizePolicy3.setHorizontalStretch(0)
@@ -386,7 +386,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_27.addWidget(self.groupBox_summary)
 
-        self.splitter_2.addWidget(self.widget)
+        self.splitter_2.addWidget(self.layoutWidget)
         self.groupBox_settings_2 = QGroupBox(self.splitter_2)
         self.groupBox_settings_2.setObjectName(u"groupBox_settings_2")
         sizePolicy.setHeightForWidth(self.groupBox_settings_2.sizePolicy().hasHeightForWidth())
@@ -635,82 +635,6 @@ class Ui_MainWindow(object):
 
 
         self.verticalLayout_4.addLayout(self.horizontalLayout_6)
-
-        self.line_2 = QFrame(self.groupBox_settings_2)
-        self.line_2.setObjectName(u"line_2")
-        self.line_2.setFrameShape(QFrame.Shape.HLine)
-        self.line_2.setFrameShadow(QFrame.Shadow.Sunken)
-
-        self.verticalLayout_4.addWidget(self.line_2)
-
-        self.verticalLayout_26 = QVBoxLayout()
-        self.verticalLayout_26.setObjectName(u"verticalLayout_26")
-        self.horizontalLayout_cache_actions_2 = QHBoxLayout()
-        self.horizontalLayout_cache_actions_2.setObjectName(u"horizontalLayout_cache_actions_2")
-        self.combo_cache_mode = QComboBox(self.groupBox_settings_2)
-        self.combo_cache_mode.setObjectName(u"combo_cache_mode")
-        sizePolicy2.setHeightForWidth(self.combo_cache_mode.sizePolicy().hasHeightForWidth())
-        self.combo_cache_mode.setSizePolicy(sizePolicy2)
-        self.combo_cache_mode.setMinimumSize(QSize(160, 0))
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.combo_cache_mode)
-
-        self.lbl_cache_size = QLabel(self.groupBox_settings_2)
-        self.lbl_cache_size.setObjectName(u"lbl_cache_size")
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.lbl_cache_size)
-
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_cache_actions_2.addItem(self.horizontalSpacer)
-
-        self.btn_clear_cache = QPushButton(self.groupBox_settings_2)
-        self.btn_clear_cache.setObjectName(u"btn_clear_cache")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.btn_clear_cache.sizePolicy().hasHeightForWidth())
-        self.btn_clear_cache.setSizePolicy(sizePolicy6)
-        self.btn_clear_cache.setMinimumSize(QSize(0, 0))
-
-        self.horizontalLayout_cache_actions_2.addWidget(self.btn_clear_cache)
-
-
-        self.verticalLayout_26.addLayout(self.horizontalLayout_cache_actions_2)
-
-        self.horizontalLayout_autotune_2 = QHBoxLayout()
-        self.horizontalLayout_autotune_2.setObjectName(u"horizontalLayout_autotune_2")
-        self.btn_autotune = QPushButton(self.groupBox_settings_2)
-        self.btn_autotune.setObjectName(u"btn_autotune")
-        self.btn_autotune.setMinimumSize(QSize(160, 0))
-        self.btn_autotune.setMaximumSize(QSize(150, 16777215))
-
-        self.horizontalLayout_autotune_2.addWidget(self.btn_autotune)
-
-        self.label_autotune_result = QLabel(self.groupBox_settings_2)
-        self.label_autotune_result.setObjectName(u"label_autotune_result")
-
-        self.horizontalLayout_autotune_2.addWidget(self.label_autotune_result)
-
-        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_autotune_2.addItem(self.horizontalSpacer_3)
-
-        self.btn_apply_benchmark = QPushButton(self.groupBox_settings_2)
-        self.btn_apply_benchmark.setObjectName(u"btn_apply_benchmark")
-        self.btn_apply_benchmark.setEnabled(False)
-        sizePolicy6.setHeightForWidth(self.btn_apply_benchmark.sizePolicy().hasHeightForWidth())
-        self.btn_apply_benchmark.setSizePolicy(sizePolicy6)
-        self.btn_apply_benchmark.setMinimumSize(QSize(0, 0))
-        self.btn_apply_benchmark.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_autotune_2.addWidget(self.btn_apply_benchmark)
-
-
-        self.verticalLayout_26.addLayout(self.horizontalLayout_autotune_2)
-
-
-        self.verticalLayout_4.addLayout(self.verticalLayout_26)
 
         self.splitter_2.addWidget(self.groupBox_settings_2)
 
@@ -1288,27 +1212,7 @@ class Ui_MainWindow(object):
         self.gridLayout_6.addWidget(self.line_3, 0, 1, 3, 1)
 
 
-        self.gridLayout_2.addWidget(self.top_group, 0, 0, 1, 1)
-
-        self.preview_group = QGroupBox(self.tab)
-        self.preview_group.setObjectName(u"preview_group")
-        sizePolicy.setHeightForWidth(self.preview_group.sizePolicy().hasHeightForWidth())
-        self.preview_group.setSizePolicy(sizePolicy)
-        self.gridLayout_9 = QGridLayout(self.preview_group)
-        self.gridLayout_9.setObjectName(u"gridLayout_9")
-        self.lbl_preview_image = ClickablePreviewLabel(self.preview_group)
-        self.lbl_preview_image.setObjectName(u"lbl_preview_image")
-        sizePolicy.setHeightForWidth(self.lbl_preview_image.sizePolicy().hasHeightForWidth())
-        self.lbl_preview_image.setSizePolicy(sizePolicy)
-        self.lbl_preview_image.setMinimumSize(QSize(450, 160))
-        self.lbl_preview_image.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.lbl_preview_image.setStyleSheet(u"background-color: #0b0f14; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;")
-        self.lbl_preview_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.gridLayout_9.addWidget(self.lbl_preview_image, 0, 0, 1, 2)
-
-
-        self.gridLayout_2.addWidget(self.preview_group, 0, 1, 2, 1)
+        self.gridLayout_2.addWidget(self.top_group, 0, 0, 1, 2)
 
         self.group_media_list = QGroupBox(self.tab)
         self.group_media_list.setObjectName(u"group_media_list")
@@ -1369,74 +1273,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_20.addLayout(self.horizontalLayout_7)
 
 
-        self.gridLayout_2.addWidget(self.group_media_list, 1, 0, 1, 1)
-
-        self.groupBox_2 = QGroupBox(self.tab)
-        self.groupBox_2.setObjectName(u"groupBox_2")
-        self.groupBox_2.setMinimumSize(QSize(0, 0))
-        self.gridLayout = QGridLayout(self.groupBox_2)
-        self.gridLayout.setObjectName(u"gridLayout")
-        self.verticalLayout_2 = QVBoxLayout()
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.preview_widget = QtRoutePreviewWidget(self.groupBox_2)
-        self.preview_widget.setObjectName(u"preview_widget")
-        self.verticalLayout_19 = QVBoxLayout(self.preview_widget)
-        self.verticalLayout_19.setObjectName(u"verticalLayout_19")
-        self.lbl_map_hint = QLabel(self.preview_widget)
-        self.lbl_map_hint.setObjectName(u"lbl_map_hint")
-        self.lbl_map_hint.setStyleSheet(u"color: #718096; font-size: 11px;")
-        self.lbl_map_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.verticalLayout_19.addWidget(self.lbl_map_hint)
-
-
-        self.verticalLayout_2.addWidget(self.preview_widget)
-
-
-        self.gridLayout.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
-
-        self.map_toolbar = QHBoxLayout()
-        self.map_toolbar.setObjectName(u"map_toolbar")
-        self.lbl_map_header = QLabel(self.groupBox_2)
-        self.lbl_map_header.setObjectName(u"lbl_map_header")
-        font = QFont()
-        font.setFamilies([u"Segoe UI"])
-        font.setPointSize(9)
-        font.setBold(True)
-        self.lbl_map_header.setFont(font)
-
-        self.map_toolbar.addWidget(self.lbl_map_header)
-
-        self.horizontalSpacer_map_hdr = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.map_toolbar.addItem(self.horizontalSpacer_map_hdr)
-
-        self.btn_zoom_in = QPushButton(self.groupBox_2)
-        self.btn_zoom_in.setObjectName(u"btn_zoom_in")
-        sizePolicy2.setHeightForWidth(self.btn_zoom_in.sizePolicy().hasHeightForWidth())
-        self.btn_zoom_in.setSizePolicy(sizePolicy2)
-
-        self.map_toolbar.addWidget(self.btn_zoom_in)
-
-        self.btn_zoom_out = QPushButton(self.groupBox_2)
-        self.btn_zoom_out.setObjectName(u"btn_zoom_out")
-        sizePolicy2.setHeightForWidth(self.btn_zoom_out.sizePolicy().hasHeightForWidth())
-        self.btn_zoom_out.setSizePolicy(sizePolicy2)
-
-        self.map_toolbar.addWidget(self.btn_zoom_out)
-
-        self.btn_reset_view = QPushButton(self.groupBox_2)
-        self.btn_reset_view.setObjectName(u"btn_reset_view")
-        sizePolicy2.setHeightForWidth(self.btn_reset_view.sizePolicy().hasHeightForWidth())
-        self.btn_reset_view.setSizePolicy(sizePolicy2)
-
-        self.map_toolbar.addWidget(self.btn_reset_view)
-
-
-        self.gridLayout.addLayout(self.map_toolbar, 1, 0, 1, 1)
-
-
-        self.gridLayout_2.addWidget(self.groupBox_2, 2, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.group_media_list, 1, 0, 1, 2)
 
         self.info_group = QGroupBox(self.tab)
         self.info_group.setObjectName(u"info_group")
@@ -1547,11 +1384,85 @@ class Ui_MainWindow(object):
         self.verticalLayout_21.addLayout(self.horizontalLayout_20)
 
 
-        self.gridLayout_2.addWidget(self.info_group, 2, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.info_group, 2, 2, 1, 1)
+
+        self.preview_group = QGroupBox(self.tab)
+        self.preview_group.setObjectName(u"preview_group")
+        sizePolicy.setHeightForWidth(self.preview_group.sizePolicy().hasHeightForWidth())
+        self.preview_group.setSizePolicy(sizePolicy)
+        self.gridLayout_9 = QGridLayout(self.preview_group)
+        self.gridLayout_9.setObjectName(u"gridLayout_9")
+        self.lbl_preview_image = ClickablePreviewLabel(self.preview_group)
+        self.lbl_preview_image.setObjectName(u"lbl_preview_image")
+        sizePolicy.setHeightForWidth(self.lbl_preview_image.sizePolicy().hasHeightForWidth())
+        self.lbl_preview_image.setSizePolicy(sizePolicy)
+        self.lbl_preview_image.setMinimumSize(QSize(450, 160))
+        self.lbl_preview_image.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.lbl_preview_image.setStyleSheet(u"background-color: #0b0f14; border: 1px solid #2d3748; border-radius: 8px; color: #a0aec0;")
+        self.lbl_preview_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.gridLayout_9.addWidget(self.lbl_preview_image, 0, 0, 1, 2)
+
+
+        self.gridLayout_2.addWidget(self.preview_group, 0, 2, 2, 1)
+
+        self.groupBox_2 = QGroupBox(self.tab)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.groupBox_2.setMinimumSize(QSize(0, 0))
+        self.gridLayout = QGridLayout(self.groupBox_2)
+        self.gridLayout.setObjectName(u"gridLayout")
+        self.verticalLayout_2 = QVBoxLayout()
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
+        self.preview_widget = QtRoutePreviewWidget(self.groupBox_2)
+        self.preview_widget.setObjectName(u"preview_widget")
+
+        self.verticalLayout_2.addWidget(self.preview_widget)
+
+
+        self.gridLayout.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
+
+        self.map_toolbar = QHBoxLayout()
+        self.map_toolbar.setObjectName(u"map_toolbar")
+        self.lbl_map_hint = QLabel(self.groupBox_2)
+        self.lbl_map_hint.setObjectName(u"lbl_map_hint")
+        self.lbl_map_hint.setStyleSheet(u"color: #718096; font-size: 11px;")
+
+        self.map_toolbar.addWidget(self.lbl_map_hint)
+
+        self.horizontalSpacer_map_hdr = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.map_toolbar.addItem(self.horizontalSpacer_map_hdr)
+
+        self.btn_zoom_in = QPushButton(self.groupBox_2)
+        self.btn_zoom_in.setObjectName(u"btn_zoom_in")
+        sizePolicy2.setHeightForWidth(self.btn_zoom_in.sizePolicy().hasHeightForWidth())
+        self.btn_zoom_in.setSizePolicy(sizePolicy2)
+
+        self.map_toolbar.addWidget(self.btn_zoom_in)
+
+        self.btn_zoom_out = QPushButton(self.groupBox_2)
+        self.btn_zoom_out.setObjectName(u"btn_zoom_out")
+        sizePolicy2.setHeightForWidth(self.btn_zoom_out.sizePolicy().hasHeightForWidth())
+        self.btn_zoom_out.setSizePolicy(sizePolicy2)
+
+        self.map_toolbar.addWidget(self.btn_zoom_out)
+
+        self.btn_reset_view = QPushButton(self.groupBox_2)
+        self.btn_reset_view.setObjectName(u"btn_reset_view")
+        sizePolicy2.setHeightForWidth(self.btn_reset_view.sizePolicy().hasHeightForWidth())
+        self.btn_reset_view.setSizePolicy(sizePolicy2)
+
+        self.map_toolbar.addWidget(self.btn_reset_view)
+
+
+        self.gridLayout.addLayout(self.map_toolbar, 1, 0, 1, 1)
+
+
+        self.gridLayout_2.addWidget(self.groupBox_2, 2, 0, 1, 2)
 
         self.tabWidget.addTab(self.tab, "")
 
-        self.gridLayout_10.addWidget(self.tabWidget, 0, 0, 1, 1)
+        self.gridLayout_8.addWidget(self.tabWidget, 0, 0, 2, 1)
 
         self.horizontalLayout_actions = QHBoxLayout()
         self.horizontalLayout_actions.setObjectName(u"horizontalLayout_actions")
@@ -1560,9 +1471,9 @@ class Ui_MainWindow(object):
         sizePolicy2.setHeightForWidth(self.btn_start_render.sizePolicy().hasHeightForWidth())
         self.btn_start_render.setSizePolicy(sizePolicy2)
         self.btn_start_render.setMinimumSize(QSize(0, 0))
-        font1 = QFont()
-        font1.setPointSize(12)
-        self.btn_start_render.setFont(font1)
+        font = QFont()
+        font.setPointSize(12)
+        self.btn_start_render.setFont(font)
 
         self.horizontalLayout_actions.addWidget(self.btn_start_render)
 
@@ -1572,17 +1483,17 @@ class Ui_MainWindow(object):
         sizePolicy2.setHeightForWidth(self.btn_stop_render.sizePolicy().hasHeightForWidth())
         self.btn_stop_render.setSizePolicy(sizePolicy2)
         self.btn_stop_render.setMinimumSize(QSize(0, 0))
-        self.btn_stop_render.setFont(font1)
+        self.btn_stop_render.setFont(font)
 
         self.horizontalLayout_actions.addWidget(self.btn_stop_render)
 
 
-        self.gridLayout_10.addLayout(self.horizontalLayout_actions, 1, 0, 1, 1)
+        self.gridLayout_8.addLayout(self.horizontalLayout_actions, 2, 0, 1, 2)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1249, 33))
+        self.menubar.setGeometry(QRect(0, 0, 1150, 33))
         self.menu_file = QMenu(self.menubar)
         self.menu_file.setObjectName(u"menu_file")
         self.menu_edit = QMenu(self.menubar)
@@ -1698,13 +1609,14 @@ class Ui_MainWindow(object):
         self.toolBar.addAction(self.action_open_log_folder)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.action_toggle_advanced)
+        self.toolBar.addAction(self.action_advanced_settings)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.action_start_render)
         self.toolBar.addAction(self.action_stop_render)
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1960,21 +1872,6 @@ class Ui_MainWindow(object):
         self.chk_real_speed_2.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u63a7\u5236\u9a0e\u4e58\u52d5\u756b\u5728\u8def\u7dda\u4e0a\u7684\u79fb\u52d5\u901f\u5ea6\u6a21\u5f0f\uff08\u7b49\u901f vs \u5be6\u969b GPS \u901f\u5ea6\uff09\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.chk_real_speed_2.setText(QCoreApplication.translate("MainWindow", u"\u8ddf\u96a8 GPX \u5be6\u969b\u901f\u5ea6", None))
-#if QT_CONFIG(tooltip)
-        self.combo_cache_mode.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u5207\u63db\u5e95\u5716\u78c1\u789f\u5feb\u53d6\u6a21\u5f0f\u3002\u81ea\u52d5\u66ab\u5b58\u6a21\u5f0f\u65bc\u95dc\u9589\u7a0b\u5f0f\u6642\u6e05\u9664\uff1b\u6c38\u4e45\u4fdd\u7559\u6a21\u5f0f\u5247\u4fdd\u7559\u4ee5\u52a0\u901f\u65e5\u5f8c\u6e32\u67d3\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.combo_cache_mode.setPlaceholderText(QCoreApplication.translate("MainWindow", u"\u5feb\u53d6\u4fdd\u5b58\u65b9\u5f0f", None))
-        self.lbl_cache_size.setText(QCoreApplication.translate("MainWindow", u"0.0 MB", None))
-        self.btn_clear_cache.setText(QCoreApplication.translate("MainWindow", u"\u6e05\u9664\u5feb\u53d6", None))
-#if QT_CONFIG(tooltip)
-        self.btn_autotune.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u7528\u77ed benchmark \u5be6\u6e2c\u4e0d\u540c Workers \u6578\u91cf\u7684\u7b49\u6548 FPS\uff0c\u518d\u63a8\u85a6\u63a5\u8fd1\u5cf0\u503c\u6548\u80fd\u7684\u6700\u4f4e worker \u6578\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.btn_autotune.setText(QCoreApplication.translate("MainWindow", u"\u6548\u80fd\u6e2c\u8a66 / Auto Tune", None))
-#if QT_CONFIG(tooltip)
-        self.label_autotune_result.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u7528\u77ed benchmark \u5be6\u6e2c\u4e0d\u540c Workers \u6578\u91cf\u7684\u7b49\u6548 FPS\uff0c\u518d\u63a8\u85a6\u63a5\u8fd1\u5cf0\u503c\u6548\u80fd\u7684\u6700\u4f4e worker \u6578\u3002", None))
-#endif // QT_CONFIG(tooltip)
-        self.label_autotune_result.setText(QCoreApplication.translate("MainWindow", u"\u5c1a\u672a\u6e2c\u8a66", None))
-        self.btn_apply_benchmark.setText(QCoreApplication.translate("MainWindow", u"\u5957\u7528\u5efa\u8b70", None))
         self.groupBox_workers.setTitle(QCoreApplication.translate("MainWindow", u"\u6e32\u67d3\u9032\u5ea6", None))
         self.label_eta_elapsed.setText(QCoreApplication.translate("MainWindow", u"\u7d93\u904e\u6642\u9593: 00:00:00", None))
         self.label_eta_time.setText(QCoreApplication.translate("MainWindow", u"\u9810\u4f30\u5269\u9918\u6642\u9593: --", None))
@@ -2081,11 +1978,6 @@ class Ui_MainWindow(object):
         self.chk_auto_duration.setToolTip(QCoreApplication.translate("MainWindow", u"\u7528\u9014\uff1a\u4f9d GPX \u7e3d\u8ddd\u96e2\u81ea\u52d5\u8a08\u7b97\u4e3b\u52d5\u756b\u9577\u5ea6\uff0c\u8b93\u4e0d\u540c\u9577\u5ea6\u7684\u9a0e\u4e58\u8def\u7dda\u4fdd\u6301\u76f8\u8fd1\u7bc0\u594f\u3002", None))
 #endif // QT_CONFIG(tooltip)
         self.chk_auto_duration.setText("")
-        self.preview_group.setTitle(QCoreApplication.translate("MainWindow", u" \u5a92\u9ad4\u756b\u9762\u9810\u89bd", None))
-#if QT_CONFIG(tooltip)
-        self.lbl_preview_image.setToolTip(QCoreApplication.translate("MainWindow", u"\U0001f4a1 \U00009ede\U000064ca\U000053ef\U0000958b\U0000555f\U0000539f\U00006a94\U00006aa2\U00008996\U0000ff08\U000076f8\U00007247\U00005168\U000087a2\U00005e55\U0000539f\U00005716 / \U00005f71\U00007247\U000064ad\U0000653e\U0000ff09", None))
-#endif // QT_CONFIG(tooltip)
-        self.lbl_preview_image.setText(QCoreApplication.translate("MainWindow", u"\U0001f4f7 \U00008acb\U00005f9e\U00006e05\U000055ae\U00006216\U00005730\U00005716\U00009078\U000053d6\U00007167\U00007247", None))
         self.group_media_list.setTitle(QCoreApplication.translate("MainWindow", u"\u5a92\u9ad4\u6e05\u55ae (\u5171 0 \u9805)", None))
         ___qtablewidgetitem = self.table.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"\u6a94\u540d", None))
@@ -2111,9 +2003,24 @@ class Ui_MainWindow(object):
         self.btn_add_folder.setToolTip(QCoreApplication.translate("MainWindow", u"\u9078\u53d6\u5305\u542b\u7167\u7247/\u5f71\u7247\u4e4b\u8cc7\u6599\u593e\u52a0\u5165\u6e05\u55ae", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_add_folder.setText(QCoreApplication.translate("MainWindow", u"\U0001f4c1 \U000065b0\U0000589e\U00008cc7\U00006599\U0000593e", None))
+        self.info_group.setTitle(QCoreApplication.translate("MainWindow", u" \u62cd\u651d\u8207 EXIF \u8cc7\u8a0a ", None))
+        self.lbl_fn_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4c1 \U00006a94\U00006848\U0000ff1a", None))
+        self.lbl_info_filename.setText(QCoreApplication.translate("MainWindow", u"-", None))
+        self.lbl_time_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4c5 \U00006642\U00009593\U0000ff1a", None))
+        self.lbl_info_time.setText(QCoreApplication.translate("MainWindow", u"-", None))
+        self.lbl_gps_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4cd GPS\U0000ff1a", None))
+        self.lbl_info_gps.setText(QCoreApplication.translate("MainWindow", u"-", None))
+        self.lbl_res_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4d0 \U00005c3a\U00005bf8\U0000ff1a", None))
+        self.lbl_info_res.setText(QCoreApplication.translate("MainWindow", u"-", None))
+        self.lbl_match_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4cf \U00005339\U0000914d\U0000ff1a", None))
+        self.lbl_info_match.setText(QCoreApplication.translate("MainWindow", u"-", None))
+        self.preview_group.setTitle(QCoreApplication.translate("MainWindow", u" \u5a92\u9ad4\u756b\u9762\u9810\u89bd", None))
+#if QT_CONFIG(tooltip)
+        self.lbl_preview_image.setToolTip(QCoreApplication.translate("MainWindow", u"\U0001f4a1 \U00009ede\U000064ca\U000053ef\U0000958b\U0000555f\U0000539f\U00006a94\U00006aa2\U00008996\U0000ff08\U000076f8\U00007247\U00005168\U000087a2\U00005e55\U0000539f\U00005716 / \U00005f71\U00007247\U000064ad\U0000653e\U0000ff09", None))
+#endif // QT_CONFIG(tooltip)
+        self.lbl_preview_image.setText(QCoreApplication.translate("MainWindow", u"\U0001f4f7 \U00008acb\U00005f9e\U00006e05\U000055ae\U00006216\U00005730\U00005716\U00009078\U000053d6\U00007167\U00007247", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u8ecc\u8de1\u9810\u89bd", None))
         self.lbl_map_hint.setText(QCoreApplication.translate("MainWindow", u"\U0001f4a1 \U00006ed1\U00009f20\U00006efe\U00008f2a\U00007e2e\U0000653e / \U000062d6\U000066f3\U00005e73\U000079fb / \U00009ede\U000064ca\U00006a58\U00008272\U00006a19\U00008a18\U00009078\U000053d6\U00007167\U00007247", None))
-        self.lbl_map_header.setText("")
 #if QT_CONFIG(tooltip)
         self.btn_zoom_in.setToolTip(QCoreApplication.translate("MainWindow", u"\u653e\u5927\u8996\u89d2 (Canvas Zoom In)", None))
 #endif // QT_CONFIG(tooltip)
@@ -2126,17 +2033,6 @@ class Ui_MainWindow(object):
         self.btn_reset_view.setToolTip(QCoreApplication.translate("MainWindow", u"\u91cd\u8a2d\u8996\u89d2\u81f3\u8def\u7dda\u5168\u666f\u4e2d\u592e", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_reset_view.setText(QCoreApplication.translate("MainWindow", u"\U0001f504 ", None))
-        self.info_group.setTitle(QCoreApplication.translate("MainWindow", u" \u62cd\u651d\u8207 EXIF \u8cc7\u8a0a ", None))
-        self.lbl_fn_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4c1 \U00006a94\U00006848\U0000ff1a", None))
-        self.lbl_info_filename.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.lbl_time_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4c5 \U00006642\U00009593\U0000ff1a", None))
-        self.lbl_info_time.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.lbl_gps_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4cd GPS\U0000ff1a", None))
-        self.lbl_info_gps.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.lbl_res_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4d0 \U00005c3a\U00005bf8\U0000ff1a", None))
-        self.lbl_info_res.setText(QCoreApplication.translate("MainWindow", u"-", None))
-        self.lbl_match_title.setText(QCoreApplication.translate("MainWindow", u"\U0001f4cf \U00005339\U0000914d\U0000ff1a", None))
-        self.lbl_info_match.setText(QCoreApplication.translate("MainWindow", u"-", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"\u8def\u7dda\u5a92\u9ad4\u7ba1\u7406", None))
         self.btn_start_render.setText(QCoreApplication.translate("MainWindow", u"\u958b\u59cb\u6e32\u67d3", None))
         self.btn_stop_render.setText(QCoreApplication.translate("MainWindow", u"\u505c\u6b62", None))

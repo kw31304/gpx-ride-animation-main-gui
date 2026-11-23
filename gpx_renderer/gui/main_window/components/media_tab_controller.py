@@ -116,6 +116,17 @@ class MediaTabController:
         if hasattr(self.win, "combo_hud_panels"):
             self.win.combo_hud_panels.selection_changed.connect(lambda _: self._on_hud_chk_toggled())
 
+        # 6. 未載入 GPX 時隱藏地圖互動提示文字並禁用縮放按鈕
+        has_ride = bool(self.ride_data and getattr(self.ride_data, "distances", None) is not None and len(self.ride_data.distances) > 0)
+        if hasattr(self.win, "lbl_map_hint"):
+            self.win.lbl_map_hint.setVisible(has_ride)
+        if hasattr(self.win, "btn_zoom_in"):
+            self.win.btn_zoom_in.setEnabled(has_ride)
+        if hasattr(self.win, "btn_zoom_out"):
+            self.win.btn_zoom_out.setEnabled(has_ride)
+        if hasattr(self.win, "btn_reset_view"):
+            self.win.btn_reset_view.setEnabled(has_ride)
+
     def _connect_signals(self):
         if hasattr(self.win, "btn_add_files"):
             self.win.btn_add_files.clicked.connect(self._on_add_files)
@@ -161,6 +172,16 @@ class MediaTabController:
             self.total_distance_km = float(ride_data.distances[-1])
         else:
             self.total_distance_km = 0.0
+
+        has_ride = bool(self.ride_data and getattr(self.ride_data, "distances", None) is not None and len(self.ride_data.distances) > 0)
+        if hasattr(self.win, "lbl_map_hint"):
+            self.win.lbl_map_hint.setVisible(has_ride)
+        if hasattr(self.win, "btn_zoom_in"):
+            self.win.btn_zoom_in.setEnabled(has_ride)
+        if hasattr(self.win, "btn_zoom_out"):
+            self.win.btn_zoom_out.setEnabled(has_ride)
+        if hasattr(self.win, "btn_reset_view"):
+            self.win.btn_reset_view.setEnabled(has_ride)
 
         if hasattr(self.win, "preview_widget"):
             map_key = self.win.combo_map_style_2.currentText().split(".")[0].strip() if hasattr(self.win, "combo_map_style_2") else "1"
